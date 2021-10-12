@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from uuid import uuid4
 
-from essentials.models import Warehouse, Product
+from essentials.models import Warehouse, Product, Person
 
 
 class ID(models.Model):
@@ -22,9 +22,11 @@ class Transaction(ID):
         )
     discount = models.FloatField(validators=[MinValueValidator(0.0)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
+    person = models.ForeignKey(Person, on_delete=models.CASCADE)
+    draft = models.BooleanField(default=False)
     
 class TransactionDetail(ID):
-    trade_id = models.ForeignKey(Transaction, on_delete=models.CASCADE)
+    transaction_id = models.ForeignKey(Transaction, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
     quantity = models.IntegerField(validators=[MinValueValidator(1)])

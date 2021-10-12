@@ -2,7 +2,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from uuid import uuid4
 
-class Product(models.Model):
+
+class ProductVariant(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=50)
 
@@ -10,19 +11,28 @@ class Product(models.Model):
         return self.name
 
 
-class ProductVariant(models.Model):
+class QuantityChoices(models.TextChoices):
+    CREDIT = 'yards', _('Yards')
+    DEBIT = 'piece', _('Pieces')
+
+class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    product_id = models.ForeignKey(Product, related_name='colors', on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True)
+    unit = models.CharField(
+        max_length=5,
+        choices=QuantityChoices.choices
+    )
+
 
     def __str__(self) -> str:
-        return str(self.product_id) + ': ' + self.name
+        return self.name + ': ' + self.variant
 
 
 class Warehouse(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=50)
-    address = models.CharField(max_length=50)
+    address = models.CharField(max_length=50, null=True)
 
     def __str__(self) -> str:
         return self.name
@@ -40,7 +50,7 @@ class Person(models.Model):
         max_length=1,
         choices=PersonChoices.choices
         )
-    business_name = models.CharField(max_length=100)
+    business_name = models.CharField(max_length=100, null=True)
 
     def __str__(self) -> str:
         return self.name + ': ' + self.person_type

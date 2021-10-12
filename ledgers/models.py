@@ -17,7 +17,7 @@ class Ledger(models.Model):
     detail = models.TextField(max_length=1000, null=True, blank=True)
     amount = models.FloatField(validators=[MinValueValidator(0.0)])
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
-    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE , null=True, blank=True)
+    transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE , null=True, blank=True)
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
     nature = models.CharField(
         max_length=1,
