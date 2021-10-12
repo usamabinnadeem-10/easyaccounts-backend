@@ -4,11 +4,18 @@ from rest_framework import serializers
 
 from .models import *
 
-class AccountSerializer(serializers.ModelSerializer):
+class PersonSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Account
-        fields = ['name', 'account_type', 'business_name']
+        model = Person
+        fields = ['name', 'person_type', 'business_name']
+
+
+class AccountTypeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AccountType
+        fields = ['name']
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -17,26 +24,23 @@ class WarehouseSerializer(serializers.ModelSerializer):
         model = Warehouse
         fields = ['name', 'address']
 
-
-class ProductSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Product
-        fields = ['name']
-
-
 class ProductVariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductVariant
-        field = ['name']
+        fields = ['id', 'name']
+        read_only_fields = ['id']
+class ProductSerializer(serializers.ModelSerializer):
 
-
-class ParentProductSerializer(serializers.Serializer):
-
-    product = ProductSerializer()
-    product_variant = ProductVariantSerializer()
-
+    colors = ProductVariantSerializer(many=True)
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'colors']
+        read_only_fields = ['id']
 
     def create(self, validated_data):
-        return super().create(validated_data)
+        colors_data = validated_data.pop('colors')
+        product = Product.objects.create(**validated_data)
+        for color in colors_data:
+            ProductVariant.objects.create(product_id=product, **color)
+        return product

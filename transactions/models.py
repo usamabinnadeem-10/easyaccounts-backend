@@ -10,22 +10,22 @@ class ID(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
 
 
-class TradeChoices(models.TextChoices):
+class TransactionChoices(models.TextChoices):
     CREDIT = 'C', _('Credit')
     DEBIT = 'D', _('Debit')
 
-class Trade(ID):
+class Transaction(ID):
     time = models.DateTimeField('Time', auto_now_add=True)
     type = models.CharField(
         max_length=1,
-        choices=TradeChoices.choices
+        choices=TransactionChoices.choices
         )
     discount = models.FloatField(validators=[MinValueValidator(0.0)])
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
     
-class TradeDetails(ID):
-    trade_id = models.ForeignKey(Trade, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL)
+class TransactionDetail(ID):
+    trade_id = models.ForeignKey(Transaction, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
     quantity = models.IntegerField(validators=[MinValueValidator(1)])
 

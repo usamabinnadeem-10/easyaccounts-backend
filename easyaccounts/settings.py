@@ -38,7 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'essentials.apps.EssentialsConfig',
+    'essentials',
+    'ledgers',
+    'transactions',
 ]
 
 MIDDLEWARE = [
@@ -83,6 +85,7 @@ DATABASES = {
         'PASSWORD': '8080',
         'HOST': '127.0.0.1',
         'PORT': '5432',
+        'ATOMIC_REQUESTS': True,
     }
 }
 
