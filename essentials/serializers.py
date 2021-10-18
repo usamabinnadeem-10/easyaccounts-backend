@@ -4,43 +4,62 @@ from rest_framework import serializers
 
 from .models import *
 
-class PersonSerializer(serializers.ModelSerializer):
 
+class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
-        fields = ['name', 'person_type', 'business_name']
+        fields = ["name", "person_type", "business_name"]
 
 
 class AccountTypeSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = AccountType
-        fields = ['name']
+        fields = ["name"]
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Warehouse
-        fields = ['name', 'address']
+        fields = ["name", "address"]
 
-class ProductVariantSerializer(serializers.ModelSerializer):
 
+class ProductColorSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ProductVariant
-        fields = ['id', 'name']
-        read_only_fields = ['id']
-class ProductSerializer(serializers.ModelSerializer):
+        model = ProductColor
+        fields = ["id", "color_name"]
+        read_only_fields = ["id"]
 
-    colors = ProductVariantSerializer(many=True)
+
+class ProductHeadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductHead
+        fields = ["id", "head_name"]
+        read_only_fields = ["id"]
+
+
+class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ['id', 'name', 'colors']
-        read_only_fields = ['id']
+        fields = ["id", "unit"]
+        read_only_fields = ["id"]
+
+
+class CreateProductSerializer(serializers.Serializer):
+
+    product_data = ProductSerializer(write_only=True)
+    head_data = ProductHeadSerializer(write_only=True)
+    color_data = ProductColorSerializer(write_only=True)
 
     def create(self, validated_data):
-        colors_data = validated_data.pop('colors')
-        product = Product.objects.create(**validated_data)
-        for color in colors_data:
-            ProductVariant.objects.create(product_id=product, **color)
-        return product
+        product_color = ProductColor.objects.create(
+            color_name=validated_data["color_data"]["color_name"]
+        )
+        product_head = ProductHead.objects.create(
+            head_name=validated_data["head_data"]["head_name"]
+        )
+        Product.objects.create(
+            product_head=product_head,
+            product_color=product_color,
+            unit=validated_data["product_data"]["unit"],
+        )
+        return {}

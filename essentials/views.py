@@ -17,7 +17,7 @@ class WarehouseList(ListCreateAPIView):
     
 class ProductList(ListCreateAPIView):
     queryset = Product.objects.all()
-    serializer_class = ProductSerializer
+    serializer_class = CreateProductSerializer
 
 
 class AccountTypeList(ListCreateAPIView):

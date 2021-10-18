@@ -11,23 +11,23 @@ class ID(models.Model):
 
 
 class TransactionChoices(models.TextChoices):
-    CREDIT = 'C', _('Credit')
-    DEBIT = 'D', _('Debit')
+    CREDIT = "C", _("Credit")
+    DEBIT = "D", _("Debit")
+
 
 class Transaction(ID):
-    time = models.DateTimeField('Time', auto_now_add=True)
-    type = models.CharField(
-        max_length=1,
-        choices=TransactionChoices.choices
-        )
+    date = models.DateField(auto_now_add=True)
+    nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     draft = models.BooleanField(default=False)
-    
+
+
 class TransactionDetail(ID):
-    transaction_id = models.ForeignKey(Transaction, on_delete=models.CASCADE)
+    transaction_id = models.ForeignKey(
+        Transaction, on_delete=models.CASCADE, related_name="transactions"
+    )
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
-    quantity = models.IntegerField(validators=[MinValueValidator(1)])
-
+    quantity = models.FloatField(validators=[MinValueValidator(1.0)])

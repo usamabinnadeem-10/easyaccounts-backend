@@ -80,7 +80,7 @@ WSGI_APPLICATION = 'easyaccounts.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'easyaccounts',
+        'NAME': 'easybackend',
         'USER': 'postgres',
         'PASSWORD': '8080',
         'HOST': '127.0.0.1',

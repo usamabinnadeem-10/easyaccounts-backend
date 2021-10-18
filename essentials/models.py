@@ -3,30 +3,36 @@ from django.utils.translation import gettext_lazy as _
 from uuid import uuid4
 
 
-class ProductVariant(models.Model):
+class ProductColor(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    name = models.CharField(max_length=50)
+    color_name = models.CharField(max_length=50)
 
     def __str__(self) -> str:
-        return self.name
+        return self.color_name
+
+
+class ProductHead(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    head_name = models.CharField(max_length=50)
+
+    def __str__(self) -> str:
+        return self.head_name
 
 
 class QuantityChoices(models.TextChoices):
-    CREDIT = 'yards', _('Yards')
-    DEBIT = 'piece', _('Pieces')
+    CREDIT = "yards", _("Yards")
+    DEBIT = "piece", _("Pieces")
+
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    name = models.CharField(max_length=50)
-    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True)
-    unit = models.CharField(
-        max_length=5,
-        choices=QuantityChoices.choices
-    )
-
+    unit = models.CharField(max_length=5, choices=QuantityChoices.choices)
+    current_quantity = models.FloatField(default=0.0)
+    product_head = models.ForeignKey(ProductHead, on_delete=models.CASCADE)
+    product_color = models.ForeignKey(ProductColor, on_delete=models.CASCADE, null=True)
 
     def __str__(self) -> str:
-        return self.name + ': ' + self.variant
+        return self.product_head.head_name + ": " + self.product_color.color_name
 
 
 class Warehouse(models.Model):
@@ -37,29 +43,32 @@ class Warehouse(models.Model):
     def __str__(self) -> str:
         return self.name
 
+
 class PersonChoices(models.TextChoices):
-    CREDIT = 'S', _('Supplier')
-    DEBIT = 'C', _('Customer')
+    CREDIT = "S", _("Supplier")
+    DEBIT = "C", _("Customer")
 
 
 """Supplier or Customer Account"""
+
+
 class Person(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=100)
-    person_type = models.CharField(
-        max_length=1,
-        choices=PersonChoices.choices
-        )
+    person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
 
     def __str__(self) -> str:
-        return self.name + ': ' + self.person_type
+        return self.name + ": " + self.person_type
 
 
 """Account types like cash account or cheque account"""
+
+
 class AccountType(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=100)
+    balance = models.FloatField(default=0.0)
 
     def __str__(self) -> str:
         return self.name
