@@ -1,6 +1,8 @@
 from uuid import uuid4
 from rest_framework import serializers
 
+from ledgers.serializers import LedgerSerializer
+
 from .models import Transaction, TransactionDetail
 from essentials.models import AccountType, Product
 from ledgers.models import Ledger
@@ -15,35 +17,27 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
 
 class TransactionSerializer(serializers.ModelSerializer):
 
-    transactions = TransactionDetailSerializer(many=True)
-    account_type = serializers.UUIDField()
-    amount = serializers.FloatField()
-    paid = serializers.BooleanField()
-    detail = serializers.CharField()
+    transaction_detail = TransactionDetailSerializer(many=True)
+    ledger_data = LedgerSerializer(many=True, write_only=True)
 
     class Meta:
         model = Transaction
         fields = [
             "id",
             "date",
-            "transactions",
+            "transaction_detail",
             "nature",
             "discount",
             "warehouse",
             "person",
-            "account_type",
-            "amount",
-            "paid",
-            "detail",
+            "ledger_data",
             "draft",
         ]
+        read_only_fields = ["id"]
 
     def create(self, validated_data):
-        account_type = validated_data.pop("account_type")
-        amount = validated_data.pop("amount")
-        paid = validated_data.pop("paid")
-        detail = validated_data.pop("detail")
-        transaction_details = validated_data.pop("transactions")
+        transaction_details = validated_data.pop("transaction_detail")
+        ledger_data = validated_data.pop("ledger_data")
 
         """CREATE TRANSACTION AND TRANSACTION DETAILS. UPDATE PRODUCT QUANTITIES"""
         transaction = Transaction.objects.create(**validated_data)
@@ -58,20 +52,9 @@ class TransactionSerializer(serializers.ModelSerializer):
                 product.current_quantity = product.current_quantity + detail["quantity"]
             product.save()
 
-        """UPDATE BALANCE ON THE ACCOUNT TYPE"""
-        if account_type:
-            account = AccountType.objects.get(id=account_type)
-            account.balance = account.balance + amount
-            account.save()
+        validated_data["transaction_detail"] = transaction_details
+        ledger_data[0]["transaction"] = transaction
+        for ledger in ledger_data:
+            Ledger.objects.create(**ledger)
 
-        nature = "C" if paid else "D"
-        Ledger.objects.create(
-            detail=detail,
-            amount=amount,
-            person=validated_data["person"],
-            transaction=transaction,
-            account_type=account,
-            nature=nature,
-        )
-
-        return {}
+        return validated_data

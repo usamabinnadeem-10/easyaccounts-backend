@@ -26,7 +26,7 @@ class Transaction(ID):
 
 class TransactionDetail(ID):
     transaction_id = models.ForeignKey(
-        Transaction, on_delete=models.CASCADE, related_name="transactions"
+        Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     rate = models.FloatField(validators=[MinValueValidator(0.0)])

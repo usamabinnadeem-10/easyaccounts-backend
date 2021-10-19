@@ -17,6 +17,7 @@ class LedgerSerializer(serializers.ModelSerializer):
             "account_type",
             "nature",
         ]
+        read_only_fields = ["id"]
 
     def create(self, validated_data):
         data = self.data

@@ -14,7 +14,7 @@ class PersonSerializer(serializers.ModelSerializer):
 class AccountTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = AccountType
-        fields = ["name"]
+        fields = ["name", "balance"]
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -38,28 +38,38 @@ class ProductHeadSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+
+    color_name = serializers.CharField(
+        source="product_color.color_name", read_only=True
+    )
+    head_name = serializers.CharField(source="product_head.head_name", read_only=True)
+
     class Meta:
         model = Product
-        fields = ["id", "unit"]
+        fields = [
+            "id",
+            "unit",
+            "current_quantity",
+            "product_head",
+            "product_color",
+            "color_name",
+            "head_name",
+        ]
         read_only_fields = ["id"]
 
 
 class CreateProductSerializer(serializers.Serializer):
 
     product_data = ProductSerializer(write_only=True)
-    head_data = ProductHeadSerializer(write_only=True)
     color_data = ProductColorSerializer(write_only=True)
 
     def create(self, validated_data):
         product_color = ProductColor.objects.create(
             color_name=validated_data["color_data"]["color_name"]
         )
-        product_head = ProductHead.objects.create(
-            head_name=validated_data["head_data"]["head_name"]
-        )
         Product.objects.create(
-            product_head=product_head,
+            product_head=validated_data["product_data"]["product_head"],
             product_color=product_color,
             unit=validated_data["product_data"]["unit"],
         )
-        return {}
+        return validated_data
