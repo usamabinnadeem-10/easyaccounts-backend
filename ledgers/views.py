@@ -10,12 +10,9 @@ from datetime import date
 from django.db.models import Min
 
 
-class LedgerDetail(
-    generics.ListCreateAPIView, generics.UpdateAPIView, generics.DestroyAPIView
-):
+class LedgerDetail(generics.ListCreateAPIView, generics.RetrieveUpdateDestroyAPIView):
     queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
-    lookup_field = "id"
 
     def list(self, request, *args, **kwargs):
         qp = request.query_params
@@ -26,10 +23,19 @@ class LedgerDetail(
         )
         endDate = qp.get("end") or date.today()
 
-        if person:
+        if person and startDate and endDate:
             queryset = Ledger.objects.filter(
                 person=person, date__gte=startDate, date__lte=endDate
             )
             serialized = LedgerSerializer(queryset, many=True)
             return Response(serialized.data, status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, *args, **kwargs):
+        # print("\n\n", request, "\n\n")
+        return super().patch(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        print("\n\nupdate")
+        print(request, "\n\n")
+        return super().update(request, *args, **kwargs)

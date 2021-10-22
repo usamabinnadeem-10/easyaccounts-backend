@@ -8,19 +8,22 @@ from .models import *
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
-        fields = ["name", "person_type", "business_name"]
+        fields = ["id", "name", "person_type", "business_name"]
+        read_only_fields = ["id"]
 
 
 class AccountTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = AccountType
-        fields = ["name", "balance"]
+        fields = ["id", "name"]
+        read_only_fields = ["id"]
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
-        fields = ["name", "address"]
+        fields = ["id", "name", "address"]
+        read_only_fields = ["id"]
 
 
 class ProductColorSerializer(serializers.ModelSerializer):
@@ -48,12 +51,12 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id",
-            "unit",
-            "current_quantity",
+            "si_unit",
             "product_head",
             "product_color",
             "color_name",
             "head_name",
+            "basic_unit",
         ]
         read_only_fields = ["id"]
 
@@ -70,6 +73,7 @@ class CreateProductSerializer(serializers.Serializer):
         Product.objects.create(
             product_head=validated_data["product_data"]["product_head"],
             product_color=product_color,
-            unit=validated_data["product_data"]["unit"],
+            si_unit=validated_data["product_data"]["si_unit"],
+            basic_unit=validated_data["product_data"]["basic_unit"],
         )
         return validated_data

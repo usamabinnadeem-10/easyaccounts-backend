@@ -8,7 +8,7 @@ class PersonAdmin(admin.ModelAdmin):
 
 
 class AccountTypeAdmin(admin.ModelAdmin):
-    list_display = ["id", "name", "balance"]
+    list_display = ["id", "name"]
 
 
 admin.site.register(AccountType, AccountTypeAdmin)

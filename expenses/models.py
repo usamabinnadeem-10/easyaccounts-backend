@@ -1,16 +1,13 @@
 from django.db import models
-from uuid import uuid4
 
-from essentials.models import AccountType
+from essentials.models import AccountType, ID
 
 
-class ExpenseAccount(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4)
+class ExpenseAccount(ID):
     name = models.CharField(max_length=100)
 
 
-class ExpenseDetail(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4)
+class ExpenseDetail(ID):
     date = models.DateField(auto_now_add=True)
     expense = models.ForeignKey(ExpenseAccount, on_delete=models.CASCADE)
     detail = models.TextField(max_length=1000)

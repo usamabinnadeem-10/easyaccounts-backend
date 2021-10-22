@@ -3,16 +3,18 @@ from django.utils.translation import gettext_lazy as _
 from uuid import uuid4
 
 
-class ProductColor(models.Model):
+class ID(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+
+
+class ProductColor(ID):
     color_name = models.CharField(max_length=50)
 
     def __str__(self) -> str:
         return self.color_name
 
 
-class ProductHead(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class ProductHead(ID):
     head_name = models.CharField(max_length=50)
 
     def __str__(self) -> str:
@@ -20,14 +22,13 @@ class ProductHead(models.Model):
 
 
 class QuantityChoices(models.TextChoices):
-    CREDIT = "yards", _("Yards")
-    DEBIT = "piece", _("Pieces")
+    YARDS = "yards", _("Yards")
+    PIECE = "piece", _("Pieces")
 
 
-class Product(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    unit = models.CharField(max_length=5, choices=QuantityChoices.choices)
-    current_quantity = models.FloatField(default=0.0)
+class Product(ID):
+    si_unit = models.CharField(max_length=5, choices=QuantityChoices.choices)
+    basic_unit = models.FloatField()
     product_head = models.ForeignKey(ProductHead, on_delete=models.CASCADE)
     product_color = models.ForeignKey(ProductColor, on_delete=models.CASCADE, null=True)
 
@@ -35,8 +36,7 @@ class Product(models.Model):
         return self.product_head.head_name + ": " + self.product_color.color_name
 
 
-class Warehouse(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class Warehouse(ID):
     name = models.CharField(max_length=50)
     address = models.CharField(max_length=50, null=True)
 
@@ -44,16 +44,19 @@ class Warehouse(models.Model):
         return self.name
 
 
+SUPPLIER = "S"
+CUSTOMER = "C"
+
+
 class PersonChoices(models.TextChoices):
-    CREDIT = "S", _("Supplier")
-    DEBIT = "C", _("Customer")
+    SUPPLIER = SUPPLIER, _("Supplier")
+    CUSTOMER = CUSTOMER, _("Customer")
 
 
 """Supplier or Customer Account"""
 
 
-class Person(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class Person(ID):
     name = models.CharField(max_length=100)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
@@ -65,10 +68,8 @@ class Person(models.Model):
 """Account types like cash account or cheque account"""
 
 
-class AccountType(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class AccountType(ID):
     name = models.CharField(max_length=100)
-    balance = models.FloatField(default=0.0)
 
     def __str__(self) -> str:
         return self.name
