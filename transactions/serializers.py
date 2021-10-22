@@ -56,8 +56,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
         paid_amount = validated_data.pop("paid_amount")
-
+        print(validated_data)
         transaction = Transaction.objects.create(**validated_data)
+        print("\n\n", transaction, "\n\n")
         details = []
         ledger_string = ""
         for detail in transaction_details:

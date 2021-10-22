@@ -6,6 +6,8 @@ from django.core.validators import MinValueValidator
 from essentials.models import AccountType, Person
 from transactions.models import Transaction
 
+from datetime import date
+
 
 class TransactionChoices(models.TextChoices):
     CREDIT = "C", _("Credit")
@@ -14,7 +16,7 @@ class TransactionChoices(models.TextChoices):
 
 class Ledger(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField(default=date.today)
     detail = models.TextField(max_length=1000, null=True, blank=True)
     amount = models.FloatField(validators=[MinValueValidator(0.0)])
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)

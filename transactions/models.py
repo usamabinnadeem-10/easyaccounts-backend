@@ -4,7 +4,9 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from uuid import uuid4
 
-from essentials.models import Warehouse, Product, Person, ID
+from essentials.models import Warehouse, Product, Person
+
+from datetime import date
 
 
 class TransactionChoices(models.TextChoices):
@@ -14,11 +16,14 @@ class TransactionChoices(models.TextChoices):
 
 class Transaction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField(default=date.today)
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     draft = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["date"]
 
 
 class TransactionDetail(models.Model):

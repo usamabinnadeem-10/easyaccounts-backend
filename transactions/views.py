@@ -23,7 +23,10 @@ class CreateTransaction(
         try:
             qp = request.query_params
             person = qp.get("person")
-            startDate = qp.get("start") or date.today()
+            startDate = (
+                qp.get("start")
+                or Transaction.objects.all().aggregate(Min("date"))["date__min"]
+            )
             endDate = qp.get("end") or date.today()
             transactions = Transaction.objects.filter(
                 date__gte=startDate, date__lte=endDate, person=person, draft=False
