@@ -24,3 +24,6 @@ class Ledger(models.Model):
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True)
     draft = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["date"]
