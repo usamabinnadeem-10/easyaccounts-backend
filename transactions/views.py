@@ -26,13 +26,14 @@ class CreateTransaction(
             startDate = (
                 qp.get("start")
                 or Transaction.objects.all().aggregate(Min("date"))["date__min"]
+                or date.today()
             )
             endDate = qp.get("end") or date.today()
             transactions = Transaction.objects.filter(
                 date__gte=startDate, date__lte=endDate, person=person, draft=False
             )
             serialized = TransactionSerializer(transactions, many=True)
-            return Response(serialized.data)
+            return Response(serialized.data, status=status.HTTP_200_OK)
         except ValueError:
             return Response(ValueError, status=HTTP_400_BAD_REQUEST)
 
@@ -52,6 +53,7 @@ class GetProductQuantity(APIView):
                     "date__gte": startDate,
                     "date__lte": endDate,
                     "nature": "C",
+                    "draft": False,
                 }
                 credits = Transaction.objects.filter(**transaction_query)
                 detail_query = {

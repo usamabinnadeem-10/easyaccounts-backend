@@ -20,22 +20,16 @@ class LedgerDetail(generics.ListCreateAPIView, generics.RetrieveUpdateDestroyAPI
         startDate = (
             qp.get("start")
             or Ledger.objects.filter(person=person).aggregate(Min("date"))["date__min"]
+            or date.today()
         )
         endDate = qp.get("end") or date.today()
 
-        if person and startDate and endDate:
+        if person:
             queryset = Ledger.objects.filter(
-                person=person, date__gte=startDate, date__lte=endDate
+                person=person, date__gte=startDate, date__lte=endDate, draft=False
             )
             serialized = LedgerSerializer(queryset, many=True)
             return Response(serialized.data, status=status.HTTP_200_OK)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, *args, **kwargs):
-        # print("\n\n", request, "\n\n")
-        return super().patch(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        print("\n\nupdate")
-        print(request, "\n\n")
-        return super().update(request, *args, **kwargs)
+        return Response(
+            {"error": "person is required"}, status=status.HTTP_400_BAD_REQUEST
+        )

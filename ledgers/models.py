@@ -23,3 +23,4 @@ class Ledger(models.Model):
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True)
+    draft = models.BooleanField(default=False)

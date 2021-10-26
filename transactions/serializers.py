@@ -2,10 +2,7 @@ from uuid import uuid4
 from rest_framework import serializers
 from essentials.models import AccountType
 
-from ledgers.serializers import LedgerSerializer
-
 from .models import *
-from essentials.serializers import AccountTypeSerializer
 from ledgers.models import Ledger
 
 
@@ -56,9 +53,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
         paid_amount = validated_data.pop("paid_amount")
-        print(validated_data)
+
         transaction = Transaction.objects.create(**validated_data)
-        print("\n\n", transaction, "\n\n")
         details = []
         ledger_string = ""
         for detail in transaction_details:
@@ -86,6 +82,8 @@ class TransactionSerializer(serializers.ModelSerializer):
                     "transaction": transaction,
                     "nature": transaction.nature,
                     "person": transaction.person,
+                    "date": transaction.date,
+                    "draft": transaction.draft,
                 }
             )
         ]
@@ -99,6 +97,8 @@ class TransactionSerializer(serializers.ModelSerializer):
                         "nature": "C",
                         "account_type": account_type,
                         "person": transaction.person,
+                        "date": transaction.date,
+                        "draft": transaction.draft,
                     }
                 )
             )
