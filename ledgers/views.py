@@ -10,7 +10,7 @@ from datetime import date, timedelta, datetime
 from django.db.models import Min
 
 
-class LedgerDetail(generics.ListCreateAPIView, generics.RetrieveUpdateDestroyAPIView):
+class CreateOrListLedgerDetail(generics.ListCreateAPIView):
     queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
 
@@ -51,3 +51,8 @@ class LedgerDetail(generics.ListCreateAPIView, generics.RetrieveUpdateDestroyAPI
         return Response(
             {"error": "person is required"}, status=status.HTTP_400_BAD_REQUEST
         )
+
+
+class EditUpdateDeleteLedgerDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Ledger.objects.all()
+    serializer_class = LedgerSerializer
