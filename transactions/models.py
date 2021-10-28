@@ -1,5 +1,4 @@
 from django.db import models
-import uuid
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from uuid import uuid4
@@ -14,6 +13,13 @@ class TransactionChoices(models.TextChoices):
     DEBIT = "D", _("Debit")
 
 
+class TransactionTypes(models.TextChoices):
+    MAAL_WAPSI = "maal_wapsi", _("Maal Wapsi")
+    PAID = "paid", _("Paid")
+    PURCHASE = "purchase", _("Purchase")
+    CREDIT = "credit", _("Credit")
+
+
 class Transaction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     date = models.DateField(default=date.today)
@@ -21,6 +27,7 @@ class Transaction(models.Model):
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     draft = models.BooleanField(default=False)
+    type = models.CharField(max_length=10, choices=TransactionTypes.choices)
 
     class Meta:
         ordering = ["date"]

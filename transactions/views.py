@@ -5,16 +5,17 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
 
+from ledgers.models import Ledger
+
+from essentials.serializers import AccountTypeSerializer
 from .models import Transaction, TransactionDetail
-from .serializers import TransactionSerializer
+from .serializers import TransactionSerializer, UpdateTransactionSerializer
 
 from django.db.models import Min
 from datetime import date
 
 
-class CreateTransaction(
-    generics.ListCreateAPIView, generics.RetrieveUpdateDestroyAPIView
-):
+class GetOrCreateTransaction(generics.ListCreateAPIView):
 
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
@@ -36,6 +37,34 @@ class CreateTransaction(
             return Response(serialized.data, status=status.HTTP_200_OK)
         except ValueError:
             return Response(ValueError, status=HTTP_400_BAD_REQUEST)
+
+
+class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
+
+    queryset = Transaction.objects.all()
+    serializer_class = UpdateTransactionSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        account_type = Ledger.objects.filter(
+            transaction=instance, account_type__isnull=False
+        )
+        serialized_transaction = TransactionSerializer(instance).data
+        serialized_account_type = (
+            AccountTypeSerializer(account_type[0].account_type).data
+            if account_type
+            else None
+        )
+        return Response(
+            {
+                "transaction": serialized_transaction,
+                "account_type": serialized_account_type,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
 
 
 class GetProductQuantity(APIView):
