@@ -7,6 +7,8 @@ from essentials.models import Warehouse, Product, Person
 
 from datetime import date
 
+from sequences import Sequence
+
 
 class TransactionChoices(models.TextChoices):
     CREDIT = "C", _("Credit")
@@ -28,6 +30,7 @@ class Transaction(models.Model):
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     draft = models.BooleanField(default=False)
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
+    serial = models.IntegerField(unique=True)
 
     class Meta:
         ordering = ["date"]

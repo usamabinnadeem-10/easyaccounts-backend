@@ -68,11 +68,13 @@ class TransactionSerializer(serializers.ModelSerializer):
     paid = serializers.BooleanField(default=False)
     paid_amount = serializers.FloatField(write_only=True, required=False, default=0.0)
     account_type = serializers.UUIDField(required=False, write_only=True)
+    serial = serializers.ReadOnlyField()
 
     class Meta:
         model = Transaction
         fields = [
             "id",
+            "serial",
             "date",
             "transaction_detail",
             "nature",
@@ -96,8 +98,14 @@ class TransactionSerializer(serializers.ModelSerializer):
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
         paid_amount = validated_data.pop("paid_amount")
-
-        transaction = Transaction.objects.create(**validated_data)
+        last_serial_num = Transaction.objects.last()
+        if last_serial_num:
+            last_serial_num = last_serial_num.serial
+        else:
+            last_serial_num = 0
+        transaction = Transaction.objects.create(
+            **validated_data, serial=last_serial_num + 1
+        )
         details = []
         ledger_string = ""
         for detail in transaction_details:
@@ -152,12 +160,14 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
     paid = serializers.BooleanField(default=False)
     paid_amount = serializers.FloatField(write_only=True, required=False, default=0.0)
     account_type = serializers.UUIDField(required=False)
+    serial = serializers.ReadOnlyField()
 
     class Meta:
         model = Transaction
         fields = [
             "id",
             "date",
+            "serial",
             "type",
             "transaction_detail",
             "nature",
