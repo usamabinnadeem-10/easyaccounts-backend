@@ -46,19 +46,25 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        account_type = Ledger.objects.filter(
+        ledger_instance = Ledger.objects.filter(
             transaction=instance, account_type__isnull=False
         )
         serialized_transaction = TransactionSerializer(instance).data
-        serialized_account_type = (
-            AccountTypeSerializer(account_type[0].account_type).data
-            if account_type
-            else None
-        )
+        serialized_account_type = None
+        paid_amount = None
+        print("\n\n", len(ledger_instance), "\n\n")
+        if len(ledger_instance):
+            serialized_account_type = (
+                AccountTypeSerializer(ledger_instance[0].account_type).data
+                if ledger_instance[0].account_type
+                else None
+            )
+            paid_amount = ledger_instance[0].amount
         return Response(
             {
                 "transaction": serialized_transaction,
                 "account_type": serialized_account_type,
+                "paid_amount": paid_amount,
             },
             status=status.HTTP_200_OK,
         )
