@@ -52,7 +52,6 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
         serialized_transaction = TransactionSerializer(instance).data
         serialized_account_type = None
         paid_amount = None
-        print("\n\n", len(ledger_instance), "\n\n")
         if len(ledger_instance):
             serialized_account_type = (
                 AccountTypeSerializer(ledger_instance[0].account_type).data
