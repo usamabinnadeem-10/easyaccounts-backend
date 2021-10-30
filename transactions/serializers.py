@@ -87,6 +87,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "paid",
             "account_type",
             "paid_amount",
+            "detail",
         ]
         read_only_fields = ["id"]
 
@@ -181,6 +182,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             "paid",
             "account_type",
             "paid_amount",
+            "detail",
         ]
 
     def update(self, instance, validated_data):

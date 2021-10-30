@@ -31,6 +31,7 @@ class Transaction(models.Model):
     draft = models.BooleanField(default=False)
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
     serial = models.IntegerField(unique=True)
+    detail = models.CharField(max_length=1000, null=True)
 
     class Meta:
         ordering = ["date"]
