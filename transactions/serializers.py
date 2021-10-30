@@ -7,6 +7,8 @@ from .models import *
 from ledgers.models import Ledger
 from essentials.serializers import AccountTypeSerializer
 
+from django.db.models import Max
+
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -98,9 +100,10 @@ class TransactionSerializer(serializers.ModelSerializer):
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
         paid_amount = validated_data.pop("paid_amount")
-        last_serial_num = Transaction.objects.last()
+
+        last_serial_num = Transaction.objects.aggregate(Max("serial"))
         if last_serial_num:
-            last_serial_num = last_serial_num.serial
+            last_serial_num = last_serial_num["serial__max"]
         else:
             last_serial_num = 0
         transaction = Transaction.objects.create(
@@ -131,6 +134,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         )
         Ledger.objects.bulk_create(ledger_data)
         validated_data["transaction_detail"] = transaction_details
+        validated_data["id"] = transaction.id
         return validated_data
 
 
