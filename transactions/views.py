@@ -1,3 +1,4 @@
+from typing import final
 from rest_framework import generics
 from rest_framework import status
 from rest_framework.response import Response
@@ -33,8 +34,30 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
             transactions = Transaction.objects.filter(
                 date__gte=startDate, date__lte=endDate, person=person, draft=False
             )
-            serialized = TransactionSerializer(transactions, many=True)
-            return Response(serialized.data, status=status.HTTP_200_OK)
+            serialized_transaction = TransactionSerializer(transactions, many=True).data
+            final_data = []
+            for transaction in serialized_transaction:
+                paid_amount = None
+                serialized_account_type = None
+                ledger_instance = Ledger.objects.filter(
+                    transaction=transaction["id"], account_type__isnull=False
+                )
+                if len(ledger_instance):
+                    serialized_account_type = (
+                        AccountTypeSerializer(ledger_instance[0].account_type).data
+                        if ledger_instance[0].account_type
+                        else None
+                    )
+                    paid_amount = ledger_instance[0].amount
+                final_data.append(
+                    {
+                        "transaction": transaction,
+                        "account_type": serialized_account_type,
+                        "paid_amount": paid_amount,
+                    }
+                )
+
+            return Response(final_data, status=status.HTTP_200_OK)
         except ValueError:
             return Response(ValueError, status=HTTP_400_BAD_REQUEST)
 

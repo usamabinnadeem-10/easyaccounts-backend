@@ -11,6 +11,15 @@ from django.db.models import Max
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
+
+    product_head = serializers.CharField(
+        source="product.product_head.head_name", read_only=True
+    )
+    product_color = serializers.CharField(
+        source="product.product_color.color_name", read_only=True
+    )
+    warehouse_name = serializers.CharField(source="warehouse.name", read_only=True)
+
     class Meta:
         model = TransactionDetail
         fields = [
@@ -21,6 +30,9 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "quantity",
             "warehouse",
             "amount",
+            "product_head",
+            "product_color",
+            "warehouse_name",
         ]
         read_only_fields = ["id", "transaction"]
 
@@ -71,6 +83,8 @@ class TransactionSerializer(serializers.ModelSerializer):
     paid_amount = serializers.FloatField(write_only=True, required=False, default=0.0)
     account_type = serializers.UUIDField(required=False, write_only=True)
     serial = serializers.ReadOnlyField()
+    person_name = serializers.CharField(source="person.name", read_only=True)
+    person_type = serializers.CharField(source="person.person_type", read_only=True)
 
     class Meta:
         model = Transaction
@@ -88,6 +102,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             "account_type",
             "paid_amount",
             "detail",
+            "person_name",
+            "person_type",
         ]
         read_only_fields = ["id"]
 

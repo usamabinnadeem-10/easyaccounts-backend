@@ -10,7 +10,22 @@ class ExpenseAccountSerializer(serializers.ModelSerializer):
 
 
 class ExpenseDetailSerializer(serializers.ModelSerializer):
+
+    expense_name = serializers.CharField(source="expense.name", read_only=True)
+    account_type_name = serializers.CharField(
+        source="account_type.name", read_only=True
+    )
+
     class Meta:
         model = ExpenseDetail
-        fields = ["id", "expense", "detail", "amount", "account_type", "date"]
+        fields = [
+            "id",
+            "expense",
+            "detail",
+            "amount",
+            "account_type",
+            "date",
+            "expense_name",
+            "account_type_name",
+        ]
         read_only_fields = ["id"]

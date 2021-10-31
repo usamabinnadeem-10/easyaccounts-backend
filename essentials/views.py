@@ -3,6 +3,8 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from django.db.models import Sum
+
 from .serializers import *
 from .models import *
 
@@ -70,14 +72,37 @@ class DayBook(APIView):
         transactions_serialized = TransactionSerializer(transactions, many=True)
 
         accounts = AccountType.objects.all()
-        accounts_serialized = AccountTypeSerializer(accounts, many=True)
+        balances = []
+        for account in accounts:
+            credits = (
+                Ledger.objects.filter(nature="C", account_type=account).aggregate(
+                    Sum("amount")
+                )["amount__sum"]
+                or 0
+            )
+            debits = (
+                Ledger.objects.filter(nature="D", account_type=account).aggregate(
+                    Sum("amount")
+                )["amount__sum"]
+                or 0
+            )
+            expenses = (
+                ExpenseDetail.objects.filter(account_type=account).aggregate(
+                    Sum("amount")
+                )["amount__sum"]
+                or 0
+            )
+            print(credits, debits, expenses)
+            balances.append(
+                {"account_type": account.name, "balance": credits - debits - expenses}
+            )
 
         return Response(
             {
                 "expenses": expenses_serialized.data,
                 "ledgers": ledger_serialized.data,
                 "transactions": transactions_serialized.data,
-                "accounts": accounts_serialized.data,
+                "accounts": balances,
             },
             status=status.HTTP_200_OK,
         )
