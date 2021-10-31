@@ -13,3 +13,6 @@ class ExpenseDetail(ID):
     detail = models.TextField(max_length=1000)
     amount = models.FloatField()
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        ordering = ["date"]
