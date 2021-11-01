@@ -92,7 +92,6 @@ class DayBook(APIView):
                 )["amount__sum"]
                 or 0
             )
-            print(credits, debits, expenses)
             balances.append(
                 {"account_type": account.name, "balance": credits - debits - expenses}
             )

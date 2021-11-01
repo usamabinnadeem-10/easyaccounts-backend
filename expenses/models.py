@@ -2,13 +2,15 @@ from django.db import models
 
 from essentials.models import AccountType, ID
 
+from datetime import date
+
 
 class ExpenseAccount(ID):
     name = models.CharField(max_length=100)
 
 
 class ExpenseDetail(ID):
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField(default=date.today)
     expense = models.ForeignKey(ExpenseAccount, on_delete=models.CASCADE)
     detail = models.TextField(max_length=1000)
     amount = models.FloatField()

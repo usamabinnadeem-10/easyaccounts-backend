@@ -118,11 +118,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         paid = validated_data.pop("paid")
         paid_amount = validated_data.pop("paid_amount")
 
-        last_serial_num = Transaction.objects.aggregate(Max("serial"))
-        if last_serial_num:
-            last_serial_num = last_serial_num["serial__max"]
-        else:
-            last_serial_num = 0
+        last_serial_num = (
+            Transaction.objects.aggregate(Max("serial"))["serial__max"] or 0
+        )
         transaction = Transaction.objects.create(
             **validated_data, serial=last_serial_num + 1
         )
