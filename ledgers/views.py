@@ -29,7 +29,6 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         endDate = qp.get("end") or date.today()
 
         if person:
-
             previous_queryset = Ledger.objects.filter(
                 person=person, date__lte=startDateMinusOne, draft=False
             )

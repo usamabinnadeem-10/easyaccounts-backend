@@ -69,7 +69,28 @@ class DayBook(APIView):
         ledger_serialized = LedgerSerializer(ledgers, many=True)
 
         transactions = Transaction.objects.filter(date__gte=today, date__lte=today)
-        transactions_serialized = TransactionSerializer(transactions, many=True)
+        transactions_serialized = TransactionSerializer(transactions, many=True).data
+        final_transactions = []
+        for transaction in transactions_serialized:
+            paid_amount = None
+            serialized_account_type = None
+            ledger_instance = Ledger.objects.filter(
+                transaction=transaction["id"], account_type__isnull=False
+            )
+            if len(ledger_instance):
+                serialized_account_type = (
+                    AccountTypeSerializer(ledger_instance[0].account_type).data
+                    if ledger_instance[0].account_type
+                    else None
+                )
+                paid_amount = ledger_instance[0].amount
+            final_transactions.append(
+                {
+                    "transaction": transaction,
+                    "account_type": serialized_account_type,
+                    "paid_amount": paid_amount,
+                }
+            )
 
         accounts = AccountType.objects.all()
         balances = []
@@ -100,7 +121,7 @@ class DayBook(APIView):
             {
                 "expenses": expenses_serialized.data,
                 "ledgers": ledger_serialized.data,
-                "transactions": transactions_serialized.data,
+                "transactions": final_transactions,
                 "accounts": balances,
             },
             status=status.HTTP_200_OK,
