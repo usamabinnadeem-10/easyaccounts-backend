@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.status import *
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
+from essentials.models import Product
 
 from ledgers.models import Ledger
 
@@ -127,14 +128,56 @@ class GetProductQuantity(APIView):
                 detail_query["transaction__in"] = debits
                 debit_details = TransactionDetail.objects.filter(**detail_query)
 
-                quantity = 0.0
+                quantity_in = 0.0
+                quantity_out = 0.0
                 for c in credit_details:
-                    quantity += c.quantity
+                    quantity_in += c.quantity
 
                 for d in debit_details:
-                    quantity -= d.quantity
+                    quantity_out += d.quantity
 
-                return Response({"quantity": quantity}, status=status.HTTP_200_OK)
+                return Response(
+                    {
+                        "quantity": quantity_in - quantity_out,
+                        "quantity_in": quantity_in,
+                        "quantity_out": quantity_out,
+                    },
+                    status=status.HTTP_200_OK,
+                )
             raise NotAcceptable
         except KeyError:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetAllProductQuantities(APIView):
+    def get(self, request):
+        products = Product.objects.all()
+        quantity_data = []
+        for product in products:
+            credits = Transaction.objects.filter(nature="C", draft=False)
+            credit_details = TransactionDetail.objects.filter(
+                transaction__in=credits, product=product
+            )
+            debits = Transaction.objects.filter(nature="D", draft=False)
+            debit_details = TransactionDetail.objects.filter(
+                transaction__in=debits, product=product
+            )
+
+            quantity_in = 0.0
+            quantity_out = 0.0
+            for c in credit_details:
+                quantity_in += c.quantity
+
+            for d in debit_details:
+                quantity_out += d.quantity
+
+            quantity_data.append(
+                {
+                    "quantity": quantity_in - quantity_out,
+                    "quantity_in": quantity_in,
+                    "quantity_out": quantity_out,
+                    "product": f"{product.product_head.head_name} {product.product_color.color_name}",
+                }
+            )
+
+        return Response(quantity_data, status=status.HTTP_200_OK)

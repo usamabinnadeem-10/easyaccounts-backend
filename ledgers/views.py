@@ -1,13 +1,14 @@
-from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.views import APIView
+from essentials.models import Person
 
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
 
 from datetime import date, timedelta, datetime
-from django.db.models import Min
+from django.db.models import Min, Sum
 
 
 class CreateOrListLedgerDetail(generics.ListCreateAPIView):
@@ -55,3 +56,37 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
 class EditUpdateDeleteLedgerDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
+
+
+class GetAllBalances(APIView):
+    def get(self, request):
+        person_type = request.query_params.get("person")
+        persons = Person.objects.filter(person_type=person_type)
+        balances = []
+        for person in persons:
+            credits = (
+                Ledger.objects.filter(person=person, nature="C").aggregate(
+                    Sum("amount")
+                )["amount__sum"]
+                or 0
+            )
+
+            debits = (
+                Ledger.objects.filter(person=person, nature="D").aggregate(
+                    Sum("amount")
+                )["amount__sum"]
+                or 0
+            )
+
+            last = Ledger.objects.filter(person=person, nature="D").last()
+            last_amount = last.amount if last else 0.0
+
+            balances.append(
+                {
+                    "person": person.name,
+                    "balance": credits - debits,
+                    "last_amount": last_amount,
+                }
+            )
+
+        return Response(balances, status=status.HTTP_200_OK)
