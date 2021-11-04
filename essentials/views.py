@@ -3,7 +3,7 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from django.db.models import Sum
+from django.db.models import Sum, query
 
 from .serializers import *
 from .models import *
@@ -39,7 +39,7 @@ class CreateAndListWarehouse(ListCreateAPIView):
 
 
 class CreateAndListProduct(ListCreateAPIView):
-    queryset = Product.objects.all()
+    queryset = Product.objects.select_related("product_head", "product_color")
 
     def get_serializer_class(self):
         if self.request.method == "GET":
