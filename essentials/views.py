@@ -62,6 +62,8 @@ class DayBook(APIView):
     def get(self, request):
         today = date.today()
 
+        all_ledger = Ledger.objects.all()
+
         expenses = ExpenseDetail.objects.filter(date__gte=today, date__lte=today)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
@@ -70,11 +72,12 @@ class DayBook(APIView):
 
         transactions = Transaction.objects.filter(date__gte=today, date__lte=today)
         transactions_serialized = TransactionSerializer(transactions, many=True).data
+
         final_transactions = []
         for transaction in transactions_serialized:
             paid_amount = None
             serialized_account_type = None
-            ledger_instance = Ledger.objects.filter(
+            ledger_instance = all_ledger.filter(
                 transaction=transaction["id"], account_type__isnull=False
             )
             if len(ledger_instance):
@@ -92,37 +95,22 @@ class DayBook(APIView):
                 }
             )
 
-        accounts = AccountType.objects.all()
-        balances = []
-        for account in accounts:
-            credits = (
-                Ledger.objects.filter(nature="C", account_type=account).aggregate(
-                    Sum("amount")
-                )["amount__sum"]
-                or 0
-            )
-            debits = (
-                Ledger.objects.filter(nature="D", account_type=account).aggregate(
-                    Sum("amount")
-                )["amount__sum"]
-                or 0
-            )
-            expenses = (
-                ExpenseDetail.objects.filter(account_type=account).aggregate(
-                    Sum("amount")
-                )["amount__sum"]
-                or 0
-            )
-            balances.append(
-                {"account_type": account.name, "balance": credits - debits - expenses}
-            )
+        balance_ledgers = (
+            Ledger.objects.values("account_type__name", "nature")
+            .filter(account_type__isnull=False)
+            .annotate(amount=Sum("amount"))
+        )
+        balance_expenses = ExpenseDetail.objects.values("account_type__name").annotate(
+            amount=Sum("amount")
+        )
 
         return Response(
             {
                 "expenses": expenses_serialized.data,
                 "ledgers": ledger_serialized.data,
                 "transactions": final_transactions,
-                "accounts": balances,
+                "balance_ledgers": balance_ledgers,
+                "balance_expenses": balance_expenses,
             },
             status=status.HTTP_200_OK,
         )
