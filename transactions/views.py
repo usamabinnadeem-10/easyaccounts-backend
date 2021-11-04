@@ -1,12 +1,9 @@
-from typing import final
-from django.utils import translation
-from rest_framework import generics, serializers
+from rest_framework import generics
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.status import *
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
-from essentials.models import Product
 
 from ledgers.models import Ledger
 
@@ -27,24 +24,26 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
     serializer_class = TransactionSerializer
 
     def list(self, request, *args, **kwargs):
+        transactions = self.get_queryset()
         try:
             qp = request.query_params
             person = qp.get("person")
             startDate = (
                 qp.get("start")
-                or Transaction.objects.all().aggregate(Min("date"))["date__min"]
+                or transactions.aggregate(Min("date"))["date__min"]
                 or date.today()
             )
             endDate = qp.get("end") or date.today()
-            transactions = Transaction.objects.filter(
+            transactions = transactions.filter(
                 date__gte=startDate, date__lte=endDate, person=person, draft=False
             )
             serialized_transaction = TransactionSerializer(transactions, many=True).data
             final_data = []
+            all_ledgers = Ledger.objects.all()
             for transaction in serialized_transaction:
                 paid_amount = None
                 serialized_account_type = None
-                ledger_instance = Ledger.objects.filter(
+                ledger_instance = all_ledgers.filter(
                     transaction=transaction["id"], account_type__isnull=False
                 )
                 if len(ledger_instance):
@@ -173,4 +172,4 @@ class GetAllQuantity(APIView):
                 new = data[current_product]
                 new[transaction[1]] = transaction[2]
 
-        return Response(data, status=HTTP_200_OK)
+        return Response(transactions, status=HTTP_200_OK)
