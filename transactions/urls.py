@@ -6,5 +6,5 @@ urlpatterns = [
     path("", GetOrCreateTransaction.as_view()),
     path("<uuid:pk>/", EditUpdateDeleteTransaction.as_view()),
     path("product-quantity/", GetProductQuantity.as_view()),
-    path("product-quantity/all/", GetAllProductQuantities.as_view()),
+    path("product-quantity/all/", GetAllQuantity.as_view()),
 ]

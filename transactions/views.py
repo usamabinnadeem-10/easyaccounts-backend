@@ -1,5 +1,6 @@
 from typing import final
-from rest_framework import generics
+from django.utils import translation
+from rest_framework import generics, serializers
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.status import *
@@ -11,9 +12,12 @@ from ledgers.models import Ledger
 
 from essentials.serializers import AccountTypeSerializer
 from .models import Transaction, TransactionDetail
-from .serializers import TransactionSerializer, UpdateTransactionSerializer
+from .serializers import (
+    TransactionSerializer,
+    UpdateTransactionSerializer,
+)
 
-from django.db.models import Min
+from django.db.models import Min, Sum
 from datetime import date
 
 
@@ -149,35 +153,24 @@ class GetProductQuantity(APIView):
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class GetAllProductQuantities(APIView):
+class GetAllQuantity(APIView):
     def get(self, request):
-        products = Product.objects.all()
-        quantity_data = []
-        for product in products:
-            credits = Transaction.objects.filter(nature="C", draft=False)
-            credit_details = TransactionDetail.objects.filter(
-                transaction__in=credits, product=product
-            )
-            debits = Transaction.objects.filter(nature="D", draft=False)
-            debit_details = TransactionDetail.objects.filter(
-                transaction__in=debits, product=product
-            )
+        transactions = (
+            TransactionDetail.objects.values_list("product", "transaction__nature")
+            .filter(transaction__draft=False)
+            .annotate(Sum("quantity"))
+        )
 
-            quantity_in = 0.0
-            quantity_out = 0.0
-            for c in credit_details:
-                quantity_in += c.quantity
+        data = {}
 
-            for d in debit_details:
-                quantity_out += d.quantity
-
-            quantity_data.append(
-                {
-                    "quantity": quantity_in - quantity_out,
-                    "quantity_in": quantity_in,
-                    "quantity_out": quantity_out,
-                    "product": f"{product.product_head.head_name} {product.product_color.color_name}",
+        for transaction in transactions:
+            current_product = str(transaction[0])
+            if not current_product in data:
+                data[current_product] = {
+                    transaction[1]: transaction[2],
                 }
-            )
+            else:
+                new = data[current_product]
+                new[transaction[1]] = transaction[2]
 
-        return Response(quantity_data, status=status.HTTP_200_OK)
+        return Response(data, status=HTTP_200_OK)

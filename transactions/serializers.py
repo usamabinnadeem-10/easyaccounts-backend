@@ -1,11 +1,7 @@
-from uuid import uuid4
 from rest_framework import serializers
 from essentials.models import AccountType
-import transactions
-
 from .models import *
 from ledgers.models import Ledger
-from essentials.serializers import AccountTypeSerializer
 
 from django.db.models import Max
 
