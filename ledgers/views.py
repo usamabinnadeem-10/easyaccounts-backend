@@ -12,10 +12,11 @@ from django.db.models import Min, Sum, F
 
 
 class CreateOrListLedgerDetail(generics.ListCreateAPIView):
-    queryset = Ledger.objects.all()
+    queryset = Ledger.objects.select_related("person", "account_type", "transaction")
     serializer_class = LedgerSerializer
 
     def list(self, request, *args, **kwargs):
+        ledgers = self.queryset
         qp = request.query_params
         person = qp.get("person")
         start = (
@@ -23,14 +24,14 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         )
         startDate = (
             start
-            or Ledger.objects.filter(person=person).aggregate(Min("date"))["date__min"]
+            or ledgers.filter(person=person).aggregate(Min("date"))["date__min"]
             or date.today()
         )
         startDateMinusOne = startDate - timedelta(days=1)
         endDate = qp.get("end") or date.today()
 
         if person:
-            previous_queryset = Ledger.objects.filter(
+            previous_queryset = ledgers.filter(
                 person=person, date__lte=startDateMinusOne, draft=False
             )
             opening_balance = 0.0
@@ -40,7 +41,7 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
                 else:
                     opening_balance += prev.amount
 
-            queryset = Ledger.objects.filter(
+            queryset = ledgers.filter(
                 person=person, date__gte=startDate, date__lte=endDate, draft=False
             )
             serialized = LedgerSerializer(queryset, many=True)
