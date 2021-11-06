@@ -172,4 +172,4 @@ class GetAllQuantity(APIView):
                 new = data[current_product]
                 new[transaction[1]] = transaction[2]
 
-        return Response(transactions, status=HTTP_200_OK)
+        return Response(data, status=HTTP_200_OK)

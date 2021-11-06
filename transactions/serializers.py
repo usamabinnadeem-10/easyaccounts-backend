@@ -1,9 +1,10 @@
 from rest_framework import serializers
-from essentials.models import AccountType
-from .models import *
-from ledgers.models import Ledger
-
 from django.db.models import Max
+
+from .models import *
+from essentials.models import AccountType
+from ledgers.models import Ledger
+from essentials.serializers import AccountTypeSerializer
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
@@ -76,11 +77,12 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     transaction_detail = TransactionDetailSerializer(many=True)
     paid = serializers.BooleanField(default=False)
-    paid_amount = serializers.FloatField(write_only=True, required=False, default=0.0)
+    paid_amount = serializers.FloatField(required=False, default=0.0)
     account_type = serializers.UUIDField(required=False, write_only=True)
     serial = serializers.ReadOnlyField()
     person_name = serializers.CharField(source="person.name", read_only=True)
     person_type = serializers.CharField(source="person.person_type", read_only=True)
+    account = AccountTypeSerializer(read_only=True, default=None)
 
     class Meta:
         model = Transaction
@@ -100,6 +102,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "detail",
             "person_name",
             "person_type",
+            "account",
         ]
         read_only_fields = ["id"]
 
@@ -146,6 +149,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         Ledger.objects.bulk_create(ledger_data)
         validated_data["transaction_detail"] = transaction_details
         validated_data["id"] = transaction.id
+        validated_data["paid_amount"] = paid_amount
+        validated_data["account"] = account_type
         return validated_data
 
 
