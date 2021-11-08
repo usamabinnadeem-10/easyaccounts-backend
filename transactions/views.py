@@ -173,3 +173,16 @@ class GetAllQuantity(APIView):
                 new[transaction[1]] = transaction[2]
 
         return Response(data, status=HTTP_200_OK)
+
+
+class GetAllQuantityByWarehouse(APIView):
+    def get(self, request):
+        transactions = (
+            TransactionDetail.objects.values(
+                "product", "transaction__nature", "warehouse"
+            )
+            .filter(transaction__draft=False)
+            .annotate(Sum("quantity"))
+        )
+
+        return Response(transactions, status=HTTP_200_OK)
