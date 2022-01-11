@@ -33,9 +33,7 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "transaction"]
 
 
-def create_ledger_entries(
-    transaction, transaction_details, paid, account_type, paid_amount, ledger_string
-):
+def create_ledger_entries(transaction, transaction_details, paid, ledger_string):
     amount = 0.0
     for t in transaction_details:
         amount += t["amount"]
@@ -57,11 +55,11 @@ def create_ledger_entries(
         ledger_data.append(
             Ledger(
                 **{
-                    "detail": f"Paid on {account_type.name}",
-                    "amount": paid_amount,
+                    "detail": f"Paid on {transaction.account_type.name}",
+                    "amount": transaction.paid_amount,
                     "transaction": transaction,
                     "nature": "C",
-                    "account_type": account_type,
+                    "account_type": transaction.account_type,
                     "person": transaction.person,
                     "date": transaction.date,
                     "draft": transaction.draft,
@@ -76,8 +74,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     transaction_detail = TransactionDetailSerializer(many=True)
     paid = serializers.BooleanField(default=False)
-    paid_amount = serializers.FloatField(write_only=True, required=False, default=0.0)
-    account_type = serializers.UUIDField(required=False, write_only=True)
+
     serial = serializers.ReadOnlyField()
     person_name = serializers.CharField(source="person.name", read_only=True)
     person_type = serializers.CharField(source="person.person_type", read_only=True)
@@ -104,15 +101,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        account_type = None
-        if validated_data["paid"]:
-            account_type = AccountType.objects.get(
-                id=validated_data.pop("account_type")
-            )
 
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
-        paid_amount = validated_data.pop("paid_amount")
 
         last_serial_num = (
             Transaction.objects.aggregate(Max("serial"))["serial__max"] or 0
@@ -139,8 +130,6 @@ class TransactionSerializer(serializers.ModelSerializer):
             transaction,
             transaction_details,
             paid,
-            account_type,
-            paid_amount,
             ledger_string,
         )
         Ledger.objects.bulk_create(ledger_data)
@@ -172,9 +161,6 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
 class UpdateTransactionSerializer(serializers.ModelSerializer):
 
     transaction_detail = UpdateTransactionDetailSerializer(many=True)
-    paid = serializers.BooleanField(default=False)
-    paid_amount = serializers.FloatField(write_only=True, required=False, default=0.0)
-    account_type = serializers.UUIDField(required=False)
     serial = serializers.ReadOnlyField()
 
     class Meta:
@@ -189,14 +175,12 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             "discount",
             "person",
             "draft",
-            "paid",
             "account_type",
             "paid_amount",
             "detail",
         ]
 
     def update(self, instance, validated_data):
-
         transaction_detail = validated_data.pop("transaction_detail")
 
         # delete all the other transaction details which were not in the transaction_detail
@@ -246,18 +230,16 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         if validated_data["date"]:
             ledger_instance.date = validated_data["date"]
         ledger_instance.save()
-
-        if validated_data["paid"]:
-            account_type = AccountType.objects.get(
-                id=validated_data.pop("account_type")
-            )
-
-        validated_data.pop("paid")
-        paid_amount = validated_data.pop("paid_amount")
+        print(validated_data)
+        account_type = (
+            validated_data["account_type"] if "account_type" in validated_data else None
+        )
+        paid_amount = (
+            validated_data["paid_amount"] if "paid_amount" in validated_data else None
+        )
 
         # if the transaction was unpaid before and is now paid then create a new ledger entry
         if validated_data["type"] != instance.type and validated_data["type"] == "paid":
-            account_type = AccountType.objects.get()
             Ledger.objects.create(
                 **{
                     "detail": f"Paid on {account_type.name}",
@@ -277,5 +259,19 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                 transaction=instance, account_type__isnull=False
             )
             paid_instance.delete()
+
+        # if both types are paid then update the Ledger entry
+        if validated_data["type"] == instance.type and instance.type == "paid":
+            paid_instance = Ledger.objects.get(
+                transaction=instance, account_type__isnull=False
+            )
+            paid_instance.amount = validated_data["paid_amount"]
+            paid_instance.account_type = validated_data["account_type"]
+            paid_instance.detail = f'Paid on {validated_data["account_type"].name}'
+            paid_instance.draft = validated_data["draft"]
+            paid_instance.person = validated_data["person"]
+            if validated_data["date"]:
+                paid_instance.date = validated_data["date"]
+            paid_instance.save()
 
         return super().update(instance, validated_data)

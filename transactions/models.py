@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from uuid import uuid4
 
-from essentials.models import Warehouse, Product, Person
+from essentials.models import AccountType, Warehouse, Product, Person
 
 from datetime import date
 
@@ -32,9 +32,11 @@ class Transaction(models.Model):
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
     serial = models.IntegerField(unique=True)
     detail = models.CharField(max_length=1000, null=True)
+    account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
+    paid_amount = models.FloatField(default=0.0)
 
     class Meta:
-        ordering = ["date"]
+        ordering = ["-date"]
 
 
 class TransactionDetail(models.Model):

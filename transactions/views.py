@@ -5,9 +5,7 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
 
-from ledgers.models import Ledger
-
-from essentials.serializers import AccountTypeSerializer
+from essentials.pagination import CustomPagination
 from .models import Transaction, TransactionDetail
 from .serializers import (
     TransactionSerializer,
@@ -19,84 +17,34 @@ from datetime import date
 
 
 class GetOrCreateTransaction(generics.ListCreateAPIView):
-
-    queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+    pagination_class = CustomPagination
 
-    def list(self, request, *args, **kwargs):
-        transactions = self.get_queryset()
-        try:
-            qp = request.query_params
-            person = qp.get("person")
-            startDate = (
-                qp.get("start")
-                or transactions.aggregate(Min("date"))["date__min"]
-                or date.today()
-            )
-            endDate = qp.get("end") or date.today()
-            transactions = transactions.filter(
-                date__gte=startDate, date__lte=endDate, person=person, draft=False
-            )
-            serialized_transaction = TransactionSerializer(transactions, many=True).data
-            final_data = []
-            all_ledgers = Ledger.objects.all()
-            for transaction in serialized_transaction:
-                paid_amount = None
-                serialized_account_type = None
-                ledger_instance = all_ledgers.filter(
-                    transaction=transaction["id"], account_type__isnull=False
-                )
-                if len(ledger_instance):
-                    serialized_account_type = (
-                        AccountTypeSerializer(ledger_instance[0].account_type).data
-                        if ledger_instance[0].account_type
-                        else None
-                    )
-                    paid_amount = ledger_instance[0].amount
-                final_data.append(
-                    {
-                        "transaction": transaction,
-                        "account_type": serialized_account_type,
-                        "paid_amount": paid_amount,
-                    }
-                )
-
-            return Response(final_data, status=status.HTTP_200_OK)
-        except ValueError:
-            return Response(ValueError, status=HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        transactions = Transaction.objects.select_related(
+            "person", "account_type"
+        ).prefetch_related(
+            "transaction_detail",
+            "transaction_detail__product",
+            "transaction_detail__warehouse",
+        )
+        qp = self.request.query_params
+        person = qp.get("person")
+        startDate = (
+            qp.get("start")
+            or transactions.aggregate(Min("date"))["date__min"]
+            or date.today()
+        )
+        endDate = qp.get("end") or date.today()
+        queryset = transactions.filter(
+            date__gte=startDate, date__lte=endDate, person=person, draft=False
+        )
+        return queryset
 
 
 class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
-
     queryset = Transaction.objects.all()
     serializer_class = UpdateTransactionSerializer
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        ledger_instance = Ledger.objects.filter(
-            transaction=instance, account_type__isnull=False
-        )
-        serialized_transaction = TransactionSerializer(instance).data
-        serialized_account_type = None
-        paid_amount = None
-        if len(ledger_instance):
-            serialized_account_type = (
-                AccountTypeSerializer(ledger_instance[0].account_type).data
-                if ledger_instance[0].account_type
-                else None
-            )
-            paid_amount = ledger_instance[0].amount
-        return Response(
-            {
-                "transaction": serialized_transaction,
-                "account_type": serialized_account_type,
-                "paid_amount": paid_amount,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
 
 
 class GetProductQuantity(APIView):
@@ -171,5 +119,18 @@ class GetAllQuantity(APIView):
             else:
                 new = data[current_product]
                 new[transaction[1]] = transaction[2]
+
+        return Response(transactions, status=HTTP_200_OK)
+
+
+class GetAllQuantityByWarehouse(APIView):
+    def get(self, request):
+        transactions = (
+            TransactionDetail.objects.values(
+                "product", "transaction__nature", "warehouse"
+            )
+            .filter(transaction__draft=False)
+            .annotate(Sum("quantity"))
+        )
 
         return Response(transactions, status=HTTP_200_OK)
