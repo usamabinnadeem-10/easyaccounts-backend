@@ -76,6 +76,7 @@ class GetAllBalances(APIView):
 
         balances = (
             Ledger.objects.values("nature", name=F("person__name"))
+            .order_by("nature")
             .annotate(balance=Sum("amount"))
             .filter(person__person_type=person_type)
         )

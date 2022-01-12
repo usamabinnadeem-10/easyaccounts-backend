@@ -3,7 +3,8 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from django.db.models import Sum, query
+from django.db.models import Sum
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .serializers import *
 from .models import *
@@ -23,14 +24,8 @@ from .models import SUPPLIER, CUSTOMER
 class CreateAndListPerson(ListCreateAPIView):
     queryset = Person.objects.all()
     serializer_class = PersonSerializer
-
-    def list(self, request, *args, **kwargs):
-        person = request.query_params.get("person")
-        if person == SUPPLIER or person == CUSTOMER:
-            queryset = Person.objects.filter(person_type=person)
-            serialized = PersonSerializer(queryset, many=True)
-            return Response(serialized.data, status=status.HTTP_200_OK)
-        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['person_type']
 
 
 class CreateAndListWarehouse(ListCreateAPIView):
@@ -40,17 +35,17 @@ class CreateAndListWarehouse(ListCreateAPIView):
 
 class CreateAndListProduct(ListCreateAPIView):
     queryset = Product.objects.select_related("product_head", "product_color")
-
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return ProductSerializer
-        elif self.request.method == "POST":
-            return CreateProductSerializer
+    serializer_class = ProductSerializer
 
 
 class CreateAndListProductHead(ListCreateAPIView):
     queryset = ProductHead.objects.all()
     serializer_class = ProductHeadSerializer
+
+
+class CreateAndListProductColor(ListCreateAPIView):
+    queryset = ProductColor.objects.all()
+    serializer_class = ProductColorSerializer
 
 
 class CreateAndListAccountType(ListCreateAPIView):
@@ -60,7 +55,9 @@ class CreateAndListAccountType(ListCreateAPIView):
 
 class DayBook(APIView):
     def get(self, request):
-        today = date.today()
+        today =  date.today()
+        if self.request.query_params.get('date'):
+            today = self.request.query_params.get('date')
 
         all_ledger = Ledger.objects.all()
 
@@ -96,11 +93,11 @@ class DayBook(APIView):
             )
 
         balance_ledgers = (
-            Ledger.objects.values("account_type__name", "nature")
-            .filter(account_type__isnull=False)
+            Ledger.objects.values("account_type__name", "nature").order_by('nature')
+            .filter(date__lte=today)
             .annotate(amount=Sum("amount"))
         )
-        balance_expenses = ExpenseDetail.objects.values("account_type__name").annotate(
+        balance_expenses = ExpenseDetail.objects.values("account_type__name").order_by('date').filter(date__lte=today).annotate(
             amount=Sum("amount")
         )
 

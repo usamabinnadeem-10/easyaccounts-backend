@@ -35,6 +35,9 @@ class Product(ID):
     def __str__(self) -> str:
         return self.product_head.head_name + ": " + self.product_color.color_name
 
+    class Meta:
+        unique_together = ('product_head', 'product_color')
+
 
 class Warehouse(ID):
     name = models.CharField(max_length=50)

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "transactions",
     "expenses",
     "debug_toolbar",
+    "django_filters",
 ]
 
 MIDDLEWARE = [
@@ -147,3 +148,7 @@ INTERNAL_IPS = [
     "127.0.0.1",
     # ...
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+}
