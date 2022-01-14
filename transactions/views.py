@@ -5,6 +5,7 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
 
+from essentials.models import Product
 from essentials.pagination import CustomPagination
 from .models import Transaction, TransactionDetail
 from .serializers import (
@@ -51,6 +52,22 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = Transaction.objects.all()
     serializer_class = UpdateTransactionSerializer
+
+    def delete(self, *args, **kwargs):
+        instance = self.get_object()
+
+        transaction_details = TransactionDetail.objects.filter(transaction=instance)
+
+        for transaction in transaction_details:
+            product = Product.objects.get(id=transaction.product.id)
+            if instance.nature == 'C':
+                product.stock_quantity -= transaction.quantity
+            elif instance.nature == 'D':
+                product.stock_quantity += transaction.quantity
+            product.save()
+
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GetProductQuantity(APIView):
