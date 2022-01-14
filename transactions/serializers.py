@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from essentials.models import AccountType
+from rest_framework.exceptions import NotAcceptable
+from essentials.models import Product
 from .models import *
 from ledgers.models import Ledger
 
@@ -124,6 +125,15 @@ class TransactionSerializer(serializers.ModelSerializer):
             )
             details.append(TransactionDetail(transaction_id=transaction.id, **detail))
 
+            product_to_update = Product.objects.get(id=detail["product"].id)
+            if transaction.nature == 'C':
+                product_to_update.stock_quantity += float(detail["quantity"])
+            elif transaction.nature == 'D':
+                if product_to_update.stock_quantity - detail["quantity"] < 0:
+                    raise NotAcceptable('Quantity can not be less than zero', 400)
+                product_to_update.stock_quantity -= float(detail["quantity"])
+            product_to_update.save()
+
         TransactionDetail.objects.bulk_create(details)
 
         ledger_data = create_ledger_entries(
@@ -192,6 +202,9 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         for transaction in all_transaction_details:
             if not transaction.id in ids_to_keep:
                 to_delete = TransactionDetail.objects.get(id=transaction.id)
+                product = Product.objects.get(id=transaction.product.id)
+                product.stock_quantity += float(transaction.quantity)
+                product.save()
                 to_delete.delete()
 
         ledger_string = ""
@@ -201,7 +214,15 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             amount += detail["amount"]
             if detail["new"]:
                 detail.pop("new")
-                TransactionDetail.objects.create(transaction=instance, **detail)
+                new_transaction = TransactionDetail.objects.create(transaction=instance, **detail)
+                product = Product.objects.get(id=new_transaction.product.id)
+                if instance.nature == 'C':
+                    product.stock_quantity += detail["quantity"]
+                elif instance.nature == 'D':
+                    if product.stock_quantity - detail["quantity"] < 0:
+                        raise NotAcceptable('Quantity can not be less than zero', 400)
+                    product.stock_quantity -= detail["quantity"]
+                product.save()
             else:
                 detail_instance = TransactionDetail.objects.get(id=detail["id"])
                 detail_instance.product = detail["product"]
@@ -210,6 +231,16 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                 detail_instance.warehouse = detail["warehouse"]
                 detail_instance.amount = detail["amount"]
                 detail_instance.save()
+
+                product = Product.objects.get(id=detail_instance.product.id)
+                if instance.nature == 'C':
+                    product.stock_quantity += detail["quantity"]
+                elif instance.nature == 'D':
+                    if product.stock_quantity - detail["quantity"] < 0:
+                        raise NotAcceptable('Quantity can not be less than zero', 400)
+                    product.stock_quantity -= detail["quantity"]
+                product.save()
+
             ledger_string += (
                 detail["product"].product_head.head_name
                 + " / "

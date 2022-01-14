@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import MinValueValidator
 from uuid import uuid4
+
 
 
 class ID(models.Model):
@@ -31,6 +33,7 @@ class Product(ID):
     basic_unit = models.FloatField()
     product_head = models.ForeignKey(ProductHead, on_delete=models.CASCADE)
     product_color = models.ForeignKey(ProductColor, on_delete=models.CASCADE, null=True)
+    stock_quantity = models.FloatField(validators=[MinValueValidator(0.0)])
 
     def __str__(self) -> str:
         return self.product_head.head_name + ": " + self.product_color.color_name

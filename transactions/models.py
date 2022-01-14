@@ -7,8 +7,6 @@ from essentials.models import AccountType, Warehouse, Product, Person
 
 from datetime import date
 
-from sequences import Sequence
-
 
 class TransactionChoices(models.TextChoices):
     CREDIT = "C", _("Credit")
