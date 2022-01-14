@@ -1,3 +1,4 @@
+from turtle import color
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 from essentials.models import Product
@@ -130,7 +131,10 @@ class TransactionSerializer(serializers.ModelSerializer):
                 product_to_update.stock_quantity += float(detail["quantity"])
             elif transaction.nature == 'D':
                 if product_to_update.stock_quantity - detail["quantity"] < 0:
-                    raise NotAcceptable('Quantity can not be less than zero', 400)
+                    head_name = product_to_update.product_head.head_name
+                    color_name = product_to_update.product_color.color_name
+                    raise NotAcceptable(
+                        f"""{head_name}, color: {color_name} low in stock. Stock = {product_to_update.stock_quantity}""", 400)
                 product_to_update.stock_quantity -= float(detail["quantity"])
             product_to_update.save()
 
@@ -196,9 +200,14 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         # delete all the other transaction details which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(transaction=instance)
         ids_to_keep = []
+
+        # make a list of transactions that should not be deleted
         for detail in transaction_detail:
             if not detail["new"]:
                 ids_to_keep.append(detail["id"])
+        
+        # delete transaction detail rows that are not in ids_to_keep
+        # and add stock of those products
         for transaction in all_transaction_details:
             if not transaction.id in ids_to_keep:
                 to_delete = TransactionDetail.objects.get(id=transaction.id)
@@ -220,7 +229,10 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                     product.stock_quantity += detail["quantity"]
                 elif instance.nature == 'D':
                     if product.stock_quantity - detail["quantity"] < 0:
-                        raise NotAcceptable('Quantity can not be less than zero', 400)
+                        head_name = product.product_head.head_name
+                        color_name = product.product_color.color_name
+                        raise NotAcceptable(
+                        f"""{head_name}, color: {color_name} low in stock. Stock = {product.stock_quantity}""", 400)
                     product.stock_quantity -= detail["quantity"]
                 product.save()
             else:
@@ -237,7 +249,10 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                     product.stock_quantity += detail["quantity"]
                 elif instance.nature == 'D':
                     if product.stock_quantity - detail["quantity"] < 0:
-                        raise NotAcceptable('Quantity can not be less than zero', 400)
+                        head_name = product.product_head.head_name
+                        color_name = product.product_color.color_name
+                        raise NotAcceptable(
+                        f"""{head_name}, color: {color_name} low in stock. Stock = {product.stock_quantity}""", 400)
                     product.stock_quantity -= detail["quantity"]
                 product.save()
 
