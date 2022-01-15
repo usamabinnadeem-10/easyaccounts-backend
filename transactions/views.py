@@ -1,6 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework import generics
+from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.status import *
@@ -14,7 +15,7 @@ from .serializers import (
     update_stock
 )
 
-from django.db.models import Min
+from django.db.models import Min, Max, Avg, Sum, Count
 from datetime import date
 
 
@@ -86,3 +87,33 @@ class FilterTransactions(generics.ListAPIView):
         'type': ['exact'],
         'transaction_detail__amount': ['gte', 'lte'],
     }
+
+
+class ProductPerformanceHistory(APIView):
+    """
+    statistics for a particular product or all products
+    optional customer selected for customer purchase history
+    """
+
+    def get(self, request):
+        filters = {
+            'transaction__nature':'D',
+            'transaction__person__person_type':'C'
+        }
+        values = ['product__name']
+        person = request.query_params.get('person')
+        if person:
+            filters.update({'transaction__person': person})
+            values.append('transaction__person')
+        stats = TransactionDetail.objects.values(*values) \
+            .annotate(
+                quantity_sold=Sum("quantity"),
+                average_rate=Avg("rate"),
+                minimum_rate=Min("rate"),
+                maximum_rate=Max("rate"),
+                number_of_times_sold=Count("transaction__id")
+                ) \
+            .filter(**filters) \
+            .order_by("-number_of_times_sold", "quantity_sold")
+        
+        return Response(stats, status=status.HTTP_200_OK)
