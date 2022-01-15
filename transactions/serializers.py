@@ -1,5 +1,8 @@
+from operator import is_
+from turtle import color
 from rest_framework import serializers
-from essentials.models import AccountType
+from rest_framework.exceptions import NotAcceptable
+from essentials.models import Stock
 from .models import *
 from ledgers.models import Ledger
 
@@ -8,12 +11,6 @@ from django.db.models import Max
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
 
-    product_head = serializers.CharField(
-        source="product.product_head.head_name", read_only=True
-    )
-    product_color = serializers.CharField(
-        source="product.product_color.color_name", read_only=True
-    )
     warehouse_name = serializers.CharField(source="warehouse.name", read_only=True)
 
     class Meta:
@@ -26,8 +23,6 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "quantity",
             "warehouse",
             "amount",
-            "product_head",
-            "product_color",
             "warehouse_name",
         ]
         read_only_fields = ["id", "transaction"]
@@ -69,6 +64,47 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
 
     return ledger_data
 
+def is_low_quantity(stock_to_update, value):
+    stock_in_hand = stock_to_update.stock_quantity - value
+    if stock_in_hand < 0:
+        raise NotAcceptable(
+            f"""{stock_to_update.product.name} low in stock. Stock = {stock_to_update.stock_quantity}""", 400)
+
+def update_stock(current_nature, detail, old_nature=None, is_update=False, old_quantity=0.0):
+    current_quantity = float(detail["quantity"])
+    stock_to_update, created = Stock.objects.get_or_create(
+                product=detail["product"], 
+                warehouse=detail["warehouse"],
+                )
+
+    if is_update:
+
+        adjustment_quantity = old_quantity if is_update else 0
+        difference = current_quantity - adjustment_quantity # difference between last and current transaction
+
+        if current_nature == 'C' and old_nature == 'C':
+            stock_to_update.stock_quantity += difference
+            
+        elif current_nature == 'D' and old_nature == 'D':
+            is_low_quantity(stock_to_update, difference)
+            stock_to_update.stock_quantity -= difference
+
+        elif current_nature == 'C' and old_nature == 'D':
+            stock_to_update.stock_quantity += (current_quantity + old_quantity)
+
+        elif current_nature == 'D' and old_nature == 'C':
+            is_low_quantity(stock_to_update, current_quantity + old_quantity)
+            stock_to_update.stock_quantity -= (current_quantity + old_quantity)
+        
+    else:
+        if current_nature == 'C':
+            stock_to_update.stock_quantity += current_quantity
+
+        elif current_nature == 'D':
+            is_low_quantity(stock_to_update, current_quantity)
+            stock_to_update.stock_quantity -= current_quantity
+    
+    stock_to_update.save()
 
 class TransactionSerializer(serializers.ModelSerializer):
 
@@ -115,15 +151,14 @@ class TransactionSerializer(serializers.ModelSerializer):
         ledger_string = ""
         for detail in transaction_details:
             ledger_string += (
-                detail["product"].product_head.head_name
-                + " / "
-                + detail["product"].product_color.color_name
+                detail["product"].name
                 + " @ PKR "
                 + str(detail["rate"])
                 + "\n"
             )
             details.append(TransactionDetail(transaction_id=transaction.id, **detail))
-
+            update_stock(transaction.nature, detail)
+            
         TransactionDetail.objects.bulk_create(details)
 
         ledger_data = create_ledger_entries(
@@ -184,14 +219,21 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         transaction_detail = validated_data.pop("transaction_detail")
 
         # delete all the other transaction details which were not in the transaction_detail
-        all_transaction_details = TransactionDetail.objects.filter(transaction=instance)
+        all_transaction_details = TransactionDetail.objects.filter(
+            transaction=instance).values('id', 'product', 'warehouse', 'quantity')
         ids_to_keep = []
+
+        # make a list of transactions that should not be deleted
         for detail in transaction_detail:
             if not detail["new"]:
                 ids_to_keep.append(detail["id"])
+        
+        # delete transaction detail rows that are not in ids_to_keep
+        # and add stock of those products
         for transaction in all_transaction_details:
-            if not transaction.id in ids_to_keep:
-                to_delete = TransactionDetail.objects.get(id=transaction.id)
+            if not transaction['id'] in ids_to_keep:
+                to_delete = TransactionDetail.objects.get(id=transaction['id'])
+                update_stock('C' if instance.nature == 'D' else 'D', transaction, instance.nature)
                 to_delete.delete()
 
         ledger_string = ""
@@ -199,21 +241,24 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         amount = 0.0
         for detail in transaction_detail:
             amount += detail["amount"]
+            old_quantity = 0.0
             if detail["new"]:
                 detail.pop("new")
                 TransactionDetail.objects.create(transaction=instance, **detail)
             else:
                 detail_instance = TransactionDetail.objects.get(id=detail["id"])
+                old_quantity = detail_instance.quantity
                 detail_instance.product = detail["product"]
                 detail_instance.rate = detail["rate"]
                 detail_instance.quantity = detail["quantity"]
                 detail_instance.warehouse = detail["warehouse"]
                 detail_instance.amount = detail["amount"]
                 detail_instance.save()
+
+            update_stock(validated_data.get("nature"), detail, instance.nature ,True, old_quantity)
+
             ledger_string += (
-                detail["product"].product_head.head_name
-                + " / "
-                + detail["product"].product_color.color_name
+                detail["product"].name
                 + " @ PKR "
                 + str(detail["rate"])
                 + "\n"
@@ -230,7 +275,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         if validated_data["date"]:
             ledger_instance.date = validated_data["date"]
         ledger_instance.save()
-        print(validated_data)
+
         account_type = (
             validated_data["account_type"] if "account_type" in validated_data else None
         )

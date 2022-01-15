@@ -7,8 +7,6 @@ from essentials.models import AccountType, Warehouse, Product, Person
 
 from datetime import date
 
-from sequences import Sequence
-
 
 class TransactionChoices(models.TextChoices):
     CREDIT = "C", _("Credit")
@@ -44,7 +42,7 @@ class TransactionDetail(models.Model):
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, name="product")
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
     quantity = models.FloatField(validators=[MinValueValidator(1.0)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)

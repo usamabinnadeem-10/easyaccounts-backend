@@ -22,6 +22,9 @@ from .models import SUPPLIER, CUSTOMER
 
 
 class CreateAndListPerson(ListCreateAPIView):
+    """
+    create or list persons with the option of filtering by person_type
+    """
     queryset = Person.objects.all()
     serializer_class = PersonSerializer
     filter_backends = [DjangoFilterBackend]
@@ -29,31 +32,33 @@ class CreateAndListPerson(ListCreateAPIView):
 
 
 class CreateAndListWarehouse(ListCreateAPIView):
+    """
+    create or list warehouses
+    """
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
 
 
 class CreateAndListProduct(ListCreateAPIView):
-    queryset = Product.objects.select_related("product_head", "product_color")
+    """
+    create or list products
+    """
+    queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
 
-class CreateAndListProductHead(ListCreateAPIView):
-    queryset = ProductHead.objects.all()
-    serializer_class = ProductHeadSerializer
-
-
-class CreateAndListProductColor(ListCreateAPIView):
-    queryset = ProductColor.objects.all()
-    serializer_class = ProductColorSerializer
-
-
 class CreateAndListAccountType(ListCreateAPIView):
+    """
+    create or list account types
+    """
     queryset = AccountType.objects.all()
     serializer_class = AccountTypeSerializer
 
 
 class DayBook(APIView):
+    """
+    get daybook for today or with a specific date
+    """
     def get(self, request):
         today =  date.today()
         if self.request.query_params.get('date'):

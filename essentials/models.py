@@ -1,24 +1,11 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import MinValueValidator
 from uuid import uuid4
 
 
 class ID(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-
-
-class ProductColor(ID):
-    color_name = models.CharField(max_length=50)
-
-    def __str__(self) -> str:
-        return self.color_name
-
-
-class ProductHead(ID):
-    head_name = models.CharField(max_length=50)
-
-    def __str__(self) -> str:
-        return self.head_name
 
 
 class QuantityChoices(models.TextChoices):
@@ -29,14 +16,10 @@ class QuantityChoices(models.TextChoices):
 class Product(ID):
     si_unit = models.CharField(max_length=5, choices=QuantityChoices.choices)
     basic_unit = models.FloatField()
-    product_head = models.ForeignKey(ProductHead, on_delete=models.CASCADE)
-    product_color = models.ForeignKey(ProductColor, on_delete=models.CASCADE, null=True)
+    name = models.CharField(max_length=100)
 
     def __str__(self) -> str:
-        return self.product_head.head_name + ": " + self.product_color.color_name
-
-    class Meta:
-        unique_together = ('product_head', 'product_color')
+        return self.name
 
 
 class Warehouse(ID):
@@ -56,10 +39,8 @@ class PersonChoices(models.TextChoices):
     CUSTOMER = CUSTOMER, _("Customer")
 
 
-"""Supplier or Customer Account"""
-
-
 class Person(ID):
+    """Supplier or Customer Account"""
     name = models.CharField(max_length=100)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
@@ -76,3 +57,14 @@ class AccountType(ID):
 
     def __str__(self) -> str:
         return self.name
+
+
+class Stock(models.Model):
+    """Product stock quantity"""
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=False)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=False)
+    stock_quantity = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
+
+    class Meta:
+        unique_together = ('product', 'warehouse')

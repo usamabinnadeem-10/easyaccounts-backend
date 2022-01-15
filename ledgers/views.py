@@ -11,11 +11,12 @@ from datetime import date, datetime, timedelta
 from django.db.models import Min, Sum, F
 
 
-"""
+
+class CreateOrListLedgerDetail(generics.ListCreateAPIView):
+    """
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance
-"""
-class CreateOrListLedgerDetail(generics.ListCreateAPIView):
+    """
     serializer_class = LedgerSerializer
     pagination_class = CustomPagination
     queryset = Ledger.objects.select_related(
@@ -58,19 +59,21 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
 
         return Response(page.data, status=status.HTTP_200_OK)
 
-"""
-    Edit / Update / Delete a ledger record
-"""
+
 class EditUpdateDeleteLedgerDetail(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Edit / Update / Delete a ledger record
+    """
     queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
 
 
-"""
+
+class GetAllBalances(APIView):
+    """
     Get all balances
     Expects a query parameter person (S or C)
-"""
-class GetAllBalances(APIView):
+    """
     def get(self, request):
         person_type = request.query_params.get("person")
 

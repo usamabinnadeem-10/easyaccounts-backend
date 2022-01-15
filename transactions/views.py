@@ -1,3 +1,5 @@
+from django.db.models import F
+
 from rest_framework import generics
 from rest_framework import status
 from rest_framework.response import Response
@@ -5,11 +7,13 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
 
+
 from essentials.pagination import CustomPagination
 from .models import Transaction, TransactionDetail
 from .serializers import (
     TransactionSerializer,
     UpdateTransactionSerializer,
+    update_stock
 )
 
 from django.db.models import Min, Sum
@@ -17,6 +21,9 @@ from datetime import date
 
 
 class GetOrCreateTransaction(generics.ListCreateAPIView):
+    """
+    get transactions with a time frame (optional), requires person to be passed
+    """
     serializer_class = TransactionSerializer
     pagination_class = CustomPagination
 
@@ -43,8 +50,26 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
 
 
 class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Edit / Update / Delete a transaction
+    """
     queryset = Transaction.objects.all()
     serializer_class = UpdateTransactionSerializer
+
+    def delete(self, *args, **kwargs):
+        instance = self.get_object()
+
+        transaction_details = TransactionDetail.objects.filter(transaction=instance).values(
+            'product',
+            'quantity',
+            'warehouse'
+        )
+        print(f'\n\n{transaction_details}\n\n')
+        for transaction in transaction_details:
+            update_stock('C' if instance.nature == 'D' else 'D', transaction)
+
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GetProductQuantity(APIView):
@@ -102,32 +127,44 @@ class GetProductQuantity(APIView):
 
 class GetAllQuantity(APIView):
     def get(self, request):
-        transactions = (
-            TransactionDetail.objects.values_list("product", "transaction__nature")
-            .filter(transaction__draft=False)
-            .annotate(Sum("quantity"))
-        )
+        data = {
+            'transaction__draft': False
+        }
+        if request.query_params.get('product'):
+            data.update({'product': request.query_params.get('product')})
 
-        data = {}
+        try:
+            transactions = (
+                TransactionDetail.objects.values_list("product", "transaction__nature")
+                .filter(**data)
+                .annotate(Sum("quantity"))
+            )
 
-        for transaction in transactions:
-            current_product = str(transaction[0])
-            if not current_product in data:
-                data[current_product] = {
-                    transaction[1]: transaction[2],
-                }
-            else:
-                new = data[current_product]
-                new[transaction[1]] = transaction[2]
+            data = {}
 
-        return Response(data, status=HTTP_200_OK)
+            for transaction in transactions:
+                current_product = str(transaction[0])
+                if not current_product in data:
+                    data[current_product] = {
+                        transaction[1]: transaction[2],
+                    }
+                else:
+                    new = data[current_product]
+                    new[transaction[1]] = transaction[2]
+
+            return Response(data, status=HTTP_200_OK)
+        except:
+            return Response({'error': 'Please enter a valid product'}, status=HTTP_400_BAD_REQUEST)
 
 
 class GetAllQuantityByWarehouse(APIView):
+    """
+    get detailed quantity of each product by warehouse
+    """
     def get(self, request):
         transactions = (
             TransactionDetail.objects.values(
-                "product", "transaction__nature", "warehouse"
+                "product", "transaction__nature", "warehouse__name"
             )
             .filter(transaction__draft=False)
             .annotate(Sum("quantity"))

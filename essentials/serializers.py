@@ -26,36 +26,15 @@ class WarehouseSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
-class ProductColorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductColor
-        fields = ["id", "color_name"]
-        read_only_fields = ["id"]
-
-
-class ProductHeadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductHead
-        fields = ["id", "head_name"]
-        read_only_fields = ["id"]
-
-
 class ProductSerializer(serializers.ModelSerializer):
-
-    color_name = serializers.CharField(
-        source="product_color.color_name", read_only=True
-    )
-    head_name = serializers.CharField(source="product_head.head_name", read_only=True)
 
     class Meta:
         model = Product
         fields = [
             "id",
             "si_unit",
-            "product_head",
-            "product_color",
-            "color_name",
-            "head_name",
+            "name",
+            "stock_quantity",
             "basic_unit",
         ]
         read_only_fields = ["id"]

@@ -6,12 +6,6 @@ urlpatterns = [
     path("person/create/", CreateAndListPerson.as_view()),
     path("person/list/", CreateAndListPerson.as_view()),
 
-    path("product-head/create/", CreateAndListProductHead.as_view()),
-    path("product-head/list/", CreateAndListProductHead.as_view()),
-
-    path("product-color/create/", CreateAndListProductColor.as_view()),
-    path("product-color/list/", CreateAndListProductColor.as_view()),
-
     path("product/create/", CreateAndListProduct.as_view()),
     path("product/list/", CreateAndListProduct.as_view()),
 
