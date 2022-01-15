@@ -4,8 +4,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import ExpenseAccount, ExpenseDetail
 from .serializers import ExpenseAccountSerializer, ExpenseDetailSerializer
-from .filters import DateFilter
-
 
 
 class CreateExpenseAccount(generics.ListCreateAPIView):
@@ -18,13 +16,17 @@ class CreateExpenseAccount(generics.ListCreateAPIView):
 
 class CreateExpenseDetail(generics.ListCreateAPIView):
     """
-    get expense details with optional filters such as account type, start or end date
+    get expense details with optional filters
     """
     serializer_class = ExpenseDetailSerializer
     queryset = ExpenseDetail.objects.all()
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['account_type']
-
+    filter_fields = {
+        'date': ['gte', 'lte'],
+        'amount': ['gte', 'lte'],
+        'account_type': ['exact'],
+        'detail': ['contains'],
+    }
 
 
 class EditUpdateDeleteExpenseDetail(generics.RetrieveUpdateDestroyAPIView):

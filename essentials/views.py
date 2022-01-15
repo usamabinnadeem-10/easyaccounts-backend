@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView, ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -17,8 +17,6 @@ from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
-
-from .models import SUPPLIER, CUSTOMER
 
 
 class CreateAndListPerson(ListCreateAPIView):
@@ -116,3 +114,15 @@ class DayBook(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class GetStockQuantity(ListAPIView):
+
+    queryset = Stock.objects.all()
+    serializer_class = StockSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        'stock_quantity': ['gte', 'lte'],
+        'product': ['exact'],
+        'warehouse': ['exact'],
+    }

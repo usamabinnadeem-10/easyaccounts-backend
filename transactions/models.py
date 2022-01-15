@@ -44,6 +44,7 @@ class TransactionDetail(models.Model):
     )
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, name="product")
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
+    yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])
     quantity = models.FloatField(validators=[MinValueValidator(1.0)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
     amount = models.FloatField(validators=[MinValueValidator(0.0)])

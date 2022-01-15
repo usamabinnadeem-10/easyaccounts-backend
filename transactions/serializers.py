@@ -1,5 +1,3 @@
-from operator import is_
-from turtle import color
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 from essentials.models import Stock
@@ -20,6 +18,7 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "transaction",
             "product",
             "rate",
+            "yards_per_piece",
             "quantity",
             "warehouse",
             "amount",
@@ -106,6 +105,11 @@ def update_stock(current_nature, detail, old_nature=None, is_update=False, old_q
     
     stock_to_update.save()
 
+def create_ledger_string(detail):
+    return f'{int(detail["quantity"])} thaan ' \
+    f'{detail["product"].name} ({detail["yards_per_piece"]} Yards) ' \
+    f'@ PKR {str(detail["rate"])} per yard\n'
+
 class TransactionSerializer(serializers.ModelSerializer):
 
     transaction_detail = TransactionDetailSerializer(many=True)
@@ -150,12 +154,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         details = []
         ledger_string = ""
         for detail in transaction_details:
-            ledger_string += (
-                detail["product"].name
-                + " @ PKR "
-                + str(detail["rate"])
-                + "\n"
-            )
+            ledger_string += create_ledger_string(detail)
             details.append(TransactionDetail(transaction_id=transaction.id, **detail))
             update_stock(transaction.nature, detail)
             
@@ -165,7 +164,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             transaction,
             transaction_details,
             paid,
-            ledger_string,
+            ledger_string + f'{validated_data["detail"]}\n',
         )
         Ledger.objects.bulk_create(ledger_data)
         validated_data["transaction_detail"] = transaction_details
@@ -185,6 +184,7 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
             "transaction",
             "product",
             "rate",
+            "yards_per_piece",
             "quantity",
             "warehouse",
             "amount",
@@ -253,21 +253,18 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                 detail_instance.quantity = detail["quantity"]
                 detail_instance.warehouse = detail["warehouse"]
                 detail_instance.amount = detail["amount"]
+                detail_instance.yards_per_piece = detail["yards_per_piece"]
                 detail_instance.save()
 
             update_stock(validated_data.get("nature"), detail, instance.nature ,True, old_quantity)
 
-            ledger_string += (
-                detail["product"].name
-                + " @ PKR "
-                + str(detail["rate"])
-                + "\n"
-            )
+            ledger_string += create_ledger_string(detail)
+
         amount -= validated_data["discount"]
         ledger_instance = Ledger.objects.get(
             transaction=instance, account_type__isnull=True
         )
-        ledger_instance.detail = ledger_string
+        ledger_instance.detail = ledger_string + f'{validated_data["detail"]}\n'
         ledger_instance.draft = validated_data["draft"]
         ledger_instance.nature = validated_data["nature"]
         ledger_instance.amount = amount

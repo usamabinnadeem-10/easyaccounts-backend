@@ -16,4 +16,6 @@ urlpatterns = [
     path("account-type/list/", CreateAndListAccountType.as_view()),
 
     path("daybook/", DayBook.as_view()),
+
+    path("stock-quantity/", GetStockQuantity.as_view()),
 ]
