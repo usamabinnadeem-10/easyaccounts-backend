@@ -1,3 +1,5 @@
+from django_filters.rest_framework import DjangoFilterBackend
+
 from rest_framework import generics
 from rest_framework import status
 from rest_framework.response import Response
@@ -60,9 +62,27 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
             'quantity',
             'warehouse'
         )
-        print(f'\n\n{transaction_details}\n\n')
+
         for transaction in transaction_details:
             update_stock('C' if instance.nature == 'D' else 'D', transaction)
 
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class FilterTransactions(generics.ListAPIView):
+
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        'date': ['gte', 'lte'],
+        'account_type': ['exact'],
+        'detail': ['icontains'],
+        'person': ['exact'],
+        'draft': ['exact'],
+        'serial': ['exact', 'gte', 'lte'],
+        'discount': ['gte', 'lte'],
+        'type': ['exact'],
+        'transaction_detail__amount': ['gte', 'lte'],
+    }

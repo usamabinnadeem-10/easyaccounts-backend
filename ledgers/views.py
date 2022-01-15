@@ -71,18 +71,48 @@ class GetAllBalances(APIView):
     """
     Get all balances
     Expects a query parameter person (S or C)
+    Optional qp balance for balances gte or lte
     """
     def get(self, request):
-        person_type = request.query_params.get("person")
+        filters = {}
+        if request.query_params.get("person"):
+            filters.update({"person__person_type": request.query_params.get("person")})
+
 
         balances = (
             Ledger.objects.values("nature", name=F("person__name"))
             .order_by("nature")
             .annotate(balance=Sum("amount"))
-            .filter(person__person_type=person_type)
+            .filter(**filters)
         )
 
-        return Response(balances, status=status.HTTP_200_OK)
+        data = {}
+        for b in balances:
+            name = b['name']
+            amount = b['balance']
+            nature = b['nature']
+            if not name in data:
+                data[name] = amount if nature == 'C' else -amount
+            else:
+                data[name] += amount if nature == 'C' else -amount
+        
+        balance_gte = request.query_params.get("balance__gte")
+        balance_lte = request.query_params.get("balance__lte")
+
+        if balance_gte or balance_lte:
+            final_balances = {}
+            if balance_gte:
+                for person, balance in data.items():
+                    if balance >= float(balance_gte):
+                        final_balances[person] = balance
+            if balance_lte:
+                for person, balance in data.items():
+                    if balance <= float(balance_lte):
+                        final_balances[person] = balance
+
+            return Response(final_balances, status=status.HTTP_200_OK)
+
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class FilterLedger(generics.ListAPIView):
@@ -96,7 +126,7 @@ class FilterLedger(generics.ListAPIView):
         'date': ['gte', 'lte'],
         'amount': ['gte', 'lte'],
         'account_type': ['exact'],
-        'detail': ['contains'],
+        'detail': ['icontains'],
         'nature': ['exact'],
         'person': ['exact'],
     }

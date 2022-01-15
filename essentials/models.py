@@ -16,7 +16,7 @@ class QuantityChoices(models.TextChoices):
 class Product(ID):
     si_unit = models.CharField(max_length=5, choices=QuantityChoices.choices)
     basic_unit = models.FloatField()
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
 
     def __str__(self) -> str:
         return self.name
@@ -41,7 +41,7 @@ class PersonChoices(models.TextChoices):
 
 class Person(ID):
     """Supplier or Customer Account"""
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
 
