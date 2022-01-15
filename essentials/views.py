@@ -1,9 +1,10 @@
 from rest_framework import status
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView, ListAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from django.db.models import Sum, query
+from django.db.models import Sum
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .serializers import *
 from .models import *
@@ -17,50 +18,49 @@ from expenses.serializers import ExpenseDetailSerializer
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
 
-from .models import SUPPLIER, CUSTOMER
-
 
 class CreateAndListPerson(ListCreateAPIView):
+    """
+    create or list persons with the option of filtering by person_type
+    """
     queryset = Person.objects.all()
     serializer_class = PersonSerializer
-
-    def list(self, request, *args, **kwargs):
-        person = request.query_params.get("person")
-        if person == SUPPLIER or person == CUSTOMER:
-            queryset = Person.objects.filter(person_type=person)
-            serialized = PersonSerializer(queryset, many=True)
-            return Response(serialized.data, status=status.HTTP_200_OK)
-        return Response({}, status=status.HTTP_400_BAD_REQUEST)
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['person_type']
 
 
 class CreateAndListWarehouse(ListCreateAPIView):
+    """
+    create or list warehouses
+    """
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
 
 
 class CreateAndListProduct(ListCreateAPIView):
-    queryset = Product.objects.select_related("product_head", "product_color")
-
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return ProductSerializer
-        elif self.request.method == "POST":
-            return CreateProductSerializer
-
-
-class CreateAndListProductHead(ListCreateAPIView):
-    queryset = ProductHead.objects.all()
-    serializer_class = ProductHeadSerializer
+    """
+    create or list products
+    """
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
 
 
 class CreateAndListAccountType(ListCreateAPIView):
+    """
+    create or list account types
+    """
     queryset = AccountType.objects.all()
     serializer_class = AccountTypeSerializer
 
 
 class DayBook(APIView):
+    """
+    get daybook for today or with a specific date
+    """
     def get(self, request):
-        today = date.today()
+        today =  date.today()
+        if self.request.query_params.get('date'):
+            today = self.request.query_params.get('date')
 
         all_ledger = Ledger.objects.all()
 
@@ -96,11 +96,11 @@ class DayBook(APIView):
             )
 
         balance_ledgers = (
-            Ledger.objects.values("account_type__name", "nature")
-            .filter(account_type__isnull=False)
+            Ledger.objects.values("account_type__name", "nature").order_by('nature')
+            .filter(date__lte=today)
             .annotate(amount=Sum("amount"))
         )
-        balance_expenses = ExpenseDetail.objects.values("account_type__name").annotate(
+        balance_expenses = ExpenseDetail.objects.values("account_type__name").order_by('date').filter(date__lte=today).annotate(
             amount=Sum("amount")
         )
 
@@ -114,3 +114,15 @@ class DayBook(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class GetStockQuantity(ListAPIView):
+
+    queryset = Stock.objects.all()
+    serializer_class = StockSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        'stock_quantity': ['gte', 'lte'],
+        'product': ['exact'],
+        'warehouse': ['exact'],
+    }

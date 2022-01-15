@@ -1,34 +1,37 @@
-from django.db.models import query
 from rest_framework import generics
+
+from django_filters.rest_framework import DjangoFilterBackend
+
 from .models import ExpenseAccount, ExpenseDetail
 from .serializers import ExpenseAccountSerializer, ExpenseDetailSerializer
 
 
 class CreateExpenseAccount(generics.ListCreateAPIView):
-
+    """
+    create expense account or list all expense accounts
+    """
     queryset = ExpenseAccount.objects.all()
     serializer_class = ExpenseAccountSerializer
 
 
 class CreateExpenseDetail(generics.ListCreateAPIView):
-
+    """
+    get expense details with optional filters
+    """
     serializer_class = ExpenseDetailSerializer
-
-    def get_queryset(self):
-        query_set = ExpenseDetail.objects.all()
-        account_type = self.request.query_params.get("account_type")
-        start = self.request.query_params.get("start")
-        end = self.request.query_params.get("end")
-        if account_type:
-            query_set = query_set.filter(account_type=account_type)
-        if start:
-            query_set = query_set.filter(date__gte=start)
-        if end:
-            query_set = query_set.filter(date__lte=end)
-        return query_set
+    queryset = ExpenseDetail.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        'date': ['gte', 'lte'],
+        'amount': ['gte', 'lte'],
+        'account_type': ['exact'],
+        'detail': ['contains'],
+    }
 
 
 class EditUpdateDeleteExpenseDetail(generics.RetrieveUpdateDestroyAPIView):
-
+    """
+    Edit / Update / Delete an expense record
+    """
     queryset = ExpenseDetail.objects.all()
     serializer_class = ExpenseDetailSerializer

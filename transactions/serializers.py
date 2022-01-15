@@ -1,20 +1,14 @@
 from rest_framework import serializers
-from django.db.models import Max
-
+from rest_framework.exceptions import NotAcceptable
+from essentials.models import Stock
 from .models import *
-from essentials.models import AccountType
 from ledgers.models import Ledger
-from essentials.serializers import AccountTypeSerializer
+
+from django.db.models import Max
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
 
-    product_head = serializers.CharField(
-        source="product.product_head.head_name", read_only=True
-    )
-    product_color = serializers.CharField(
-        source="product.product_color.color_name", read_only=True
-    )
     warehouse_name = serializers.CharField(source="warehouse.name", read_only=True)
 
     class Meta:
@@ -24,19 +18,16 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "transaction",
             "product",
             "rate",
+            "yards_per_piece",
             "quantity",
             "warehouse",
             "amount",
-            "product_head",
-            "product_color",
             "warehouse_name",
         ]
         read_only_fields = ["id", "transaction"]
 
 
-def create_ledger_entries(
-    transaction, transaction_details, paid, account_type, paid_amount, ledger_string
-):
+def create_ledger_entries(transaction, transaction_details, paid, ledger_string):
     amount = 0.0
     for t in transaction_details:
         amount += t["amount"]
@@ -58,11 +49,11 @@ def create_ledger_entries(
         ledger_data.append(
             Ledger(
                 **{
-                    "detail": f"Paid on {account_type.name}",
-                    "amount": paid_amount,
+                    "detail": f"Paid on {transaction.account_type.name}",
+                    "amount": transaction.paid_amount,
                     "transaction": transaction,
                     "nature": "C",
-                    "account_type": account_type,
+                    "account_type": transaction.account_type,
                     "person": transaction.person,
                     "date": transaction.date,
                     "draft": transaction.draft,
@@ -72,17 +63,61 @@ def create_ledger_entries(
 
     return ledger_data
 
+def is_low_quantity(stock_to_update, value):
+    stock_in_hand = stock_to_update.stock_quantity - value
+    if stock_in_hand < 0:
+        raise NotAcceptable(
+            f"""{stock_to_update.product.name} low in stock. Stock = {stock_to_update.stock_quantity}""", 400)
+
+def update_stock(current_nature, detail, old_nature=None, is_update=False, old_quantity=0.0):
+    current_quantity = float(detail["quantity"])
+    stock_to_update, created = Stock.objects.get_or_create(
+                product=detail["product"], 
+                warehouse=detail["warehouse"],
+                )
+
+    if is_update:
+
+        adjustment_quantity = old_quantity if is_update else 0
+        difference = current_quantity - adjustment_quantity # difference between last and current transaction
+
+        if current_nature == 'C' and old_nature == 'C':
+            stock_to_update.stock_quantity += difference
+            
+        elif current_nature == 'D' and old_nature == 'D':
+            is_low_quantity(stock_to_update, difference)
+            stock_to_update.stock_quantity -= difference
+
+        elif current_nature == 'C' and old_nature == 'D':
+            stock_to_update.stock_quantity += (current_quantity + old_quantity)
+
+        elif current_nature == 'D' and old_nature == 'C':
+            is_low_quantity(stock_to_update, current_quantity + old_quantity)
+            stock_to_update.stock_quantity -= (current_quantity + old_quantity)
+        
+    else:
+        if current_nature == 'C':
+            stock_to_update.stock_quantity += current_quantity
+
+        elif current_nature == 'D':
+            is_low_quantity(stock_to_update, current_quantity)
+            stock_to_update.stock_quantity -= current_quantity
+    
+    stock_to_update.save()
+
+def create_ledger_string(detail):
+    return f'{int(detail["quantity"])} thaan ' \
+    f'{detail["product"].name} ({detail["yards_per_piece"]} Yards) ' \
+    f'@ PKR {str(detail["rate"])} per yard\n'
 
 class TransactionSerializer(serializers.ModelSerializer):
 
     transaction_detail = TransactionDetailSerializer(many=True)
     paid = serializers.BooleanField(default=False)
-    paid_amount = serializers.FloatField(required=False, default=0.0)
-    account_type = serializers.UUIDField(required=False, write_only=True)
+
     serial = serializers.ReadOnlyField()
     person_name = serializers.CharField(source="person.name", read_only=True)
     person_type = serializers.CharField(source="person.person_type", read_only=True)
-    account = AccountTypeSerializer(read_only=True, default=None)
 
     class Meta:
         model = Transaction
@@ -102,20 +137,13 @@ class TransactionSerializer(serializers.ModelSerializer):
             "detail",
             "person_name",
             "person_type",
-            "account",
         ]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        account_type = None
-        if validated_data["paid"]:
-            account_type = AccountType.objects.get(
-                id=validated_data.pop("account_type")
-            )
 
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
-        paid_amount = validated_data.pop("paid_amount")
 
         last_serial_num = (
             Transaction.objects.aggregate(Max("serial"))["serial__max"] or 0
@@ -126,31 +154,21 @@ class TransactionSerializer(serializers.ModelSerializer):
         details = []
         ledger_string = ""
         for detail in transaction_details:
-            ledger_string += (
-                detail["product"].product_head.head_name
-                + " / "
-                + detail["product"].product_color.color_name
-                + " @ PKR "
-                + str(detail["rate"])
-                + "\n"
-            )
+            ledger_string += create_ledger_string(detail)
             details.append(TransactionDetail(transaction_id=transaction.id, **detail))
-
+            update_stock(transaction.nature, detail)
+            
         TransactionDetail.objects.bulk_create(details)
 
         ledger_data = create_ledger_entries(
             transaction,
             transaction_details,
             paid,
-            account_type,
-            paid_amount,
-            ledger_string,
+            ledger_string + f'{validated_data["detail"]}\n',
         )
         Ledger.objects.bulk_create(ledger_data)
         validated_data["transaction_detail"] = transaction_details
         validated_data["id"] = transaction.id
-        validated_data["paid_amount"] = paid_amount
-        validated_data["account"] = account_type
         return validated_data
 
 
@@ -166,6 +184,7 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
             "transaction",
             "product",
             "rate",
+            "yards_per_piece",
             "quantity",
             "warehouse",
             "amount",
@@ -177,9 +196,6 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
 class UpdateTransactionSerializer(serializers.ModelSerializer):
 
     transaction_detail = UpdateTransactionDetailSerializer(many=True)
-    paid = serializers.BooleanField(default=False)
-    paid_amount = serializers.FloatField(write_only=True, required=False, default=0.0)
-    account_type = serializers.UUIDField(required=False)
     serial = serializers.ReadOnlyField()
 
     class Meta:
@@ -194,25 +210,30 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             "discount",
             "person",
             "draft",
-            "paid",
             "account_type",
             "paid_amount",
             "detail",
         ]
 
     def update(self, instance, validated_data):
-
         transaction_detail = validated_data.pop("transaction_detail")
 
         # delete all the other transaction details which were not in the transaction_detail
-        all_transaction_details = TransactionDetail.objects.filter(transaction=instance)
+        all_transaction_details = TransactionDetail.objects.filter(
+            transaction=instance).values('id', 'product', 'warehouse', 'quantity')
         ids_to_keep = []
+
+        # make a list of transactions that should not be deleted
         for detail in transaction_detail:
             if not detail["new"]:
                 ids_to_keep.append(detail["id"])
+        
+        # delete transaction detail rows that are not in ids_to_keep
+        # and add stock of those products
         for transaction in all_transaction_details:
-            if not transaction.id in ids_to_keep:
-                to_delete = TransactionDetail.objects.get(id=transaction.id)
+            if not transaction['id'] in ids_to_keep:
+                to_delete = TransactionDetail.objects.get(id=transaction['id'])
+                update_stock('C' if instance.nature == 'D' else 'D', transaction, instance.nature)
                 to_delete.delete()
 
         ledger_string = ""
@@ -220,30 +241,30 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         amount = 0.0
         for detail in transaction_detail:
             amount += detail["amount"]
+            old_quantity = 0.0
             if detail["new"]:
                 detail.pop("new")
                 TransactionDetail.objects.create(transaction=instance, **detail)
             else:
                 detail_instance = TransactionDetail.objects.get(id=detail["id"])
+                old_quantity = detail_instance.quantity
                 detail_instance.product = detail["product"]
                 detail_instance.rate = detail["rate"]
                 detail_instance.quantity = detail["quantity"]
                 detail_instance.warehouse = detail["warehouse"]
                 detail_instance.amount = detail["amount"]
+                detail_instance.yards_per_piece = detail["yards_per_piece"]
                 detail_instance.save()
-            ledger_string += (
-                detail["product"].product_head.head_name
-                + " / "
-                + detail["product"].product_color.color_name
-                + " @ PKR "
-                + str(detail["rate"])
-                + "\n"
-            )
+
+            update_stock(validated_data.get("nature"), detail, instance.nature ,True, old_quantity)
+
+            ledger_string += create_ledger_string(detail)
+
         amount -= validated_data["discount"]
         ledger_instance = Ledger.objects.get(
             transaction=instance, account_type__isnull=True
         )
-        ledger_instance.detail = ledger_string
+        ledger_instance.detail = ledger_string + f'{validated_data["detail"]}\n'
         ledger_instance.draft = validated_data["draft"]
         ledger_instance.nature = validated_data["nature"]
         ledger_instance.amount = amount
@@ -252,17 +273,15 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             ledger_instance.date = validated_data["date"]
         ledger_instance.save()
 
-        if validated_data["paid"]:
-            account_type = AccountType.objects.get(
-                id=validated_data.pop("account_type")
-            )
-
-        validated_data.pop("paid")
-        paid_amount = validated_data.pop("paid_amount")
+        account_type = (
+            validated_data["account_type"] if "account_type" in validated_data else None
+        )
+        paid_amount = (
+            validated_data["paid_amount"] if "paid_amount" in validated_data else None
+        )
 
         # if the transaction was unpaid before and is now paid then create a new ledger entry
         if validated_data["type"] != instance.type and validated_data["type"] == "paid":
-            account_type = AccountType.objects.get()
             Ledger.objects.create(
                 **{
                     "detail": f"Paid on {account_type.name}",
@@ -282,5 +301,19 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                 transaction=instance, account_type__isnull=False
             )
             paid_instance.delete()
+
+        # if both types are paid then update the Ledger entry
+        if validated_data["type"] == instance.type and instance.type == "paid":
+            paid_instance = Ledger.objects.get(
+                transaction=instance, account_type__isnull=False
+            )
+            paid_instance.amount = validated_data["paid_amount"]
+            paid_instance.account_type = validated_data["account_type"]
+            paid_instance.detail = f'Paid on {validated_data["account_type"].name}'
+            paid_instance.draft = validated_data["draft"]
+            paid_instance.person = validated_data["person"]
+            if validated_data["date"]:
+                paid_instance.date = validated_data["date"]
+            paid_instance.save()
 
         return super().update(instance, validated_data)

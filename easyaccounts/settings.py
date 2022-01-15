@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "ledgers",
     "transactions",
     "expenses",
+    "debug_toolbar",
+    "django_filters",
 ]
 
 MIDDLEWARE = [
@@ -139,3 +141,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+INTERNAL_IPS = [
+    # ...
+    "127.0.0.1",
+    # ...
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+}
