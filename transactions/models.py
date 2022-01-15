@@ -42,7 +42,7 @@ class TransactionDetail(models.Model):
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, name="product")
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
     quantity = models.FloatField(validators=[MinValueValidator(1.0)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)

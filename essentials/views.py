@@ -43,24 +43,8 @@ class CreateAndListProduct(ListCreateAPIView):
     """
     create or list products
     """
-    queryset = Product.objects.select_related("product_head", "product_color")
+    queryset = Product.objects.all()
     serializer_class = ProductSerializer
-
-
-class CreateAndListProductHead(ListCreateAPIView):
-    """
-    create or list product heads
-    """
-    queryset = ProductHead.objects.all()
-    serializer_class = ProductHeadSerializer
-
-
-class CreateAndListProductColor(ListCreateAPIView):
-    """
-    create or list product colors
-    """
-    queryset = ProductColor.objects.all()
-    serializer_class = ProductColorSerializer
 
 
 class CreateAndListAccountType(ListCreateAPIView):

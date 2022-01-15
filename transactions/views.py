@@ -1,3 +1,5 @@
+from django.db.models import F
+
 from rest_framework import generics
 from rest_framework import status
 from rest_framework.response import Response
@@ -5,12 +7,13 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAcceptable
 
-from essentials.models import Product
+
 from essentials.pagination import CustomPagination
 from .models import Transaction, TransactionDetail
 from .serializers import (
     TransactionSerializer,
     UpdateTransactionSerializer,
+    update_stock
 )
 
 from django.db.models import Min, Sum
@@ -56,15 +59,14 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
     def delete(self, *args, **kwargs):
         instance = self.get_object()
 
-        transaction_details = TransactionDetail.objects.filter(transaction=instance)
-
+        transaction_details = TransactionDetail.objects.filter(transaction=instance).values(
+            'product',
+            'quantity',
+            'warehouse'
+        )
+        print(f'\n\n{transaction_details}\n\n')
         for transaction in transaction_details:
-            product = Product.objects.get(id=transaction.product.id)
-            if instance.nature == 'C':
-                product.stock_quantity -= transaction.quantity
-            elif instance.nature == 'D':
-                product.stock_quantity += transaction.quantity
-            product.save()
+            update_stock('C' if instance.nature == 'D' else 'D', transaction)
 
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
