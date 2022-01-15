@@ -1,3 +1,6 @@
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Min, Sum, F
+
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,8 +11,6 @@ from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
 
 from datetime import date, datetime, timedelta
-from django.db.models import Min, Sum, F
-
 
 
 class CreateOrListLedgerDetail(generics.ListCreateAPIView):
@@ -19,38 +20,35 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
     """
     serializer_class = LedgerSerializer
     pagination_class = CustomPagination
-    queryset = Ledger.objects.select_related(
-            "person", "account_type", "transaction"
-        ).filter(draft=False)
 
+    def get_queryset(self):
+        if self.request.method == "POST":
+            return Ledger.objects.all()
+        elif self.request.method == "GET":
+            qp = self.request.query_params
+            person = qp.get("person")
+            endDate = qp.get("end") or date.today()
+            return Ledger.objects.select_related(
+                "person", "account_type", "transaction"
+            ).filter(person=person, date__lte=endDate, draft=False)
 
     def list(self, request, *args, **kwargs):
         qp = self.request.query_params
-        person = qp.get("person")
-        endDate = qp.get("end") or date.today()
-        queryset = Ledger.objects.select_related(
-            "person", "account_type", "transaction"
-        ).filter(person=person, date__lte=endDate, draft=False)
-
-        start = (
-            datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None
-        )
+        queryset = self.get_queryset()
 
         startDate = (
-            start or queryset.aggregate(Min("date"))["date__min"] or date.today()
+            (datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None) 
+            or (queryset.aggregate(Min("date"))["date__min"] or date.today())
         )
-
         startDateMinusOne = startDate - timedelta(days=1)
-        balance = list(
-            queryset.filter(date__lte=startDateMinusOne)
-            .values("nature")
-            .annotate(amount=Sum("amount"))
-        )
+        balance =  queryset.values("nature") \
+            .order_by("nature") \
+            .annotate(amount=Sum("amount")) \
+            .filter(date__lte=startDateMinusOne)
+        
         opening_balance = 0
         for b in balance:
-            opening_balance = (
-                opening_balance + b["amount"] if b["nature"] == "C" else -b["amount"]
-            )
+            opening_balance += b["amount"] if b["nature"] == "C" else -b["amount"]
         
         ledger_data = LedgerSerializer(self.paginate_queryset(queryset.filter(date__gte=startDate)), many=True).data
         page = self.get_paginated_response(ledger_data)
@@ -85,3 +83,20 @@ class GetAllBalances(APIView):
         )
 
         return Response(balances, status=status.HTTP_200_OK)
+
+
+class FilterLedger(generics.ListAPIView):
+    """
+    filter ledger records
+    """
+    serializer_class = LedgerSerializer
+    queryset = Ledger.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        'date': ['gte', 'lte'],
+        'amount': ['gte', 'lte'],
+        'account_type': ['exact'],
+        'detail': ['contains'],
+        'nature': ['exact'],
+        'person': ['exact'],
+    }

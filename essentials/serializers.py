@@ -38,3 +38,16 @@ class ProductSerializer(serializers.ModelSerializer):
             "basic_unit",
         ]
         read_only_fields = ["id"]
+
+
+class StockSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Stock
+        fields = [
+            "id",
+            "product",
+            "warehouse",
+            "stock_quantity",
+        ]
+        read_only_fields = ["id"]
