@@ -45,13 +45,11 @@ INSTALLED_APPS = [
     "ledgers",
     "transactions",
     "expenses",
-    "debug_toolbar",
     "django_filters",
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
