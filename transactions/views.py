@@ -6,7 +6,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.status import *
 
-
+from expenses.models import ExpenseDetail
+from ledgers.views import GetAllBalances
 from essentials.pagination import CustomPagination
 from .models import Transaction, TransactionDetail
 from .serializers import (
@@ -16,7 +17,8 @@ from .serializers import (
 )
 
 from django.db.models import Min, Max, Avg, Sum, Count
-from datetime import date
+from datetime import date, datetime
+
 
 
 class GetOrCreateTransaction(generics.ListCreateAPIView):
@@ -98,7 +100,8 @@ class ProductPerformanceHistory(APIView):
     def get(self, request):
         filters = {
             'transaction__nature':'D',
-            'transaction__person__person_type':'C'
+            'transaction__person__person_type':'C',
+            'transaction__draft': False
         }
         values = ['product__name']
         person = request.query_params.get('person')
@@ -117,3 +120,80 @@ class ProductPerformanceHistory(APIView):
             .order_by("-number_of_times_sold", "quantity_sold")
         
         return Response(stats, status=status.HTTP_200_OK)
+
+
+class BusinessPerformanceHistory(APIView):
+    """
+    get business' working statistics with optional date ranges
+    """
+
+    def get(self, request):
+        qp = request.query_params
+        filters = {
+             'transaction__draft': False
+        }
+
+        start_date = (
+            datetime.strptime(qp.get("start"), "%Y-%m-%d") 
+            if qp.get("start") else None)
+        end_date = (
+            datetime.strptime(qp.get("end"), "%Y-%m-%d") 
+            if qp.get("end") else None)
+
+        if start_date:
+            filters.update({'transaction__date__gte': start_date})
+        if end_date:
+            filters.update({'transaction__date__lte': end_date})
+
+        stats = TransactionDetail.objects.values("transaction__nature") \
+            .annotate(
+                quantity=Sum("quantity"),
+                number_of_transactions=Count("transaction__id"),
+                amount=Sum("amount"),
+                avg_rate=Avg("rate")
+                ) \
+            .filter(**filters)
+
+        del filters['transaction__draft']
+        expenses = ExpenseDetail.objects.filter(**filters).aggregate(total_expenses=Sum("amount"))
+        print(expenses)
+        balances = GetAllBalances.as_view()(request=request._request).data
+
+        final_data = {
+            'revenue': 0,
+            'cogs': 0,
+            'quantity_sold': 0,
+            'number_of_transactions_bought': 0,
+            'number_of_transactions_sold': 0,
+            'quantity_bought': 0,
+            'payable_total': 0,
+            'recievable_total': 0,
+            'expenses_total': expenses['total_expenses'],
+            'profit': 0,
+            'average_buying_rate': 0,
+            'average_selling_rate': 0,
+        }
+
+        for stat in stats:
+            if stat['transaction__nature'] == 'D':
+                final_data['revenue'] += stat['amount']
+                final_data['quantity_sold'] += stat['quantity']
+                final_data['number_of_transactions_sold'] += stat['number_of_transactions']
+                final_data['average_selling_rate'] += stat['avg_rate']
+            else:
+                final_data['revenue'] -= stat['amount']
+                final_data['quantity_bought'] += stat['quantity']
+                final_data['number_of_transactions_bought'] += stat['number_of_transactions']
+                final_data['average_buying_rate'] += stat['avg_rate']
+        
+        for person, balance in balances.items():
+            if balance >= 0:
+                final_data['payable_total'] += balance
+            else:
+                final_data['recievable_total'] += abs(balance)
+
+        final_data['cogs'] = final_data['average_buying_rate'] * final_data['quantity_sold']
+        
+        final_data['profit'] = final_data['revenue'] - (final_data['expenses_total'] + final_data['cogs'])
+        
+        return Response(final_data, status=status.HTTP_200_OK)
