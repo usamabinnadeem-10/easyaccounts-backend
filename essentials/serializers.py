@@ -48,5 +48,6 @@ class StockSerializer(serializers.ModelSerializer):
             "product",
             "warehouse",
             "stock_quantity",
+            "yards_per_piece",
         ]
         read_only_fields = ["id"]
