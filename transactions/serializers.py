@@ -5,6 +5,7 @@ from .models import *
 from ledgers.models import Ledger
 
 from django.db.models import Max
+from django.shortcuts import get_object_or_404
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
@@ -71,10 +72,15 @@ def is_low_quantity(stock_to_update, value):
 
 def update_stock(current_nature, detail, old_nature=None, is_update=False, old_quantity=0.0):
     current_quantity = float(detail["quantity"])
-    stock_to_update, created = Stock.objects.get_or_create(
-                product=detail["product"], 
-                warehouse=detail["warehouse"],
-                )
+    filters = {
+        'product':detail["product"], 
+        'warehouse':detail["warehouse"],
+        'yards_per_piece':detail["yards_per_piece"]
+    }
+    if current_nature == 'C':
+        stock_to_update, created = Stock.objects.get_or_create(**filters)
+    else:
+        stock_to_update = get_object_or_404(Stock, **filters)
 
     if is_update:
 

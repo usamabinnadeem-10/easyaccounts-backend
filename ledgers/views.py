@@ -50,7 +50,10 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         for b in balance:
             opening_balance += b["amount"] if b["nature"] == "C" else -b["amount"]
         
-        ledger_data = LedgerSerializer(self.paginate_queryset(queryset.filter(date__gte=startDate)), many=True).data
+        ledger_data = LedgerSerializer(
+            self.paginate_queryset(
+                queryset.filter(date__gte=startDate).order_by('-date','-transaction__serial')
+                ), many=True).data
         page = self.get_paginated_response(ledger_data)
         page.data['opening_balance'] = opening_balance
         
