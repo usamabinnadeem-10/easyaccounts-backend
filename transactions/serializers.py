@@ -226,14 +226,14 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 
         # delete all the other transaction details which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(
-            transaction=instance).values('id', 'product', 'warehouse', 'quantity')
+            transaction=instance).values('id', 'product', 'warehouse', 'quantity', 'yards_per_piece')
         ids_to_keep = []
 
         # make a list of transactions that should not be deleted
         for detail in transaction_detail:
             if not detail["new"]:
                 ids_to_keep.append(detail["id"])
-        
+
         # delete transaction detail rows that are not in ids_to_keep
         # and add stock of those products
         for transaction in all_transaction_details:
