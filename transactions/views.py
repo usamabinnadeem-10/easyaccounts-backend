@@ -12,7 +12,7 @@ from .models import Transaction, TransactionDetail
 from .serializers import (
     TransactionSerializer,
     UpdateTransactionSerializer,
-    update_stock
+    update_stock,
 )
 
 from django.db.models import Min, Max, Avg, Sum, Count
@@ -23,6 +23,7 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
     """
     get transactions with a time frame (optional), requires person to be passed
     """
+
     serializer_class = TransactionSerializer
     pagination_class = CustomPagination
 
@@ -52,20 +53,24 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
     """
     Edit / Update / Delete a transaction
     """
+
     queryset = Transaction.objects.all()
     serializer_class = UpdateTransactionSerializer
 
     def delete(self, *args, **kwargs):
         instance = self.get_object()
 
-        transaction_details = TransactionDetail.objects.filter(transaction=instance).values(
-            'product',
-            'quantity',
-            'warehouse'
+        transaction_details = TransactionDetail.objects.filter(
+            transaction=instance
+        ).values(
+            "product",
+            "quantity",
+            "warehouse",
+            "yards_per_piece",
         )
 
         for transaction in transaction_details:
-            update_stock('C' if instance.nature == 'D' else 'D', transaction)
+            update_stock("C" if instance.nature == "D" else "D", transaction)
 
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -77,15 +82,15 @@ class FilterTransactions(generics.ListAPIView):
     serializer_class = TransactionSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
-        'date': ['gte', 'lte'],
-        'account_type': ['exact'],
-        'detail': ['icontains'],
-        'person': ['exact'],
-        'draft': ['exact'],
-        'serial': ['exact', 'gte', 'lte'],
-        'discount': ['gte', 'lte'],
-        'type': ['exact'],
-        'transaction_detail__amount': ['gte', 'lte'],
+        "date": ["gte", "lte"],
+        "account_type": ["exact"],
+        "detail": ["icontains"],
+        "person": ["exact"],
+        "draft": ["exact"],
+        "serial": ["exact", "gte", "lte"],
+        "discount": ["gte", "lte"],
+        "type": ["exact"],
+        "transaction_detail__amount": ["gte", "lte"],
     }
 
 
@@ -96,24 +101,23 @@ class ProductPerformanceHistory(APIView):
     """
 
     def get(self, request):
-        filters = {
-            'transaction__nature':'D',
-            'transaction__person__person_type':'C'
-        }
-        values = ['product__name']
-        person = request.query_params.get('person')
+        filters = {"transaction__nature": "D", "transaction__person__person_type": "C"}
+        values = ["product__name"]
+        person = request.query_params.get("person")
         if person:
-            filters.update({'transaction__person': person})
-            values.append('transaction__person')
-        stats = TransactionDetail.objects.values(*values) \
+            filters.update({"transaction__person": person})
+            values.append("transaction__person")
+        stats = (
+            TransactionDetail.objects.values(*values)
             .annotate(
                 quantity_sold=Sum("quantity"),
                 average_rate=Avg("rate"),
                 minimum_rate=Min("rate"),
                 maximum_rate=Max("rate"),
-                number_of_times_sold=Count("transaction__id")
-                ) \
-            .filter(**filters) \
+                number_of_times_sold=Count("transaction__id"),
+            )
+            .filter(**filters)
             .order_by("-number_of_times_sold", "quantity_sold")
-        
+        )
+
         return Response(stats, status=status.HTTP_200_OK)
