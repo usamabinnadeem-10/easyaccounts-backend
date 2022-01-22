@@ -13,18 +13,18 @@ from .models import Transaction, TransactionDetail
 from .serializers import (
     TransactionSerializer,
     UpdateTransactionSerializer,
-    update_stock
+    update_stock,
 )
 
 from django.db.models import Min, Max, Avg, Sum, Count
 from datetime import date, datetime
 
 
-
 class GetOrCreateTransaction(generics.ListCreateAPIView):
     """
     get transactions with a time frame (optional), requires person to be passed
     """
+
     serializer_class = TransactionSerializer
     pagination_class = CustomPagination
 
@@ -54,20 +54,24 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
     """
     Edit / Update / Delete a transaction
     """
+
     queryset = Transaction.objects.all()
     serializer_class = UpdateTransactionSerializer
 
     def delete(self, *args, **kwargs):
         instance = self.get_object()
 
-        transaction_details = TransactionDetail.objects.filter(transaction=instance).values(
-            'product',
-            'quantity',
-            'warehouse'
+        transaction_details = TransactionDetail.objects.filter(
+            transaction=instance
+        ).values(
+            "product",
+            "quantity",
+            "warehouse",
+            "yards_per_piece",
         )
 
         for transaction in transaction_details:
-            update_stock('C' if instance.nature == 'D' else 'D', transaction)
+            update_stock("C" if instance.nature == "D" else "D", transaction)
 
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -79,15 +83,15 @@ class FilterTransactions(generics.ListAPIView):
     serializer_class = TransactionSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
-        'date': ['gte', 'lte'],
-        'account_type': ['exact'],
-        'detail': ['icontains'],
-        'person': ['exact'],
-        'draft': ['exact'],
-        'serial': ['exact', 'gte', 'lte'],
-        'discount': ['gte', 'lte'],
-        'type': ['exact'],
-        'transaction_detail__amount': ['gte', 'lte'],
+        "date": ["gte", "lte"],
+        "account_type": ["exact"],
+        "detail": ["icontains"],
+        "person": ["exact"],
+        "draft": ["exact"],
+        "serial": ["exact", "gte", "lte"],
+        "discount": ["gte", "lte"],
+        "type": ["exact"],
+        "transaction_detail__amount": ["gte", "lte"],
     }
 
 
@@ -98,27 +102,25 @@ class ProductPerformanceHistory(APIView):
     """
 
     def get(self, request):
-        filters = {
-            'transaction__nature':'D',
-            'transaction__person__person_type':'C',
-            'transaction__draft': False
-        }
-        values = ['product__name']
-        person = request.query_params.get('person')
+        filters = {"transaction__nature": "D", "transaction__person__person_type": "C"}
+        values = ["product__name"]
+        person = request.query_params.get("person")
         if person:
-            filters.update({'transaction__person': person})
-            values.append('transaction__person')
-        stats = TransactionDetail.objects.values(*values) \
+            filters.update({"transaction__person": person})
+            values.append("transaction__person")
+        stats = (
+            TransactionDetail.objects.values(*values)
             .annotate(
                 quantity_sold=Sum("quantity"),
                 average_rate=Avg("rate"),
                 minimum_rate=Min("rate"),
                 maximum_rate=Max("rate"),
-                number_of_times_sold=Count("transaction__id")
-                ) \
-            .filter(**filters) \
+                number_of_times_sold=Count("transaction__id"),
+            )
+            .filter(**filters)
             .order_by("-number_of_times_sold", "quantity_sold")
-        
+        )
+
         return Response(stats, status=status.HTTP_200_OK)
 
 
@@ -129,71 +131,81 @@ class BusinessPerformanceHistory(APIView):
 
     def get(self, request):
         qp = request.query_params
-        filters = {
-             'transaction__draft': False
-        }
+        filters = {"transaction__draft": False}
 
         start_date = (
-            datetime.strptime(qp.get("start"), "%Y-%m-%d") 
-            if qp.get("start") else None)
+            datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None
+        )
         end_date = (
-            datetime.strptime(qp.get("end"), "%Y-%m-%d") 
-            if qp.get("end") else None)
+            datetime.strptime(qp.get("end"), "%Y-%m-%d") if qp.get("end") else None
+        )
 
         if start_date:
-            filters.update({'transaction__date__gte': start_date})
+            filters.update({"transaction__date__gte": start_date})
         if end_date:
-            filters.update({'transaction__date__lte': end_date})
+            filters.update({"transaction__date__lte": end_date})
 
-        stats = TransactionDetail.objects.values("transaction__nature") \
+        stats = (
+            TransactionDetail.objects.values("transaction__nature")
             .annotate(
                 quantity=Sum("quantity"),
                 number_of_transactions=Count("transaction__id"),
                 amount=Sum("amount"),
-                avg_rate=Avg("rate")
-                ) \
+                avg_rate=Avg("rate"),
+            )
             .filter(**filters)
+        )
 
-        del filters['transaction__draft']
-        expenses = ExpenseDetail.objects.filter(**filters).aggregate(total_expenses=Sum("amount"))
+        del filters["transaction__draft"]
+        expenses = ExpenseDetail.objects.filter(**filters).aggregate(
+            total_expenses=Sum("amount")
+        )
         print(expenses)
         balances = GetAllBalances.as_view()(request=request._request).data
 
         final_data = {
-            'revenue': 0,
-            'cogs': 0,
-            'quantity_sold': 0,
-            'number_of_transactions_bought': 0,
-            'number_of_transactions_sold': 0,
-            'quantity_bought': 0,
-            'payable_total': 0,
-            'recievable_total': 0,
-            'expenses_total': expenses['total_expenses'],
-            'profit': 0,
-            'average_buying_rate': 0,
-            'average_selling_rate': 0,
+            "revenue": 0,
+            "cogs": 0,
+            "quantity_sold": 0,
+            "number_of_transactions_bought": 0,
+            "number_of_transactions_sold": 0,
+            "quantity_bought": 0,
+            "payable_total": 0,
+            "recievable_total": 0,
+            "expenses_total": expenses["total_expenses"],
+            "profit": 0,
+            "average_buying_rate": 0,
+            "average_selling_rate": 0,
         }
 
         for stat in stats:
-            if stat['transaction__nature'] == 'D':
-                final_data['revenue'] += stat['amount']
-                final_data['quantity_sold'] += stat['quantity']
-                final_data['number_of_transactions_sold'] += stat['number_of_transactions']
-                final_data['average_selling_rate'] += stat['avg_rate']
+            if stat["transaction__nature"] == "D":
+                final_data["revenue"] += stat["amount"]
+                final_data["quantity_sold"] += stat["quantity"]
+                final_data["number_of_transactions_sold"] += stat[
+                    "number_of_transactions"
+                ]
+                final_data["average_selling_rate"] += stat["avg_rate"]
             else:
-                final_data['revenue'] -= stat['amount']
-                final_data['quantity_bought'] += stat['quantity']
-                final_data['number_of_transactions_bought'] += stat['number_of_transactions']
-                final_data['average_buying_rate'] += stat['avg_rate']
-        
+                final_data["revenue"] -= stat["amount"]
+                final_data["quantity_bought"] += stat["quantity"]
+                final_data["number_of_transactions_bought"] += stat[
+                    "number_of_transactions"
+                ]
+                final_data["average_buying_rate"] += stat["avg_rate"]
+
         for person, balance in balances.items():
             if balance >= 0:
-                final_data['payable_total'] += balance
+                final_data["payable_total"] += balance
             else:
-                final_data['recievable_total'] += abs(balance)
+                final_data["recievable_total"] += abs(balance)
 
-        final_data['cogs'] = final_data['average_buying_rate'] * final_data['quantity_sold']
-        
-        final_data['profit'] = final_data['revenue'] - (final_data['expenses_total'] + final_data['cogs'])
-        
+        final_data["cogs"] = (
+            final_data["average_buying_rate"] * final_data["quantity_sold"]
+        )
+
+        final_data["profit"] = final_data["revenue"] - (
+            final_data["expenses_total"] + final_data["cogs"]
+        )
+
         return Response(final_data, status=status.HTTP_200_OK)

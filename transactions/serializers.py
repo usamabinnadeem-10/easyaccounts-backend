@@ -5,6 +5,7 @@ from .models import *
 from ledgers.models import Ledger
 
 from django.db.models import Max
+from django.shortcuts import get_object_or_404
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
@@ -71,10 +72,15 @@ def is_low_quantity(stock_to_update, value):
 
 def update_stock(current_nature, detail, old_nature=None, is_update=False, old_quantity=0.0):
     current_quantity = float(detail["quantity"])
-    stock_to_update, created = Stock.objects.get_or_create(
-                product=detail["product"], 
-                warehouse=detail["warehouse"],
-                )
+    filters = {
+        'product':detail["product"], 
+        'warehouse':detail["warehouse"],
+        'yards_per_piece':detail["yards_per_piece"]
+    }
+    if current_nature == 'C':
+        stock_to_update, created = Stock.objects.get_or_create(**filters)
+    else:
+        stock_to_update = get_object_or_404(Stock, **filters)
 
     if is_update:
 
@@ -220,14 +226,14 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 
         # delete all the other transaction details which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(
-            transaction=instance).values('id', 'product', 'warehouse', 'quantity')
+            transaction=instance).values('id', 'product', 'warehouse', 'quantity', 'yards_per_piece')
         ids_to_keep = []
 
         # make a list of transactions that should not be deleted
         for detail in transaction_detail:
             if not detail["new"]:
                 ids_to_keep.append(detail["id"])
-        
+
         # delete transaction detail rows that are not in ids_to_keep
         # and add stock of those products
         for transaction in all_transaction_details:

@@ -65,6 +65,7 @@ class Stock(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=False)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=False)
     stock_quantity = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
+    yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])
 
     class Meta:
-        unique_together = ('product', 'warehouse')
+        unique_together = ('product', 'warehouse', 'yards_per_piece')
