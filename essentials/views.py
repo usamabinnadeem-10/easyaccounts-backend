@@ -23,16 +23,18 @@ class CreateAndListPerson(ListCreateAPIView):
     """
     create or list persons with the option of filtering by person_type
     """
+
     queryset = Person.objects.all()
     serializer_class = PersonSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['person_type']
+    filterset_fields = ["person_type"]
 
 
 class CreateAndListWarehouse(ListCreateAPIView):
     """
     create or list warehouses
     """
+
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
 
@@ -41,6 +43,7 @@ class CreateAndListProduct(ListCreateAPIView):
     """
     create or list products
     """
+
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
@@ -49,6 +52,7 @@ class CreateAndListAccountType(ListCreateAPIView):
     """
     create or list account types
     """
+
     queryset = AccountType.objects.all()
     serializer_class = AccountTypeSerializer
 
@@ -57,10 +61,11 @@ class DayBook(APIView):
     """
     get daybook for today or with a specific date
     """
+
     def get(self, request):
-        today =  date.today()
-        if self.request.query_params.get('date'):
-            today = self.request.query_params.get('date')
+        today = date.today()
+        if self.request.query_params.get("date"):
+            today = self.request.query_params.get("date")
 
         all_ledger = Ledger.objects.all()
 
@@ -87,21 +92,19 @@ class DayBook(APIView):
                     else None
                 )
                 paid_amount = ledger_instance[0].amount
-            final_transactions.append(
-                {
-                    "transaction": transaction,
-                    "account_type": serialized_account_type,
-                    "paid_amount": paid_amount,
-                }
-            )
+            final_transactions.append(transaction)
 
         balance_ledgers = (
-            Ledger.objects.values("account_type__name", "nature").order_by('nature')
+            Ledger.objects.values("account_type__name", "nature")
+            .order_by("nature")
             .filter(date__lte=today)
             .annotate(amount=Sum("amount"))
         )
-        balance_expenses = ExpenseDetail.objects.values("account_type__name").order_by('date').filter(date__lte=today).annotate(
-            amount=Sum("amount")
+        balance_expenses = (
+            ExpenseDetail.objects.values("account_type__name")
+            .order_by("date")
+            .filter(date__lte=today)
+            .annotate(amount=Sum("amount"))
         )
 
         return Response(
@@ -122,7 +125,7 @@ class GetStockQuantity(ListAPIView):
     serializer_class = StockSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
-        'stock_quantity': ['gte', 'lte'],
-        'product': ['exact'],
-        'warehouse': ['exact'],
+        "stock_quantity": ["gte", "lte"],
+        "product": ["exact"],
+        "warehouse": ["exact"],
     }
