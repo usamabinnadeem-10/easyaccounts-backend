@@ -44,9 +44,14 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
             or date.today()
         )
         endDate = qp.get("end") or date.today()
-        queryset = transactions.filter(
-            date__gte=startDate, date__lte=endDate, person=person, draft=False
-        )
+        filters = {
+            "date__gte": startDate,
+            "date__lte": endDate,
+            "draft": qp.get("draft") or False,
+        }
+        if person:
+            filters.update({"person": person})
+        queryset = transactions.filter(**filters)
         return queryset
 
 
@@ -81,6 +86,7 @@ class FilterTransactions(generics.ListAPIView):
 
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+    pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
         "date": ["gte", "lte"],

@@ -64,20 +64,26 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
 
     return ledger_data
 
+
 def is_low_quantity(stock_to_update, value):
     stock_in_hand = stock_to_update.stock_quantity - value
     if stock_in_hand < 0:
         raise NotAcceptable(
-            f"""{stock_to_update.product.name} low in stock. Stock = {stock_to_update.stock_quantity}""", 400)
+            f"""{stock_to_update.product.name} low in stock. Stock = {stock_to_update.stock_quantity}""",
+            400,
+        )
 
-def update_stock(current_nature, detail, old_nature=None, is_update=False, old_quantity=0.0):
+
+def update_stock(
+    current_nature, detail, old_nature=None, is_update=False, old_quantity=0.0
+):
     current_quantity = float(detail["quantity"])
     filters = {
-        'product':detail["product"], 
-        'warehouse':detail["warehouse"],
-        'yards_per_piece':detail["yards_per_piece"]
+        "product": detail["product"],
+        "warehouse": detail["warehouse"],
+        "yards_per_piece": detail["yards_per_piece"],
     }
-    if current_nature == 'C':
+    if current_nature == "C":
         stock_to_update, created = Stock.objects.get_or_create(**filters)
     else:
         stock_to_update = get_object_or_404(Stock, **filters)
@@ -85,36 +91,42 @@ def update_stock(current_nature, detail, old_nature=None, is_update=False, old_q
     if is_update:
 
         adjustment_quantity = old_quantity if is_update else 0
-        difference = current_quantity - adjustment_quantity # difference between last and current transaction
+        difference = (
+            current_quantity - adjustment_quantity
+        )  # difference between last and current transaction
 
-        if current_nature == 'C' and old_nature == 'C':
+        if current_nature == "C" and old_nature == "C":
             stock_to_update.stock_quantity += difference
-            
-        elif current_nature == 'D' and old_nature == 'D':
+
+        elif current_nature == "D" and old_nature == "D":
             is_low_quantity(stock_to_update, difference)
             stock_to_update.stock_quantity -= difference
 
-        elif current_nature == 'C' and old_nature == 'D':
-            stock_to_update.stock_quantity += (current_quantity + old_quantity)
+        elif current_nature == "C" and old_nature == "D":
+            stock_to_update.stock_quantity += current_quantity + old_quantity
 
-        elif current_nature == 'D' and old_nature == 'C':
+        elif current_nature == "D" and old_nature == "C":
             is_low_quantity(stock_to_update, current_quantity + old_quantity)
-            stock_to_update.stock_quantity -= (current_quantity + old_quantity)
-        
+            stock_to_update.stock_quantity -= current_quantity + old_quantity
+
     else:
-        if current_nature == 'C':
+        if current_nature == "C":
             stock_to_update.stock_quantity += current_quantity
 
-        elif current_nature == 'D':
+        elif current_nature == "D":
             is_low_quantity(stock_to_update, current_quantity)
             stock_to_update.stock_quantity -= current_quantity
-    
+
     stock_to_update.save()
 
+
 def create_ledger_string(detail):
-    return f'{int(detail["quantity"])} thaan ' \
-    f'{detail["product"].name} ({detail["yards_per_piece"]} Yards) ' \
-    f'@ PKR {str(detail["rate"])} per yard\n'
+    return (
+        f'{int(detail["quantity"])} thaan '
+        f'{detail["product"].name} ({detail["yards_per_piece"]} Yards) '
+        f'@ PKR {str(detail["rate"])} per yard\n'
+    )
+
 
 class TransactionSerializer(serializers.ModelSerializer):
 
@@ -130,6 +142,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "serial",
+            "manual_invoice_serial",
             "date",
             "transaction_detail",
             "nature",
@@ -163,7 +176,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             ledger_string += create_ledger_string(detail)
             details.append(TransactionDetail(transaction_id=transaction.id, **detail))
             update_stock(transaction.nature, detail)
-            
+
         TransactionDetail.objects.bulk_create(details)
 
         ledger_data = create_ledger_entries(
@@ -175,6 +188,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         Ledger.objects.bulk_create(ledger_data)
         validated_data["transaction_detail"] = transaction_details
         validated_data["id"] = transaction.id
+        validated_data["serial"] = transaction.serial
+        validated_data["date"] = transaction.date
         return validated_data
 
 
@@ -226,7 +241,8 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 
         # delete all the other transaction details which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(
-            transaction=instance).values('id', 'product', 'warehouse', 'quantity', 'yards_per_piece')
+            transaction=instance
+        ).values("id", "product", "warehouse", "quantity", "yards_per_piece")
         ids_to_keep = []
 
         # make a list of transactions that should not be deleted
@@ -237,9 +253,11 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         # delete transaction detail rows that are not in ids_to_keep
         # and add stock of those products
         for transaction in all_transaction_details:
-            if not transaction['id'] in ids_to_keep:
-                to_delete = TransactionDetail.objects.get(id=transaction['id'])
-                update_stock('C' if instance.nature == 'D' else 'D', transaction, instance.nature)
+            if not transaction["id"] in ids_to_keep:
+                to_delete = TransactionDetail.objects.get(id=transaction["id"])
+                update_stock(
+                    "C" if instance.nature == "D" else "D", transaction, instance.nature
+                )
                 to_delete.delete()
 
         ledger_string = ""
@@ -262,7 +280,13 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                 detail_instance.yards_per_piece = detail["yards_per_piece"]
                 detail_instance.save()
 
-            update_stock(validated_data.get("nature"), detail, instance.nature ,True, old_quantity)
+            update_stock(
+                validated_data.get("nature"),
+                detail,
+                instance.nature,
+                True,
+                old_quantity,
+            )
 
             ledger_string += create_ledger_string(detail)
 

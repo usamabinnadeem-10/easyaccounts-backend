@@ -18,6 +18,7 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance
     """
+
     serializer_class = LedgerSerializer
     pagination_class = CustomPagination
 
@@ -37,26 +38,30 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         queryset = self.get_queryset()
 
         startDate = (
-            (datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None) 
-            or (queryset.aggregate(Min("date"))["date__min"] or date.today())
-        )
+            datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None
+        ) or (queryset.aggregate(Min("date"))["date__min"] or date.today())
         startDateMinusOne = startDate - timedelta(days=1)
-        balance =  queryset.values("nature") \
-            .order_by("nature") \
-            .annotate(amount=Sum("amount")) \
+        balance = (
+            queryset.values("nature")
+            .order_by("nature")
+            .annotate(amount=Sum("amount"))
             .filter(date__lte=startDateMinusOne)
-        
+        )
+
         opening_balance = 0
         for b in balance:
             opening_balance += b["amount"] if b["nature"] == "C" else -b["amount"]
-        
+
         ledger_data = LedgerSerializer(
             self.paginate_queryset(
-                queryset.filter(date__gte=startDate).order_by('-date','-transaction__serial')
-                ), many=True).data
+                queryset.filter(date__gte=startDate).order_by(
+                    "date", "transaction__serial"
+                )
+            ),
+            many=True,
+        ).data
         page = self.get_paginated_response(ledger_data)
-        page.data['opening_balance'] = opening_balance
-        
+        page.data["opening_balance"] = opening_balance
 
         return Response(page.data, status=status.HTTP_200_OK)
 
@@ -65,9 +70,9 @@ class EditUpdateDeleteLedgerDetail(generics.RetrieveUpdateDestroyAPIView):
     """
     Edit / Update / Delete a ledger record
     """
+
     queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
-
 
 
 class GetAllBalances(APIView):
@@ -76,11 +81,11 @@ class GetAllBalances(APIView):
     Expects a query parameter person (S or C)
     Optional qp balance for balances gte or lte
     """
+
     def get(self, request):
         filters = {}
         if request.query_params.get("person"):
             filters.update({"person__person_type": request.query_params.get("person")})
-
 
         balances = (
             Ledger.objects.values("nature", name=F("person__name"))
@@ -91,14 +96,14 @@ class GetAllBalances(APIView):
 
         data = {}
         for b in balances:
-            name = b['name']
-            amount = b['balance']
-            nature = b['nature']
+            name = b["name"]
+            amount = b["balance"]
+            nature = b["nature"]
             if not name in data:
-                data[name] = amount if nature == 'C' else -amount
+                data[name] = amount if nature == "C" else -amount
             else:
-                data[name] += amount if nature == 'C' else -amount
-        
+                data[name] += amount if nature == "C" else -amount
+
         balance_gte = request.query_params.get("balance__gte")
         balance_lte = request.query_params.get("balance__lte")
 
@@ -122,14 +127,15 @@ class FilterLedger(generics.ListAPIView):
     """
     filter ledger records
     """
+
     serializer_class = LedgerSerializer
     queryset = Ledger.objects.all()
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
-        'date': ['gte', 'lte'],
-        'amount': ['gte', 'lte'],
-        'account_type': ['exact'],
-        'detail': ['icontains'],
-        'nature': ['exact'],
-        'person': ['exact'],
+        "date": ["gte", "lte"],
+        "amount": ["gte", "lte"],
+        "account_type": ["exact"],
+        "detail": ["icontains"],
+        "nature": ["exact"],
+        "person": ["exact"],
     }

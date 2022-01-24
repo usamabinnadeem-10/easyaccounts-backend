@@ -26,4 +26,4 @@ class Ledger(models.Model):
     draft = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ["-date"]
+        ordering = ["date"]

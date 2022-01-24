@@ -28,10 +28,11 @@ class Transaction(models.Model):
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     draft = models.BooleanField(default=False)
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
-    serial = models.IntegerField(unique=True)
+    serial = models.BigIntegerField(unique=True)
     detail = models.CharField(max_length=1000, null=True)
     account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
     paid_amount = models.FloatField(default=0.0)
+    manual_invoice_serial = models.BigIntegerField(unique=True)
 
     class Meta:
         ordering = ["-date"]
@@ -42,7 +43,9 @@ class TransactionDetail(models.Model):
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, name="product")
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, name="product"
+    )
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
     yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])
     quantity = models.FloatField(validators=[MinValueValidator(1.0)])
