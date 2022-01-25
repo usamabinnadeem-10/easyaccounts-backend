@@ -234,6 +234,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             "account_type",
             "paid_amount",
             "detail",
+            "manual_invoice_serial",
         ]
 
     def update(self, instance, validated_data):
