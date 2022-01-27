@@ -225,12 +225,16 @@ class TransferStock(APIView):
 
     def post(self, request):
         body = request.data
+        stock = Stock.objects.get(id=body["id"])
+        product = stock.product
+        warehouse = stock.warehouse
         data = {
-            "product": Product.objects.get(id=body["product"]),
-            "warehouse": Warehouse.objects.get(id=body["from_warehouse"]),
-            "yards_per_piece": body["yards_per_piece"],
+            "product": product,
+            "warehouse": warehouse,
+            "yards_per_piece": stock.yards_per_piece,
             "quantity": body["transfer_quantity"],
         }
+        update_stock("D", data)
         to_warehouse = Warehouse.objects.get(id=body["to_warehouse"])
         data.update({"warehouse": to_warehouse})
         update_stock("C", data)
