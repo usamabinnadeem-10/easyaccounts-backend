@@ -1,4 +1,6 @@
+from typing import Dict
 from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
 
 from rest_framework import generics
 from rest_framework.views import APIView
@@ -9,12 +11,14 @@ from rest_framework.status import *
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
 from essentials.pagination import CustomPagination
+from essentials.models import *
 from .models import Transaction, TransactionDetail
 from .serializers import (
     TransactionSerializer,
     UpdateTransactionSerializer,
     update_stock,
 )
+from .utils import *
 
 from django.db.models import Min, Max, Avg, Sum, Count
 from datetime import date, datetime
@@ -166,7 +170,6 @@ class BusinessPerformanceHistory(APIView):
         expenses = ExpenseDetail.objects.filter(**filters).aggregate(
             total_expenses=Sum("amount")
         )
-        print(expenses)
         balances = GetAllBalances.as_view()(request=request._request).data
 
         final_data = {
@@ -215,3 +218,21 @@ class BusinessPerformanceHistory(APIView):
         )
 
         return Response(final_data, status=status.HTTP_200_OK)
+
+
+class TransferStock(APIView):
+    """Transfer stock from one warehouse to another"""
+
+    def post(self, request):
+        body = request.data
+        data = {
+            "product": Product.objects.get(id=body["product"]),
+            "warehouse": Warehouse.objects.get(id=body["from_warehouse"]),
+            "yards_per_piece": body["yards_per_piece"],
+            "quantity": body["transfer_quantity"],
+        }
+        to_warehouse = Warehouse.objects.get(id=body["to_warehouse"])
+        data.update({"warehouse": to_warehouse})
+        update_stock("C", data)
+
+        return Response({}, status=status.HTTP_201_CREATED)

@@ -8,4 +8,5 @@ urlpatterns = [
     path("search/", FilterTransactions.as_view()),
     path("product-performance-history/", ProductPerformanceHistory.as_view()),
     path("business-performance-history/", BusinessPerformanceHistory.as_view()),
+    path("transfer-stock/", TransferStock.as_view()),
 ]
