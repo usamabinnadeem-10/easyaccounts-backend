@@ -97,7 +97,7 @@ class DayBook(APIView):
         balance_ledgers = (
             Ledger.objects.values("account_type__name", "nature")
             .order_by("nature")
-            .filter(date__lte=today)
+            .filter(date__lte=today, account_type__isnull=False)
             .annotate(amount=Sum("amount"))
         )
         balance_expenses = (

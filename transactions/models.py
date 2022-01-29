@@ -35,7 +35,7 @@ class Transaction(models.Model):
     manual_invoice_serial = models.BigIntegerField(unique=True)
 
     class Meta:
-        ordering = ["-date"]
+        ordering = ["-date", "-serial"]
 
 
 class TransactionDetail(models.Model):
