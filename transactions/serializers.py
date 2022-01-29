@@ -175,6 +175,9 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             else:
                 detail_instance = TransactionDetail.objects.get(id=detail["id"])
                 old_quantity = detail_instance.quantity
+                old_gazaana = detail_instance.yards_per_piece
+                old_warehouse = detail_instance.warehouse
+                old_product = detail_instance.product
                 detail_instance.product = detail["product"]
                 detail_instance.rate = detail["rate"]
                 detail_instance.quantity = detail["quantity"]
@@ -189,6 +192,9 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                 instance.nature,
                 True,
                 old_quantity,
+                old_gazaana,
+                old_product,
+                old_warehouse
             )
 
             ledger_string += create_ledger_string(detail)

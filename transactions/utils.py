@@ -7,7 +7,7 @@ from ledgers.models import Ledger
 
 def is_low_quantity(stock_to_update, value):
     stock_in_hand = stock_to_update.stock_quantity - value
-    if stock_in_hand < 0:
+    if stock_in_hand < 0 or (stock_to_update.stock_quantity == 0):
         raise NotAcceptable(
             f"""{stock_to_update.product.name} low in stock. Stock = {stock_to_update.stock_quantity}""",
             400,
@@ -60,7 +60,14 @@ def create_ledger_string(detail):
 
 
 def update_stock(
-    current_nature, detail, old_nature=None, is_update=False, old_quantity=0.0
+    current_nature,
+    detail,
+    old_nature=None,
+    is_update=False,
+    old_quantity=0.0,
+    old_gazaana=None,
+    old_product=None,
+    old_warehouse=None,
 ):
     current_quantity = float(detail["quantity"])
     filters = {
@@ -68,11 +75,11 @@ def update_stock(
         "warehouse": detail["warehouse"],
         "yards_per_piece": detail["yards_per_piece"],
     }
+    created = False
     if current_nature == "C":
         stock_to_update, created = Stock.objects.get_or_create(**filters)
     else:
         stock_to_update = get_object_or_404(Stock, **filters)
-
     if is_update:
 
         adjustment_quantity = old_quantity if is_update else 0
@@ -80,19 +87,55 @@ def update_stock(
             current_quantity - adjustment_quantity
         )  # difference between last and current transaction
 
-        if current_nature == "C" and old_nature == "C":
-            stock_to_update.stock_quantity += difference
+        # if only the quantity is changed
+        if (
+            not created
+            and (old_gazaana == detail["yards_per_piece"])
+            and (old_product == detail["product"])
+            and (old_warehouse == detail["warehouse"])):
+            if current_nature == "C" and old_nature == "C":
+                stock_to_update.stock_quantity += difference
 
-        elif current_nature == "D" and old_nature == "D":
-            is_low_quantity(stock_to_update, difference)
-            stock_to_update.stock_quantity -= difference
+            elif current_nature == "D" and old_nature == "D":
+                is_low_quantity(stock_to_update, difference)
+                stock_to_update.stock_quantity -= difference
 
-        elif current_nature == "C" and old_nature == "D":
-            stock_to_update.stock_quantity += current_quantity + old_quantity
+            elif current_nature == "C" and old_nature == "D":
+                stock_to_update.stock_quantity += current_quantity + old_quantity
 
-        elif current_nature == "D" and old_nature == "C":
-            is_low_quantity(stock_to_update, current_quantity + old_quantity)
-            stock_to_update.stock_quantity -= current_quantity + old_quantity
+            elif current_nature == "D" and old_nature == "C":
+                is_low_quantity(stock_to_update, current_quantity + old_quantity)
+                stock_to_update.stock_quantity -= current_quantity + old_quantity
+
+        # if a new stock entry is created
+        # now stock_to_update is new!
+        else:
+            old_stock = get_object_or_404(Stock, **{
+                "product": old_product,
+                "warehouse": old_warehouse,
+                "yards_per_piece": old_gazaana,
+            })
+
+            if current_nature == "C" and old_nature == "C":
+                stock_to_update.stock_quantity += current_quantity
+                is_low_quantity(old_stock, old_quantity)
+                old_stock.stock_quantity -= old_quantity
+
+            elif current_nature == "D" and old_nature == "D":
+                is_low_quantity(stock_to_update, current_quantity)
+                stock_to_update.stock_quantity -= current_quantity
+                old_stock.stock_quantity += old_quantity
+
+            elif current_nature == "C" and old_nature == "D":
+                stock_to_update.stock_quantity += current_quantity
+                old_stock.stock_quantity += old_quantity
+
+            elif current_nature == "D" and old_nature == "C":
+                is_low_quantity(stock_to_update, current_quantity)
+                stock_to_update.stock_quantity -= current_quantity
+                old_stock.stock_quantity += old_quantity
+            
+            old_stock.save()
 
     else:
         if current_nature == "C":

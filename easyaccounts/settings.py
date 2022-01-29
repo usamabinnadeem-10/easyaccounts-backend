@@ -24,10 +24,11 @@ SECRET_KEY = "django-insecure-eb7!+icg1r0+*z+@+6h66g-7o*(oq-@0@6r%k=oikq84w)%56-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1"]
+ALLOWED_HOSTS = ["127.0.0.1", "a94d-110-39-11-4.ngrok.io"]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "https://easyaccounts.netlify.app",
 ]
 
 # Application definition
