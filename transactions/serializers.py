@@ -11,9 +11,6 @@ from .utils import *
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
-
-    warehouse_name = serializers.CharField(source="warehouse.name", read_only=True)
-
     class Meta:
         model = TransactionDetail
         fields = [
@@ -25,7 +22,6 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "quantity",
             "warehouse",
             "amount",
-            "warehouse_name",
         ]
         read_only_fields = ["id", "transaction"]
 
@@ -79,7 +75,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             details.append(TransactionDetail(transaction_id=transaction.id, **detail))
             update_stock(transaction.nature, detail)
 
-        TransactionDetail.objects.bulk_create(details)
+        transactions = TransactionDetail.objects.bulk_create(details)
 
         ledger_data = create_ledger_entries(
             transaction,
@@ -88,7 +84,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             ledger_string + f'{validated_data["detail"]}\n',
         )
         Ledger.objects.bulk_create(ledger_data)
-        validated_data["transaction_detail"] = transaction_details
+        validated_data["transaction_detail"] = transactions
         validated_data["id"] = transaction.id
         validated_data["serial"] = transaction.serial
         validated_data["date"] = transaction.date
@@ -194,7 +190,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                 old_quantity,
                 old_gazaana,
                 old_product,
-                old_warehouse
+                old_warehouse,
             )
 
             ledger_string += create_ledger_string(detail)
