@@ -86,6 +86,8 @@ class GetAllBalances(APIView):
         filters = {}
         if request.query_params.get("person"):
             filters.update({"person__person_type": request.query_params.get("person")})
+        if request.query_params.get("person_id"):
+            filters.update({"person": request.query_params.get("person_id")})
 
         balances = (
             Ledger.objects.values("nature", name=F("person__name"))
