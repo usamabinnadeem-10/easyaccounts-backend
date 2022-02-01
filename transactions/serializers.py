@@ -71,19 +71,21 @@ class TransactionSerializer(serializers.ModelSerializer):
         details = []
         ledger_string = ""
         for detail in transaction_details:
-            ledger_string += create_ledger_string(detail)
             details.append(TransactionDetail(transaction_id=transaction.id, **detail))
-            update_stock(transaction.nature, detail)
+            if not transaction.draft:
+                ledger_string += create_ledger_string(detail)
+                update_stock(transaction.nature, detail)
 
         transactions = TransactionDetail.objects.bulk_create(details)
-
-        ledger_data = create_ledger_entries(
-            transaction,
-            transaction_details,
-            paid,
-            ledger_string + f'{validated_data["detail"]}\n',
-        )
-        Ledger.objects.bulk_create(ledger_data)
+        if not transaction.draft:
+            ledger_data = create_ledger_entries(
+                transaction,
+                transaction_details,
+                paid,
+                ledger_string
+                + f'{validated_data["detail"] if validated_data["detail"] else ""}',
+            )
+            Ledger.objects.bulk_create(ledger_data)
         validated_data["transaction_detail"] = transactions
         validated_data["id"] = transaction.id
         validated_data["serial"] = transaction.serial

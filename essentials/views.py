@@ -128,4 +128,5 @@ class GetStockQuantity(ListAPIView):
         "stock_quantity": ["gte", "lte"],
         "product": ["exact"],
         "warehouse": ["exact"],
+        "yards_per_piece": ["gte", "lte", "exact"],
     }

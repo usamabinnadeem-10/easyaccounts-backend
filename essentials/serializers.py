@@ -8,7 +8,15 @@ from .models import *
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Person
-        fields = ["id", "name", "person_type", "business_name"]
+        fields = [
+            "id",
+            "name",
+            "person_type",
+            "business_name",
+            "address",
+            "city",
+            "phone_number",
+        ]
         read_only_fields = ["id"]
 
 
@@ -27,7 +35,6 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Product
         fields = [
@@ -40,7 +47,6 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class StockSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Stock
         fields = [

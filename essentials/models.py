@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MinLengthValidator, RegexValidator
 from uuid import uuid4
 
 
@@ -41,18 +41,31 @@ class PersonChoices(models.TextChoices):
 
 class Person(ID):
     """Supplier or Customer Account"""
+
     name = models.CharField(max_length=100, unique=True)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
+    address = models.CharField(max_length=300, null=True)
+    phone_number = models.CharField(
+        max_length=13,
+        validators=[
+            RegexValidator(
+                regex="^\+\d{12}$",
+                message="Phone number should look like this (+923001234567)",
+                code="nomatch",
+            ),
+        ],
+        unique=True,
+    )
+    city = models.CharField(max_length=100, null=True)
 
     def __str__(self) -> str:
         return self.name + ": " + self.person_type
 
 
-"""Account types like cash account or cheque account"""
-
-
 class AccountType(ID):
+    """Account types like cash account or cheque account"""
+
     name = models.CharField(max_length=100)
 
     def __str__(self) -> str:
@@ -61,6 +74,7 @@ class AccountType(ID):
 
 class Stock(models.Model):
     """Product stock quantity"""
+
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=False)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=False)
@@ -68,4 +82,4 @@ class Stock(models.Model):
     yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])
 
     class Meta:
-        unique_together = ('product', 'warehouse', 'yards_per_piece')
+        unique_together = ("product", "warehouse", "yards_per_piece")
