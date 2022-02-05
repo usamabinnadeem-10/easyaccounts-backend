@@ -7,6 +7,8 @@ from essentials.models import AccountType, Warehouse, Product, Person
 
 from datetime import date
 
+from django.db.models import Sum
+
 
 class TransactionChoices(models.TextChoices):
     CREDIT = "C", _("Credit")
@@ -63,3 +65,54 @@ class CancelledInvoice(models.Model):
 
     class Meta:
         unique_together = ("manual_invoice_serial", "manual_serial_type")
+
+
+class TransferEntry(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    date = models.DateField(default=date.today)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    yards_per_piece = models.FloatField(validators=[MinValueValidator(0.0)])
+    from_warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.CASCADE, related_name="from_warehouse"
+    )
+    to_warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.CASCADE, related_name="to_warehouse"
+    )
+    quantity = models.FloatField(validators=[MinValueValidator(0.0)])
+
+    @classmethod
+    def calculateTransferredAmount(cls, warehouse, product, filters):
+        custom_filters = {
+            **filters,
+            "product": product,
+        }
+        values = ["product", "from_warehouse", "to_warehouse"]
+        quantity = 0.0
+        transfers_in = (
+            TransferEntry.objects.values(*values)
+            .annotate(quantity=Sum("quantity"))
+            .filter(
+                **{
+                    **custom_filters,
+                    "to_warehouse": warehouse,
+                }
+            )
+        )
+        for t in transfers_in:
+            quantity += t["quantity"]
+
+        transfers_out = (
+            TransferEntry.objects.values(*values)
+            .annotate(quantity=Sum("quantity"))
+            .filter(
+                **{
+                    **custom_filters,
+                    "from_warehouse": warehouse,
+                }
+            )
+        )
+
+        for t in transfers_out:
+            quantity -= t["quantity"]
+
+        return quantity

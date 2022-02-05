@@ -10,4 +10,5 @@ urlpatterns = [
     path("business-performance-history/", BusinessPerformanceHistory.as_view()),
     path("transfer-stock/", TransferStock.as_view()),
     path("cancel-invoice/", CancelInvoice.as_view()),
+    path("detailed-stock/", DetailedStockView.as_view()),
 ]

@@ -12,3 +12,4 @@ class TransactionAdmin(admin.ModelAdmin):
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(TransactionDetail)
 admin.site.register(CancelledInvoice)
+admin.site.register(TransferEntry)

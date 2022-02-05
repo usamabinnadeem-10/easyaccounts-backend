@@ -1,4 +1,3 @@
-from typing import Dict
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 
@@ -17,12 +16,12 @@ from .serializers import (
     TransactionSerializer,
     UpdateTransactionSerializer,
     update_stock,
-    CancelledInvoiceSerializer
+    CancelledInvoiceSerializer,
 )
 from .utils import *
 
 from django.db.models import Min, Max, Avg, Sum, Count
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
 class GetOrCreateTransaction(generics.ListCreateAPIView):
@@ -229,21 +228,113 @@ class TransferStock(APIView):
         stock = Stock.objects.get(id=body["id"])
         product = stock.product
         warehouse = stock.warehouse
-        data = {
-            "product": product,
-            "warehouse": warehouse,
-            "yards_per_piece": stock.yards_per_piece,
-            "quantity": body["transfer_quantity"],
-        }
-        update_stock("D", data)
-        to_warehouse = Warehouse.objects.get(id=body["to_warehouse"])
-        data.update({"warehouse": to_warehouse})
-        update_stock("C", data)
+        if body["to_warehouse"] and body["transfer_quantity"]:
+            data = {
+                "product": product,
+                "warehouse": warehouse,
+                "yards_per_piece": stock.yards_per_piece,
+                "quantity": body["transfer_quantity"],
+            }
+            update_stock("D", data)
+            to_warehouse = Warehouse.objects.get(id=body["to_warehouse"])
+            data.update({"warehouse": to_warehouse})
+            update_stock("C", data)
 
-        return Response({}, status=status.HTTP_201_CREATED)
+            TransferEntry.objects.create(
+                product=product,
+                yards_per_piece=stock.yards_per_piece,
+                from_warehouse=warehouse,
+                to_warehouse=to_warehouse,
+                quantity=body["transfer_quantity"],
+            )
+            return Response({}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"error": "Please provide warehouse and quantity to transfer"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class CancelInvoice(generics.ListCreateAPIView):
 
     queryset = CancelledInvoice.objects.all()
     serializer_class = CancelledInvoiceSerializer
+
+
+class DetailedStockView(APIView):
+    def get(self, request):
+        qp = request.query_params
+        product = get_object_or_404(Product, id=qp.get("product"))
+        opening_stock = 0.0
+        filters = {
+            "product": product,
+        }
+        filters_transfers = {
+            "product": product,
+        }
+        if qp.get("start"):
+            start = datetime.strptime(qp.get("start"), "%Y-%m-%d")
+            filters.update({"transaction__date__gte": start})
+            filters_transfers.update({"date__gte": start})
+            startDateMinusOne = start - timedelta(days=1)
+
+            old_stock = (
+                TransactionDetail.objects.values("transaction__nature")
+                .annotate(quantity=Sum("quantity"))
+                .filter(transaction__date__lte=startDateMinusOne, product=product)
+            )
+            for old in old_stock:
+                if old["transaction__nature"] == "C":
+                    opening_stock += old["quantity"]
+                else:
+                    opening_stock -= old["quantity"]
+
+        if qp.get("end"):
+            filters.update({"transaction__date__lte": qp.get("end")})
+            filters_transfers.update({"date__lte": qp.get("end")})
+
+        if qp.get("yards_per_piece"):
+            filters.update({"yards_per_piece": qp.get("yards_per_piece")})
+            filters_transfers.update({"yards_per_piece": qp.get("yards_per_piece")})
+
+        if qp.get("warehouse"):
+            filters.update({"warehouse": qp.get("warehouse")})
+
+        if qp.get("warehouse") and qp.get("start"):
+            old_transfer_quantity = TransferEntry.calculateTransferredAmount(
+                qp.get("warehouse"),
+                qp.get("product"),
+                {
+                    "date__lte": startDateMinusOne,
+                },
+            )
+            print("\n\n", old_transfer_quantity, "\n\n")
+            opening_stock += old_transfer_quantity
+
+        stock = (
+            TransactionDetail.objects.values(
+                "transaction__nature",
+                "transaction_id",
+                "transaction__date",
+                "transaction__serial",
+                "transaction__manual_invoice_serial",
+                "transaction__manual_serial_type",
+                "transaction__person",
+                "warehouse",
+                "yards_per_piece",
+                "transaction__type",
+            )
+            .annotate(quantity=Sum("quantity"))
+            .filter(**filters)
+            .order_by("transaction__date")
+        )
+
+        transfers = TransferEntry.objects.filter(**filters_transfers).values()
+
+        return Response(
+            {
+                "data": stock,
+                "opening_stock": opening_stock,
+                "transfers": transfers,
+            },
+            status=status.HTTP_200_OK,
+        )
