@@ -11,6 +11,9 @@ class LedgerSerializer(serializers.ModelSerializer):
     manual_invoice_serial = serializers.IntegerField(
         source="transaction.manual_invoice_serial", read_only=True
     )
+    manual_serial_type = serializers.CharField(
+        source="transaction.manual_serial_type", read_only=True
+    )
 
     class Meta:
         model = Ledger
@@ -26,6 +29,7 @@ class LedgerSerializer(serializers.ModelSerializer):
             "draft",
             "transaction_serial",
             "manual_invoice_serial",
+            "manual_serial_type",
         ]
         read_only_fields = ["id"]
         extra_kwargs = {

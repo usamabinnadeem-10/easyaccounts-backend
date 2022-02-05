@@ -11,3 +11,4 @@ class TransactionAdmin(admin.ModelAdmin):
 # Register your models here.
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(TransactionDetail)
+admin.site.register(CancelledInvoice)

@@ -54,17 +54,60 @@ class TransactionSerializer(serializers.ModelSerializer):
             "detail",
             "person_name",
             "person_type",
+            "manual_serial_type",
         ]
         read_only_fields = ["id"]
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=Transaction.objects.all(),
+                fields=("manual_invoice_serial", "manual_serial_type"),
+                message="Invoice with that book number exists.",
+            )
+        ]
 
     def create(self, validated_data):
-
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
 
         last_serial_num = (
             Transaction.objects.aggregate(Max("serial"))["serial__max"] or 0
         )
+        book_serial = validated_data["manual_invoice_serial"]
+        max_from_cancelled = (
+            CancelledInvoice.objects.filter(
+                manual_serial_type=validated_data["manual_serial_type"]
+            ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
+            or 0
+        )
+        max_from_transactions = (
+            Transaction.objects.filter(
+                manual_serial_type=validated_data["manual_serial_type"]
+            ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
+            or 0
+        )
+        max_final = (
+            max_from_cancelled
+            if max_from_cancelled > max_from_transactions
+            else max_from_transactions
+        )
+
+        if max_final - validated_data["manual_invoice_serial"] > 1:
+            raise NotAcceptable(f"serial number {max_final} is missing")
+
+        cancelled = None
+        try:
+            cancelled = CancelledInvoice.objects.get(
+                manual_invoice_serial=validated_data["manual_invoice_serial"],
+                manual_serial_type=validated_data["manual_serial_type"],
+            )
+        except Exception:
+            pass
+
+        if cancelled:
+            raise NotAcceptable(
+                f"invoice with {cancelled.manual_serial_type}-{cancelled.manual_invoice_serial} exists"
+            )
+
         transaction = Transaction.objects.create(
             **validated_data, serial=last_serial_num + 1
         )
@@ -135,6 +178,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             "paid_amount",
             "detail",
             "manual_invoice_serial",
+            "manual_serial_type",
         ]
 
     def update(self, instance, validated_data):
@@ -254,3 +298,34 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             paid_instance.save()
 
         return super().update(instance, validated_data)
+
+
+class CancelledInvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CancelledInvoice
+        fields = ["id", "manual_invoice_serial", "manual_serial_type", "comment"]
+        read_only_fields = ["id"]
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=CancelledInvoice.objects.all(),
+                fields=("manual_invoice_serial", "manual_serial_type"),
+                message="Invoice with that book number exists.",
+            )
+        ]
+
+    def create(self, validated_data):
+        serial = None
+        try:
+            serial = Transaction.objects.get(
+                manual_invoice_serial=validated_data["manual_invoice_serial"],
+                manual_serial_type=validated_data["manual_serial_type"],
+            )
+        except Exception:
+            pass
+        if not serial:
+            return super().create(validated_data)
+        else:
+            raise NotAcceptable(
+                f"{serial.manual_invoice_serial} is already used in transaction ID # {serial.serial}",
+                400,
+            )

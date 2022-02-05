@@ -32,10 +32,12 @@ class Transaction(models.Model):
     detail = models.CharField(max_length=1000, null=True)
     account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
     paid_amount = models.FloatField(default=0.0)
-    manual_invoice_serial = models.BigIntegerField(unique=True)
+    manual_invoice_serial = models.BigIntegerField()
+    manual_serial_type = models.CharField(max_length=3)
 
     class Meta:
         ordering = ["-date", "-serial"]
+        unique_together = ("manual_invoice_serial", "manual_serial_type")
 
 
 class TransactionDetail(models.Model):
@@ -51,3 +53,13 @@ class TransactionDetail(models.Model):
     quantity = models.FloatField(validators=[MinValueValidator(1.0)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
     amount = models.FloatField(validators=[MinValueValidator(0.0)])
+
+
+class CancelledInvoice(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    manual_invoice_serial = models.BigIntegerField(unique=True)
+    manual_serial_type = models.CharField(max_length=3)
+    comment = models.CharField(max_length=500)
+
+    class Meta:
+        unique_together = ("manual_invoice_serial", "manual_serial_type")

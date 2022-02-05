@@ -12,11 +12,12 @@ from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
 from essentials.pagination import CustomPagination
 from essentials.models import *
-from .models import Transaction, TransactionDetail
+from .models import *
 from .serializers import (
     TransactionSerializer,
     UpdateTransactionSerializer,
     update_stock,
+    CancelledInvoiceSerializer
 )
 from .utils import *
 
@@ -240,3 +241,9 @@ class TransferStock(APIView):
         update_stock("C", data)
 
         return Response({}, status=status.HTTP_201_CREATED)
+
+
+class CancelInvoice(generics.ListCreateAPIView):
+
+    queryset = CancelledInvoice.objects.all()
+    serializer_class = CancelledInvoiceSerializer
