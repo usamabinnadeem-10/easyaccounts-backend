@@ -20,7 +20,7 @@ from .serializers import (
 )
 from .utils import *
 
-from django.db.models import Min, Max, Avg, Sum, Count
+from django.db.models import Min, Max, Avg, Sum, Count, Q
 from datetime import date, datetime, timedelta
 
 
@@ -307,7 +307,6 @@ class DetailedStockView(APIView):
                     "date__lte": startDateMinusOne,
                 },
             )
-            print("\n\n", old_transfer_quantity, "\n\n")
             opening_stock += old_transfer_quantity
 
         stock = (
@@ -328,7 +327,14 @@ class DetailedStockView(APIView):
             .order_by("transaction__date")
         )
 
-        transfers = TransferEntry.objects.filter(**filters_transfers).values()
+        if qp.get("warehouse"):
+            transfers = TransferEntry.objects.filter(
+                Q(from_warehouse=qp.get("warehouse"))
+                | Q(to_warehouse=qp.get("warehouse")),
+                **filters_transfers,
+            ).values()
+        else:
+            transfers = TransferEntry.objects.filter(**filters_transfers).values()
 
         return Response(
             {
