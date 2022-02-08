@@ -115,9 +115,19 @@ class ProductPerformanceHistory(APIView):
         filters = {"transaction__nature": "D", "transaction__person__person_type": "C"}
         values = ["product__name"]
         person = request.query_params.get("person")
+        product = request.query_params.get("product")
+        start = request.query_params.get("start")
+        end = request.query_params.get("end")
         if person:
             filters.update({"transaction__person": person})
             values.append("transaction__person")
+        if product:
+            filters.update({"product": product})
+        if start:
+            filters.update({"transaction__date__gte": start})
+        if end:
+            filters.update({"transaction__date__lte": end})
+
         stats = (
             TransactionDetail.objects.values(*values)
             .annotate(
