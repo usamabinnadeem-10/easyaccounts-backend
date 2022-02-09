@@ -83,3 +83,9 @@ class Stock(models.Model):
 
     class Meta:
         unique_together = ("product", "warehouse", "yards_per_piece")
+
+
+class LinkedAccount(models.Model):
+
+    name = models.CharField(max_length=100)
+    account = models.ForeignKey(AccountType, on_delete=models.CASCADE)

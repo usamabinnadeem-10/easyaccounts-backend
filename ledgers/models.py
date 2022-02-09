@@ -3,6 +3,7 @@ import uuid
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 
+from cheques.models import Cheque
 from essentials.models import AccountType, Person
 from transactions.models import Transaction
 
@@ -24,6 +25,7 @@ class Ledger(models.Model):
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True)
     draft = models.BooleanField(default=False)
+    cheque = models.ForeignKey(Cheque, on_delete=models.CASCADE, null=True)
 
     class Meta:
         ordering = ["date"]
