@@ -9,6 +9,7 @@ from essentials.pagination import CustomPagination
 
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
+from cheques.choices import ChequeStatusChoices
 
 from datetime import date, datetime, timedelta
 
@@ -47,6 +48,27 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
             .annotate(amount=Sum("amount"))
             .filter(date__lte=startDateMinusOne)
         )
+
+        # sum all the cheques which have a history, group by nature
+        balance_cheques_history = (
+            queryset.values(
+                "external_cheque__serial",
+                "nature",
+                # "external_cheque__parent_cheque__account_type",
+            )
+            .order_by("nature")
+            .filter(external_cheque__parent_cheque__return_cheque__isnull=True)
+            .annotate(amount=Sum("external_cheque__parent_cheque__amount"))
+        )
+        print(balance_cheques_history)
+
+        balance_cheques = (
+            queryset.values("external_cheque__serial", "nature")
+            .order_by("nature")
+            .filter(external_cheque__status=ChequeStatusChoices.TRANSFERRED)
+            .annotate(amount=Sum("external_cheque__amount"))
+        )
+        print(balance_cheques)
 
         opening_balance = 0
         for b in balance:

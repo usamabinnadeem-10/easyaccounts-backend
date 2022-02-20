@@ -3,11 +3,14 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
-    path("create/", CreateChequeEntryView.as_view()),
-    path("create/cheque-history/", CreateChequeHistoryView.as_view()),
+    path("create/", CreateExternalChequeEntryView.as_view()),
+    path("create/cheque-history/", CreateExternalChequeHistoryView.as_view()),
     path(
         "create/cheque-history-with-cheque/",
-        CreateChequeHistoryWithChequeView.as_view(),
+        CreateExternalChequeHistoryWithChequeView.as_view(),
     ),
-    path("list/cheque-history/", GetChequeHistory.as_view()),
+    path("list/cheque-history/", GetExternalChequeHistory.as_view()),
+    path("pass/", PassExternalChequeView.as_view()),
+    path("transfer/", TransferExternalChequeView.as_view()),
+    path("transfer/return/", ReturnExternalTransferredCheque.as_view()),
 ]
