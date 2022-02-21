@@ -64,6 +64,7 @@ class ExternalChequeHistory(models.Model):
         null=True,
         related_name="return_cheque",
     )
+    date = models.DateField(default=date.today)
 
 
 class ExternalChequeTransfer(models.Model):

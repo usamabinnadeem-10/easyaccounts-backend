@@ -104,6 +104,7 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
             "account_type",
             "amount",
             "return_cheque",
+            "date",
         ]
         read_only_fields = ["id", "return_cheque", "parent_cheque"]
 
@@ -168,6 +169,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
             "amount",
             "return_cheque",
             "cheque_data",
+            "date",
         ]
         read_only_fields = ["id", "account_type", "return_cheque", "amount"]
 

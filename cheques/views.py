@@ -15,6 +15,13 @@ from ledgers.models import Ledger
 from datetime import date
 
 
+def return_error(error_msg):
+    return Response(
+        {"error": error_msg},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 class CreateExternalChequeEntryView(CreateAPIView):
 
     queryset = ExternalCheque.objects.all()
@@ -77,28 +84,17 @@ class PassExternalChequeView(APIView):
                 status=ChequeStatusChoices.PENDING,
             )
         except:
-            return Response(
-                {
-                    "error": get_cheque_error(
-                        ExternalCheque.objects.get(id=data["cheque"])
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            return_error(
+                get_cheque_error(ExternalCheque.objects.get(id=data["cheque"]))
             )
 
         # check if this cheque has any history
         if ExternalChequeHistory.objects.filter(cheque=cheque).exists():
-            return Response(
-                {"error": "This cheque has a history, it can not be passed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return_error("This cheque has a history, it can not be passed")
 
         # check if account type is cheque account
         if LinkedAccount.objects.get(name=CHEQUE_ACCOUNT).account.id == account_type.id:
-            return Response(
-                {"error": "Please choose a different account type"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return_error("Please choose a different account type")
 
         prev_history = ExternalChequeHistory.objects.filter(return_cheque=cheque)
         parent = None
@@ -136,10 +132,7 @@ class ReturnExternalTransferredCheque(APIView):
                 status=ChequeStatusChoices.TRANSFERRED,
             )
         except:
-            return Response(
-                {"error": "Cheque not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return_error("Cheque not found")
 
         transfer = ExternalChequeTransfer.objects.get(
             cheque=cheque,
@@ -154,6 +147,34 @@ class ReturnExternalTransferredCheque(APIView):
 
         # delete the transfer entry
         transfer.delete()
+
+        return Response(
+            {"message": "Cheque returned successfully"}, status=status.HTTP_201_CREATED
+        )
+
+
+class ReturnExternalCheque(APIView):
+    def post(self, request):
+        data = request.data
+        try:
+            cheque = get_object_or_404(
+                ExternalCheque,
+                id=data["cheque"],
+                status=ChequeStatusChoices.PENDING,
+            )
+        except:
+            return Response(
+                {"error": "Cheque not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # make sure cheque does not have a history
+        if has_history(cheque):
+            return_error("This cheque has history, it can not be returned")
+
+        create_ledger_entry_for_cheque(cheque, "D")
+        cheque.status = ChequeStatusChoices.RETURNED
+        cheque.save()
 
         return Response(
             {"message": "Cheque returned successfully"}, status=status.HTTP_201_CREATED
