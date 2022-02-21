@@ -99,6 +99,7 @@ class PassExternalChequeView(APIView):
                 {"error": "Please choose a different account type"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         prev_history = ExternalChequeHistory.objects.filter(return_cheque=cheque)
         parent = None
         if prev_history.exists():

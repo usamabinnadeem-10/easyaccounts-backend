@@ -10,8 +10,11 @@ from essentials.pagination import CustomPagination
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
 from cheques.choices import ChequeStatusChoices
+from cheques.serializers import get_cheque_account
+from cheques.models import ExternalCheque
 
 from datetime import date, datetime, timedelta
+from functools import reduce
 
 
 class CreateOrListLedgerDetail(generics.ListCreateAPIView):
@@ -49,30 +52,56 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
             .filter(date__lte=startDateMinusOne)
         )
 
+        cheque_account = get_cheque_account().account
+
         # sum all the cheques which have a history, group by nature
         balance_cheques_history = (
             queryset.values(
-                "external_cheque__serial",
                 "nature",
-                # "external_cheque__parent_cheque__account_type",
+                "external_cheque__parent_cheque__account_type",
             )
             .order_by("nature")
-            .filter(external_cheque__parent_cheque__return_cheque__isnull=True)
             .annotate(amount=Sum("external_cheque__parent_cheque__amount"))
         )
-        print(balance_cheques_history)
 
-        balance_cheques = (
-            queryset.values("external_cheque__serial", "nature")
+        # filter the cheques history which are cheque accounts
+        filtered_balance_cheques_history = list(
+            filter(
+                lambda balance: balance["external_cheque__parent_cheque__account_type"]
+                == cheque_account.id,
+                balance_cheques_history,
+            )
+        )
+
+        # get the sum of pending cheques amounts
+        cheque_balance_with_history = reduce(
+            lambda prev, curr: prev
+            + (curr["amount"] if curr["nature"] == "D" else -curr["amount"]),
+            filtered_balance_cheques_history,
+            0,
+        )
+
+        persons_transferred_cheques = ExternalCheque.objects.filter(
+            person=qp.get("person"), status=ChequeStatusChoices.TRANSFERRED
+        ).aggregate(amount=Sum("amount"))
+
+        # sum of cheques that have been transferred to this person
+        balance_cheques = list(
+            queryset.values("nature")
             .order_by("nature")
             .filter(external_cheque__status=ChequeStatusChoices.TRANSFERRED)
             .annotate(amount=Sum("external_cheque__amount"))
         )
-        print(balance_cheques)
+        sum_of_transferred_to_this_person = reduce(
+            lambda prev, curr: prev + curr["amount"], balance_cheques, 0
+        )
 
-        opening_balance = 0
-        for b in balance:
-            opening_balance += b["amount"] if b["nature"] == "C" else -b["amount"]
+        opening_balance = reduce(
+            lambda prev, curr: prev
+            + (curr["amount"] if curr["nature"] == "C" else -curr["amount"]),
+            balance,
+            0,
+        )
 
         ledger_data = LedgerSerializer(
             self.paginate_queryset(
@@ -84,6 +113,9 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         ).data
         page = self.get_paginated_response(ledger_data)
         page.data["opening_balance"] = opening_balance
+        page.data["pending_cheques"] = cheque_balance_with_history
+        page.data["transferred_cheques"] = persons_transferred_cheques
+        page.data["transferred_to_this_person"] = sum_of_transferred_to_this_person
 
         return Response(page.data, status=status.HTTP_200_OK)
 
