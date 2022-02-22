@@ -28,8 +28,15 @@ from django.db import models
 class ChequeStatusChoices(models.TextChoices):
     PENDING = "pending", "Pending"
     TRANSFERRED = "transferred", "Transferred"
-    COMPLETED = "completed", "Completed"
+    CLEARED = "cleared", "Cleared"
     RETURNED = "returned", "Returned"
+
+
+class PersonalChequeStatusChoices(models.TextChoices):
+    PENDING = "pending", "Pending"
+    CLEARED = "cleared", "Cleared"
+    RETURNED = "returned", "Returned"
+    CANCELLED = "cancelled", "Cancelled"
 
 
 class BankChoices(models.TextChoices):

@@ -9,9 +9,9 @@ from essentials.pagination import CustomPagination
 
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
-from cheques.choices import ChequeStatusChoices
+from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.serializers import get_cheque_account
-from cheques.models import ExternalCheque
+from cheques.models import ExternalCheque, PersonalCheque
 
 from datetime import date, datetime, timedelta
 from functools import reduce
@@ -96,6 +96,10 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
             lambda prev, curr: prev + curr["amount"], balance_cheques, 0
         )
 
+        personal_cheque_balance = PersonalCheque.objects.filter(
+            person=qp.get("person"), status=PersonalChequeStatusChoices.PENDING
+        ).aggregate(amount=Sum("amount"))
+
         opening_balance = reduce(
             lambda prev, curr: prev
             + (curr["amount"] if curr["nature"] == "C" else -curr["amount"]),
@@ -116,6 +120,7 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         page.data["pending_cheques"] = cheque_balance_with_history
         page.data["transferred_cheques"] = persons_transferred_cheques
         page.data["transferred_to_this_person"] = sum_of_transferred_to_this_person
+        page.data["personal_pending"] = personal_cheque_balance["amount"]
 
         return Response(page.data, status=status.HTTP_200_OK)
 

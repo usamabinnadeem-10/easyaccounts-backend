@@ -15,6 +15,11 @@ class ExternalChequeTransferAdmin(admin.ModelAdmin):
     list_display = ["cheque", "person"]
 
 
+class PersonalChequeAdmin(admin.ModelAdmin):
+    list_display = ["id", "serial", "amount"]
+
+
 admin.site.register(ExternalCheque, ExternalChequeAdmin)
 admin.site.register(ExternalChequeHistory, ExternalChequeHistoryAdmin)
 admin.site.register(ExternalChequeTransfer, ExternalChequeTransferAdmin)
+admin.site.register(PersonalCheque, PersonalChequeAdmin)

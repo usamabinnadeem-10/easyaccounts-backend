@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.generics import ListAPIView, CreateAPIView
+from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -10,7 +10,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .choices import ChequeStatusChoices
 from .serializers import *
 from .models import *
-from ledgers.models import Ledger
 
 from datetime import date
 
@@ -23,18 +22,21 @@ def return_error(error_msg):
 
 
 class CreateExternalChequeEntryView(CreateAPIView):
+    """create external cheque"""
 
     queryset = ExternalCheque.objects.all()
     serializer_class = CreateExternalChequeEntrySerializer
 
 
 class CreateExternalChequeHistoryView(CreateAPIView):
+    """create external cheque's history (does not allow cheque account)"""
 
     queryset = ExternalChequeHistory.objects.all()
     serializer_class = ExternalChequeHistorySerializer
 
 
 class CreateExternalChequeHistoryWithChequeView(CreateAPIView):
+    """create external cheque history (only cheque account allowed)"""
 
     queryset = ExternalChequeHistory.objects.all()
     serializer_class = ExternalChequeHistoryWithChequeSerializer
@@ -51,6 +53,10 @@ class GetExternalChequeHistory(ListAPIView):
         "due_date": ["gte", "lte", "exact"],
         "cheque_number": ["contains"],
         "serial": ["gte", "lte", "exact"],
+        "status": ["exact"],
+        "amount": ["gte", "lte", "exact"],
+        "bank": ["exact"],
+        "person": ["exact"],
     }
 
 
@@ -71,6 +77,8 @@ def get_cheque_error(cheque):
 
 
 class PassExternalChequeView(APIView):
+    """pass external cheque"""
+
     def post(self, request):
         cheque = None
         try:
@@ -123,6 +131,8 @@ class TransferExternalChequeView(CreateAPIView):
 
 
 class ReturnExternalTransferredCheque(APIView):
+    """return the external transferred cheque"""
+
     def post(self, request):
         data = request.data
         try:
@@ -154,6 +164,8 @@ class ReturnExternalTransferredCheque(APIView):
 
 
 class ReturnExternalCheque(APIView):
+    """return external cheque from the person it came from"""
+
     def post(self, request):
         data = request.data
         try:
@@ -179,3 +191,58 @@ class ReturnExternalCheque(APIView):
         return Response(
             {"message": "Cheque returned successfully"}, status=status.HTTP_201_CREATED
         )
+
+
+class IssuePersonalChequeView(CreateAPIView):
+    """Issue personal cheque view"""
+
+    queryset = PersonalCheque.objects.all()
+    serializer_class = IssuePersonalChequeSerializer
+
+
+class ReturnPersonalChequeView(CreateAPIView):
+    """return personal cheque from a person"""
+
+    serializer_class = ReturnPersonalChequeSerializer
+    queryset = PersonalCheque.objects.all()
+
+
+class ReIssuePersonalChequeFromReturnedView(CreateAPIView):
+    """issue a personal cheque which was returned by a person"""
+
+    serializer_class = ReIssuePersonalChequeFromReturnedSerializer
+    queryset = PersonalCheque.objects.all()
+
+
+class PassPersonalChequeView(UpdateAPIView):
+    """set the status of cheque from pending to completed"""
+
+    serializer_class = PassPersonalChequeSerializer
+    queryset = PersonalCheque.objects.filter(status=PersonalChequeStatusChoices.PENDING)
+
+
+class CancelPersonalChequeView(UpdateAPIView):
+    """set the status of cheque from returned to cancelled"""
+
+    serializer_class = CancelPersonalChequeSerializer
+    queryset = PersonalCheque.objects.filter(
+        status=PersonalChequeStatusChoices.RETURNED
+    )
+
+
+class ListPersonalChequeView(ListAPIView):
+    queryset = PersonalCheque.objects.all()
+    serializer_class = IssuePersonalChequeSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        "id": ["exact"],
+        "date": ["gte", "lte", "exact"],
+        "due_date": ["gte", "lte", "exact"],
+        "cheque_number": ["contains"],
+        "serial": ["gte", "lte", "exact"],
+        "status": ["exact"],
+        "amount": ["gte", "lte", "exact"],
+        "bank": ["exact"],
+        "person": ["exact"],
+        "account_type": ["exact"],
+    }

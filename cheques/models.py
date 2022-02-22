@@ -16,9 +16,8 @@ class AbstractCheque(models.Model):
     bank = models.CharField(max_length=20, choices=BankChoices.choices)
     date = models.DateField(default=date.today)
     due_date = models.DateField()
-    is_passed = models.BooleanField(default=False)
-    is_returned = models.BooleanField(default=False)
     amount = models.FloatField(validators=[MinValueValidator(1.0)])
+    person = models.ForeignKey(Person, on_delete=models.CASCADE)
 
     class Meta:
         abstract = True
@@ -30,7 +29,6 @@ class AbstractCheque(models.Model):
 
 
 class ExternalCheque(AbstractCheque):
-    person = models.ForeignKey(Person, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=12,
         choices=ChequeStatusChoices.choices,
@@ -39,8 +37,12 @@ class ExternalCheque(AbstractCheque):
 
 
 class PersonalCheque(AbstractCheque):
-    issued_to = models.ForeignKey(Person, on_delete=models.CASCADE)
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
+    status = models.CharField(
+        max_length=12,
+        choices=PersonalChequeStatusChoices.choices,
+        default=PersonalChequeStatusChoices.PENDING,
+    )
 
 
 class ExternalChequeHistory(models.Model):
@@ -74,7 +76,3 @@ class ExternalChequeTransfer(models.Model):
         on_delete=models.CASCADE,
     )
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
-
-
-# TODOs:
-## set a status on cheque (parent) which would indicate where the cheque is rn in its lifecycle
