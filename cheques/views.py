@@ -118,7 +118,7 @@ class PassExternalChequeView(APIView):
             amount=cheque.amount,
         )
 
-        cheque.status = ChequeStatusChoices.COMPLETED
+        cheque.status = ChequeStatusChoices.CLEARED
         cheque.save()
 
         return Response({"message": "Cheque passed"}, status=status.HTTP_201_CREATED)
