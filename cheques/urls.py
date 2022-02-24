@@ -1,0 +1,23 @@
+from django.urls import path
+
+from .views import *
+
+urlpatterns = [
+    path("external/create/", CreateExternalChequeEntryView.as_view()),
+    path("external/create/cheque-history/", CreateExternalChequeHistoryView.as_view()),
+    path(
+        "external/create/cheque-history-with-cheque/",
+        CreateExternalChequeHistoryWithChequeView.as_view(),
+    ),
+    path("external/list/cheque-history/", GetExternalChequeHistory.as_view()),
+    path("external/pass/", PassExternalChequeView.as_view()),
+    path("external/transfer/", TransferExternalChequeView.as_view()),
+    path("external/transfer/return/", ReturnExternalTransferredCheque.as_view()),
+    path("external/return/", ReturnExternalCheque.as_view()),
+    path("personal/issue/", IssuePersonalChequeView.as_view()),
+    path("personal/return/", ReturnPersonalChequeView.as_view()),
+    path("personal/return/reissue/", ReIssuePersonalChequeFromReturnedView.as_view()),
+    path("personal/pass/<uuid:pk>/", PassPersonalChequeView.as_view()),
+    path("personal/cancel/<uuid:pk>/", CancelPersonalChequeView.as_view()),
+    path("personal/list/", ListPersonalChequeView.as_view()),
+]

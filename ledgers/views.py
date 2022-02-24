@@ -9,8 +9,11 @@ from essentials.pagination import CustomPagination
 
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
+from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
+from cheques.models import ExternalCheque, PersonalCheque, ExternalChequeHistory
 
 from datetime import date, datetime, timedelta
+from functools import reduce
 
 
 class CreateOrListLedgerDetail(generics.ListCreateAPIView):
@@ -35,6 +38,7 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         qp = self.request.query_params
+        person = qp.get("person")
         queryset = self.get_queryset()
 
         startDate = (
@@ -48,9 +52,33 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
             .filter(date__lte=startDateMinusOne)
         )
 
-        opening_balance = 0
-        for b in balance:
-            opening_balance += b["amount"] if b["nature"] == "C" else -b["amount"]
+        balance_external_cheques = Ledger.get_external_cheque_balance(person)
+        recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(person)
+        PENDING_CHEQUES = balance_external_cheques - recovered_external_cheque_amount
+
+        persons_transferred_cheques = ExternalCheque.get_sum_of_transferred_cheques(
+            person
+        )
+
+        # sum of cheques that have been transferred to this person
+        balance_cheques = list(
+            queryset.values("nature")
+            .order_by("nature")
+            .filter(external_cheque__status=ChequeStatusChoices.TRANSFERRED)
+            .annotate(amount=Sum("external_cheque__amount"))
+        )
+        sum_of_transferred_to_this_person = reduce(
+            lambda prev, curr: prev + curr["amount"], balance_cheques, 0
+        )
+
+        personal_cheque_balance = PersonalCheque.get_pending_cheques(person)
+
+        opening_balance = reduce(
+            lambda prev, curr: prev
+            + (curr["amount"] if curr["nature"] == "C" else -curr["amount"]),
+            balance,
+            0,
+        )
 
         ledger_data = LedgerSerializer(
             self.paginate_queryset(
@@ -62,6 +90,10 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         ).data
         page = self.get_paginated_response(ledger_data)
         page.data["opening_balance"] = opening_balance
+        page.data["pending_cheques"] = PENDING_CHEQUES
+        page.data["transferred_cheques"] = persons_transferred_cheques
+        page.data["transferred_to_this_person"] = sum_of_transferred_to_this_person
+        page.data["personal_pending"] = personal_cheque_balance
 
         return Response(page.data, status=status.HTTP_200_OK)
 

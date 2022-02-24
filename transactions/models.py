@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from uuid import uuid4
 
@@ -9,17 +8,7 @@ from datetime import date
 
 from django.db.models import Sum
 
-
-class TransactionChoices(models.TextChoices):
-    CREDIT = "C", _("Credit")
-    DEBIT = "D", _("Debit")
-
-
-class TransactionTypes(models.TextChoices):
-    MAAL_WAPSI = "maal_wapsi", _("Maal Wapsi")
-    PAID = "paid", _("Paid")
-    PURCHASE = "purchase", _("Purchase")
-    CREDIT = "credit", _("Credit")
+from .choices import *
 
 
 class Transaction(models.Model):

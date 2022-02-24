@@ -9,7 +9,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .serializers import *
 from .models import *
 
-from datetime import date
+from datetime import date, datetime
+from itertools import chain
 
 from transactions.models import Transaction
 from transactions.serializers import TransactionSerializer
@@ -17,6 +18,8 @@ from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
+from essentials.pagination import CustomPagination, PaginationHandlerMixin
+from cheques.models import ExternalChequeHistory
 
 
 class CreateAndListPerson(ListCreateAPIView):
@@ -130,3 +133,47 @@ class GetStockQuantity(ListAPIView):
         "warehouse": ["exact"],
         "yards_per_piece": ["gte", "lte", "exact"],
     }
+
+
+class GetAccountHistory(APIView, PaginationHandlerMixin):
+    """Get account history for a specific account type"""
+
+    pagination_class = CustomPagination
+
+    def get(self, request):
+        try:
+            qp = request.query_params
+            account = qp.get("account")
+            filters = {}
+            start_date = (
+                datetime.strptime(qp.get("start"), "%Y-%m-%d")
+                if qp.get("start")
+                else None
+            )
+            if start_date:
+                filters.update({"date__gte": start_date})
+            end_date = (
+                datetime.strptime(qp.get("end"), "%Y-%m-%d") if qp.get("end") else None
+            )
+            if end_date:
+                filters.update({"date__lte": end_date})
+
+            account = AccountType.objects.get(id=account)
+            ledger = Ledger.objects.filter(
+                **{**filters, "account_type": account}
+            ).values()
+            external_cheque_history = ExternalChequeHistory.objects.filter(
+                **filters
+            ).values()
+            final_result = sorted(
+                chain(ledger, external_cheque_history), key=lambda obj: obj["date"]
+            )
+            paginated = self.paginate_queryset(final_result)
+            paginated = self.get_paginated_response(paginated).data
+            return Response({"data": paginated}, status=status.HTTP_200_OK)
+
+        except:
+            return Response(
+                {"error": "Please choose an account type"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
