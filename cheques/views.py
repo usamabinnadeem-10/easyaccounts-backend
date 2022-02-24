@@ -3,13 +3,32 @@ from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .choices import ChequeStatusChoices
-from .serializers import *
-from .models import *
+from .serializers import (
+    ExternalChequeHistorySerializer,
+    CreateExternalChequeEntrySerializer,
+    ExternalChequeHistoryWithChequeSerializer,
+    ListExternalChequeHistorySerializer,
+    TransferExternalChequeSerializer,
+    IssuePersonalChequeSerializer,
+    CancelPersonalChequeSerializer,
+    PassPersonalChequeSerializer,
+    ReIssuePersonalChequeFromReturnedSerializer,
+    ReturnPersonalChequeSerializer,
+)
+from .models import (
+    ExternalCheque,
+    ExternalChequeHistory,
+    PersonalCheque,
+    ExternalChequeTransfer,
+)
+from .utils import CHEQUE_ACCOUNT, create_ledger_entry_for_cheque, has_history
+from .choices import PersonalChequeStatusChoices
+
+from essentials.models import AccountType, LinkedAccount
 
 from datetime import date
 
@@ -135,14 +154,11 @@ class ReturnExternalTransferredCheque(APIView):
 
     def post(self, request):
         data = request.data
-        try:
-            cheque = get_object_or_404(
-                ExternalCheque,
-                id=data["cheque"],
-                status=ChequeStatusChoices.TRANSFERRED,
-            )
-        except:
-            return_error("Cheque not found")
+        cheque = get_object_or_404(
+            ExternalCheque,
+            id=data["cheque"],
+            status=ChequeStatusChoices.TRANSFERRED,
+        )
 
         transfer = ExternalChequeTransfer.objects.get(
             cheque=cheque,

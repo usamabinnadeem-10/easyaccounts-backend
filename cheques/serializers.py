@@ -3,9 +3,26 @@ from rest_framework import serializers
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 
-from .models import *
-from ledgers.models import Ledger
-from essentials.models import LinkedAccount, AccountType
+from essentials.models import Person
+
+from .models import (
+    ExternalCheque,
+    ExternalChequeHistory,
+    PersonalCheque,
+    ExternalChequeTransfer,
+)
+from .choices import ChequeStatusChoices, PersonalChequeStatusChoices
+from .utils import (
+    get_cheque_account,
+    get_parent_cheque,
+    is_transferred,
+    create_ledger_entry_for_cheque,
+    has_history,
+    is_not_cheque_account,
+)
+
+# from ledgers.models import Ledger
+# from essentials.models import LinkedAccount, AccountType
 
 
 CHEQUE_ACCOUNT = "cheque_account"
@@ -18,92 +35,90 @@ class ExternalChequeSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial", "person"]
 
 
-def is_valid_history_entry(data, parent_amount):
-    """checks if amount is legal when history is created"""
-    amount_present = (
-        ExternalChequeHistory.objects.values("cheque")
-        .filter(cheque=data["cheque"])
-        .annotate(amount=Sum("amount"))
-    )
-    prev_amount = 0
-    if len(amount_present):
-        prev_amount = amount_present[0]["amount"]
+# def is_valid_history_entry(data, parent_amount):
+#     """checks if amount is legal when history is created"""
+#     amount_present = (
+#         ExternalChequeHistory.objects.values("cheque")
+#         .filter(cheque=data["cheque"])
+#         .annotate(amount=Sum("amount"))
+#     )
+#     prev_amount = 0
+#     if len(amount_present):
+#         prev_amount = amount_present[0]["amount"]
 
-    if prev_amount + data["amount"] <= parent_amount:
-        return True
-    raise serializers.ValidationError(
-        f"Remaining cheque value = {parent_amount - prev_amount}, you entered {data['amount']}",
-        400,
-    )
-
-
-def get_parent_cheque(validated_data):
-    previous_history = ExternalChequeHistory.objects.filter(
-        return_cheque=validated_data["cheque"]
-    )
-    parent = None
-    if previous_history.exists():
-        parent = previous_history[0].parent_cheque
-    else:
-        parent = validated_data["cheque"]
-    is_valid_history_entry(validated_data, parent.amount)
-    return parent
+#     if prev_amount + data["amount"] <= parent_amount:
+#         return True
+#     raise serializers.ValidationError(
+#         f"Remaining cheque value = {parent_amount - prev_amount}, you entered {data['amount']}",
+#         400,
+#     )
 
 
-def has_history(cheque):
-    """check if this cheque has a history"""
-    return ExternalChequeHistory.objects.filter(cheque=cheque).exists()
+# def get_parent_cheque(validated_data):
+#     previous_history = ExternalChequeHistory.objects.filter(
+#         return_cheque=validated_data["cheque"]
+#     )
+#     parent = None
+#     if previous_history.exists():
+#         parent = previous_history[0].parent_cheque
+#     else:
+#         parent = validated_data["cheque"]
+#     is_valid_history_entry(validated_data, parent.amount)
+#     return parent
 
 
-def is_transferred(cheque):
-    """check if this cheque has already been transferred"""
-    return cheque.status == ChequeStatusChoices.TRANSFERRED
+# def has_history(cheque):
+#     """check if this cheque has a history"""
+#     return ExternalChequeHistory.objects.filter(cheque=cheque).exists()
 
 
-def get_cheque_account():
-    """get cheque account"""
-    try:
-        return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT)
-    except:
-        raise serializers.ValidationError("Please create a cheque account first", 400)
+# def is_transferred(cheque):
+#     """check if this cheque has already been transferred"""
+#     return cheque.status == ChequeStatusChoices.TRANSFERRED
 
 
-def is_not_cheque_account(account_type):
-    """raise error if it's a cheque account"""
-    cheque_account = get_cheque_account().account
-    if cheque_account == account_type:
-        raise serializers.ValidationError("Please select another account type", 400)
+# def get_cheque_account():
+#     """get cheque account"""
+#     try:
+#         return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT)
+#     except:
+#         raise serializers.ValidationError("Please create a cheque account first", 400)
 
 
-def create_ledger_entry_for_cheque(
-    cheque_obj, nature="C", is_transfer=False, transfer_to=None, **kwargs
-):
-    print(kwargs)
-    message = ""
-    if is_transfer and nature == "C":
-        message = "Cheque return -- "
-    elif is_transfer and nature == "D":
-        message = "Cheque transfer -- "
-    cheque_linked_account = get_cheque_account()
-    data_for_ledger = {
-        "date": cheque_obj.date,
-        "amount": cheque_obj.amount,
-        "nature": nature,
-        "person": transfer_to if is_transfer else cheque_obj.person,
-        "account_type": cheque_linked_account.account,
-        "detail": (
-            f"""{message}{cheque_obj.get_bank_display()} -- {cheque_obj.cheque_number} / due date : {cheque_obj.due_date}"""
-        ),
-    }
+# def is_not_cheque_account(account_type):
+#     """raise error if it's a cheque account"""
+#     cheque_account = get_cheque_account().account
+#     if cheque_account == account_type:
+#         raise serializers.ValidationError("Please select another account type", 400)
 
-    cheque_type = kwargs.get("cheque_type")
-    print(f"\n{cheque_type}\n")
-    if cheque_type == "personal":
-        data_for_ledger.update({"personal_cheque": cheque_obj})
-    else:
-        data_for_ledger.update({"external_cheque": cheque_obj})
 
-    Ledger.objects.create(**data_for_ledger)
+# def create_ledger_entry_for_cheque(
+#     cheque_obj, nature="C", is_transfer=False, transfer_to=None, **kwargs
+# ):
+#     message = ""
+#     if is_transfer and nature == "C":
+#         message = "Cheque return -- "
+#     elif is_transfer and nature == "D":
+#         message = "Cheque transfer -- "
+#     cheque_linked_account = get_cheque_account()
+#     data_for_ledger = {
+#         "date": cheque_obj.date,
+#         "amount": cheque_obj.amount,
+#         "nature": nature,
+#         "person": transfer_to if is_transfer else cheque_obj.person,
+#         "account_type": cheque_linked_account.account,
+#         "detail": (
+#             f"""{message}{cheque_obj.get_bank_display()} -- {cheque_obj.cheque_number} / due date : {cheque_obj.due_date}"""
+#         ),
+#     }
+
+#     cheque_type = kwargs.get("cheque_type")
+#     if cheque_type == "personal":
+#         data_for_ledger.update({"personal_cheque": cheque_obj})
+#     else:
+#         data_for_ledger.update({"external_cheque": cheque_obj})
+
+#     Ledger.objects.create(**data_for_ledger)
 
 
 class ExternalChequeHistorySerializer(serializers.ModelSerializer):
@@ -155,7 +170,6 @@ class CreateExternalChequeEntrySerializer(serializers.ModelSerializer):
             "serial",
             "bank",
             "due_date",
-            "is_passed",
             "person",
             "amount",
             "cheque_number",

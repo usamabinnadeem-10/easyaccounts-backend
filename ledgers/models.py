@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models import Sum
+
 import uuid
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
@@ -8,6 +10,7 @@ from essentials.models import AccountType, Person
 from transactions.models import Transaction
 
 from datetime import date
+from functools import reduce
 
 
 class TransactionChoices(models.TextChoices):
@@ -34,3 +37,22 @@ class Ledger(models.Model):
 
     class Meta:
         ordering = ["date"]
+
+    @classmethod
+    def get_external_cheque_balance(cls, person):
+        all_external_cheques = (
+            Ledger.objects.values("nature")
+            .filter(
+                external_cheque__isnull=False,
+                person=person,
+                external_cheque__person=person,
+            )
+            .annotate(amount=Sum("amount"))
+        )
+        balance_of_external_cheques = reduce(
+            lambda prev, curr: prev
+            + (curr["amount"] if curr["nature"] == "C" else -curr["amount"]),
+            all_external_cheques,
+            0,
+        )
+        return balance_of_external_cheques
