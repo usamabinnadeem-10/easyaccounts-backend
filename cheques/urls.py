@@ -9,6 +9,7 @@ urlpatterns = [
         "external/create/cheque-history-with-cheque/",
         CreateExternalChequeHistoryWithChequeView.as_view(),
     ),
+    path("external/list/", ListExternalCheques.as_view()),
     path("external/list/cheque-history/", GetExternalChequeHistory.as_view()),
     path("external/pass/", PassExternalChequeView.as_view()),
     path("external/transfer/", TransferExternalChequeView.as_view()),

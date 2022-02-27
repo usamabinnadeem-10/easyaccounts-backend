@@ -10,7 +10,7 @@ from essentials.pagination import CustomPagination
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
-from cheques.models import ExternalCheque, PersonalCheque, ExternalChequeHistory
+from cheques.models import ExternalCheque, PersonalCheque, ExternalChequeTransfer
 
 from datetime import date, datetime, timedelta
 from functools import reduce
@@ -54,7 +54,10 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
 
         balance_external_cheques = Ledger.get_external_cheque_balance(person)
         recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(person)
-        PENDING_CHEQUES = balance_external_cheques - recovered_external_cheque_amount
+        cleared_cheques = ExternalCheque.get_cleared_cheque_amount(person)
+        PENDING_CHEQUES = balance_external_cheques - (
+            recovered_external_cheque_amount + cleared_cheques
+        )
 
         persons_transferred_cheques = ExternalCheque.get_sum_of_transferred_cheques(
             person
@@ -69,6 +72,9 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         )
         sum_of_transferred_to_this_person = reduce(
             lambda prev, curr: prev + curr["amount"], balance_cheques, 0
+        )
+        sum_of_transferred_to_this_person = ExternalChequeTransfer.sum_of_transferred(
+            person
         )
 
         personal_cheque_balance = PersonalCheque.get_pending_cheques(person)

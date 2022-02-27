@@ -18,6 +18,7 @@ from .serializers import (
     PassPersonalChequeSerializer,
     ReIssuePersonalChequeFromReturnedSerializer,
     ReturnPersonalChequeSerializer,
+    ExternalChequeSerializer,
 )
 from .models import (
     ExternalCheque,
@@ -79,20 +80,37 @@ class GetExternalChequeHistory(ListAPIView):
     }
 
 
-def get_cheque_error(cheque):
+class ListExternalCheques(ListAPIView):
+    queryset = ExternalCheque.objects.all()
+    serializer_class = ExternalChequeSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        "id": ["exact"],
+        "date": ["gte", "lte", "exact"],
+        "due_date": ["gte", "lte", "exact"],
+        "cheque_number": ["contains"],
+        "serial": ["gte", "lte", "exact"],
+        "status": ["exact"],
+        "amount": ["gte", "lte", "exact"],
+        "bank": ["exact"],
+        "person": ["exact"],
+    }
+
+
+def check_cheque_errors(cheque):
     """Get cheque error when passing a cheque"""
     if cheque:
         today = date.today()
         if cheque.due_date > today:
-            return "Cheque due date is in future"
+            return return_error("Cheque due date is in future")
         elif cheque.is_returned:
-            return "Cheque is already returned"
+            return return_error("Cheque is already returned")
         elif cheque.status != ChequeStatusChoices.PENDING:
-            return f"Cheque is in {cheque.status} state"
+            return return_error(f"Cheque is in {cheque.status} state")
         else:
-            return "Oops, something went wrong"
+            pass
     else:
-        return "Cheque not found"
+        return return_error("Cheque not found")
 
 
 class PassExternalChequeView(APIView):
@@ -100,28 +118,19 @@ class PassExternalChequeView(APIView):
 
     def post(self, request):
         cheque = None
-        try:
-            data = request.data
-            account_type = get_object_or_404(AccountType, id=data["account_type"])
-            cheque = get_object_or_404(
-                ExternalCheque,
-                id=data["cheque"],
-                due_date__lte=date.today(),
-                is_returned=False,
-                status=ChequeStatusChoices.PENDING,
-            )
-        except:
-            return_error(
-                get_cheque_error(ExternalCheque.objects.get(id=data["cheque"]))
-            )
+        data = request.data
+        account_type = AccountType.objects.get(id=data["account_type"])
+        cheque = get_object_or_404(ExternalCheque, id=data["cheque"])
+
+        check_cheque_errors(cheque)
 
         # check if this cheque has any history
         if ExternalChequeHistory.objects.filter(cheque=cheque).exists():
-            return_error("This cheque has a history, it can not be passed")
+            return return_error("This cheque has a history, it can not be passed")
 
         # check if account type is cheque account
         if LinkedAccount.objects.get(name=CHEQUE_ACCOUNT).account.id == account_type.id:
-            return_error("Please choose a different account type")
+            return return_error("Please choose a different account type")
 
         prev_history = ExternalChequeHistory.objects.filter(return_cheque=cheque)
         parent = None
@@ -198,7 +207,7 @@ class ReturnExternalCheque(APIView):
 
         # make sure cheque does not have a history
         if has_history(cheque):
-            return_error("This cheque has history, it can not be returned")
+            return return_error("This cheque has history, it can not be returned")
 
         create_ledger_entry_for_cheque(cheque, "D")
         cheque.status = ChequeStatusChoices.RETURNED

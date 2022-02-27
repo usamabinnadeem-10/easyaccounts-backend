@@ -41,6 +41,16 @@ class ExternalCheque(AbstractCheque):
     )
 
     @classmethod
+    def get_cleared_cheque_amount(cls, person):
+        cleared = ExternalCheque.objects.filter(
+            person=person, status=ChequeStatusChoices.CLEARED
+        ).aggregate(cleared_amount=Sum("amount"))
+        cleared = cleared.get("cleared_amount", 0)
+        if cleared is not None:
+            return cleared
+        return 0
+
+    @classmethod
     def get_amount_recovered(cls, person):
         try:
             cheque_account = LinkedAccount.objects.get(name=CHEQUE_ACCOUNT).account
@@ -112,6 +122,18 @@ class ExternalChequeHistory(models.Model):
     )
     date = models.DateField(default=date.today)
 
+    @classmethod
+    def get_remaining_amount(cls, parent_cheque, cheque_account):
+        recovered_amount = (
+            ExternalChequeHistory.objects.values("parent_cheque__id")
+            .filter(parent_cheque=parent_cheque)
+            .exclude(account_type=cheque_account)
+            .annotate(amount=Sum("amount"))
+        )
+        if len(recovered_amount):
+            return parent_cheque.amount - recovered_amount[0]["amount"]
+        return parent_cheque.amount
+
 
 class ExternalChequeTransfer(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -120,3 +142,13 @@ class ExternalChequeTransfer(models.Model):
         on_delete=models.CASCADE,
     )
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
+
+    @classmethod
+    def sum_of_transferred(cls, person):
+        transferred = ExternalChequeTransfer.objects.filter(person=person).aggregate(
+            total=Sum("cheque__amount")
+        )
+        transferred = transferred.get("total", 0)
+        if transferred is not None:
+            return transferred
+        return 0

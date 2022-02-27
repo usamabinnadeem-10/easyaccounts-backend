@@ -18,21 +18,16 @@ def get_cheque_account():
         raise serializers.ValidationError("Please create a cheque account first", 400)
 
 
-def is_valid_history_entry(data, parent_amount):
+def is_valid_history_entry(data, parent_cheque):
     """checks if amount is legal when history is created"""
-    amount_present = (
-        ExternalChequeHistory.objects.values("cheque")
-        .filter(cheque=data["cheque"])
-        .annotate(amount=Sum("amount"))
+    cheque_account = get_cheque_account().account
+    remaining_amount = ExternalChequeHistory.get_remaining_amount(
+        parent_cheque, cheque_account
     )
-    prev_amount = 0
-    if len(amount_present):
-        prev_amount = amount_present[0]["amount"]
-
-    if prev_amount + data["amount"] <= parent_amount:
+    if remaining_amount >= data["amount"]:
         return True
     raise serializers.ValidationError(
-        f"Remaining cheque value = {parent_amount - prev_amount}, you entered {data['amount']}",
+        f"Remaining cheque value = {remaining_amount}, you entered {data['amount']}",
         400,
     )
 
@@ -46,7 +41,7 @@ def get_parent_cheque(validated_data):
         parent = previous_history[0].parent_cheque
     else:
         parent = validated_data["cheque"]
-    is_valid_history_entry(validated_data, parent.amount)
+    is_valid_history_entry(validated_data, parent)
     return parent
 
 
