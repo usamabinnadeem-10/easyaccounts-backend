@@ -35,6 +35,15 @@ class ExternalChequeSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial", "person"]
 
 
+class ShortExternalChequeHistorySerializer(serializers.ModelSerializer):
+
+    serial = serializers.IntegerField(source="parent_cheque.serial")
+
+    class Meta:
+        model = ExternalChequeHistory
+        fields = ["id", "serial", "account_type", "amount", "date"]
+
+
 class ExternalChequeHistorySerializer(serializers.ModelSerializer):
     """Serializer for creating cheque history"""
 

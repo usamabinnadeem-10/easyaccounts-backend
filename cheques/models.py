@@ -1,8 +1,7 @@
 from django.db import models
-from django.db.models import Sum
+from django.db.models import Sum, Max, Count
 from django.shortcuts import get_object_or_404
 from django.core.validators import MinValueValidator
-from django.db.models import Max
 
 from rest_framework import serializers
 
@@ -27,6 +26,7 @@ class AbstractCheque(models.Model):
     class Meta:
         abstract = True
         unique_together = ("bank", "cheque_number")
+        ordering = ["serial", "due_date"]
 
     @classmethod
     def get_next_serial(cls):
@@ -39,16 +39,7 @@ class ExternalCheque(AbstractCheque):
         choices=ChequeStatusChoices.choices,
         default=ChequeStatusChoices.PENDING,
     )
-
-    @classmethod
-    def get_cleared_cheque_amount(cls, person):
-        cleared = ExternalCheque.objects.filter(
-            person=person, status=ChequeStatusChoices.CLEARED
-        ).aggregate(cleared_amount=Sum("amount"))
-        cleared = cleared.get("cleared_amount", 0)
-        if cleared is not None:
-            return cleared
-        return 0
+    is_passed_with_history = models.BooleanField(default=False)
 
     @classmethod
     def get_amount_recovered(cls, person):
@@ -77,6 +68,16 @@ class ExternalCheque(AbstractCheque):
         amount = amount.get("amount", 0)
         if amount is not None:
             return amount
+        return 0
+
+    @classmethod
+    def get_number_of_pending_cheques(cls, person):
+        pending_count = ExternalCheque.objects.filter(
+            status=ChequeStatusChoices.PENDING
+        ).aggregate(count=Count("id"))
+        pending_count = pending_count.get("count", 0)
+        if pending_count is not None:
+            return pending_count
         return 0
 
 

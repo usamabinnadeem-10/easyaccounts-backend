@@ -8,18 +8,31 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .serializers import *
 from .models import *
+from .utils import get_account_balances
 
 from datetime import date, datetime
 from itertools import chain
 
 from transactions.models import Transaction
 from transactions.serializers import TransactionSerializer
+
 from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
+
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
+
 from essentials.pagination import CustomPagination, PaginationHandlerMixin
-from cheques.models import ExternalChequeHistory
+
+from cheques.models import ExternalChequeHistory, PersonalCheque, ExternalCheque
+from cheques.choices import PersonalChequeStatusChoices
+from cheques.serializers import (
+    IssuePersonalChequeSerializer,
+    ExternalChequeSerializer,
+    ShortExternalChequeHistorySerializer,
+)
+
+from collections import defaultdict
 
 
 class CreateAndListPerson(ListCreateAPIView):
@@ -70,32 +83,36 @@ class DayBook(APIView):
         if self.request.query_params.get("date"):
             today = self.request.query_params.get("date")
 
-        all_ledger = Ledger.objects.all()
+        filters = {
+            "date__gte": today,
+            "date__lte": today,
+        }
 
-        expenses = ExpenseDetail.objects.filter(date__gte=today, date__lte=today)
+        expenses = ExpenseDetail.objects.filter(**filters)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
-        ledgers = Ledger.objects.filter(date__gte=today, date__lte=today)
+        ledgers = Ledger.objects.filter(**filters)
         ledger_serialized = LedgerSerializer(ledgers, many=True)
 
-        transactions = Transaction.objects.filter(date__gte=today, date__lte=today)
+        transactions = Transaction.objects.filter(**filters)
         transactions_serialized = TransactionSerializer(transactions, many=True).data
 
-        final_transactions = []
-        for transaction in transactions_serialized:
-            paid_amount = None
-            serialized_account_type = None
-            ledger_instance = all_ledger.filter(
-                transaction=transaction["id"], account_type__isnull=False
-            )
-            if len(ledger_instance):
-                serialized_account_type = (
-                    AccountTypeSerializer(ledger_instance[0].account_type).data
-                    if ledger_instance[0].account_type
-                    else None
-                )
-                paid_amount = ledger_instance[0].amount
-            final_transactions.append(transaction)
+        external_cheques = ExternalCheque.objects.filter(**filters)
+        external_cheques_serialized = ExternalChequeSerializer(
+            external_cheques, many=True
+        ).data
+
+        external_cheques_history = ExternalChequeHistory.objects.select_related(
+            "parent_cheque"
+        ).filter(**filters, return_cheque__isnull=True)
+        external_cheques_history_serialized = ShortExternalChequeHistorySerializer(
+            external_cheques_history, many=True
+        ).data
+
+        personal_cheques = PersonalCheque.objects.filter(**filters)
+        personal_cheques_serialized = IssuePersonalChequeSerializer(
+            personal_cheques, many=True
+        ).data
 
         balance_ledgers = (
             Ledger.objects.values("account_type__name", "nature")
@@ -103,20 +120,58 @@ class DayBook(APIView):
             .filter(date__lte=today, account_type__isnull=False)
             .annotate(amount=Sum("amount"))
         )
+
         balance_expenses = (
             ExpenseDetail.objects.values("account_type__name")
             .order_by("date")
             .filter(date__lte=today)
-            .annotate(amount=Sum("amount"))
+            .annotate(total=Sum("amount"))
+        )
+
+        balance_external_cheques = (
+            ExternalChequeHistory.objects.values(
+                "account_type__name",
+            )
+            .filter(return_cheque__isnull=True)
+            .annotate(total=Sum("amount"))
+        )
+
+        balance_personal_cheques = (
+            PersonalCheque.objects.values("account_type__name")
+            .filter(status=PersonalChequeStatusChoices.CLEARED)
+            .annotate(total=Sum("amount"))
+        )
+
+        final_account_balances = defaultdict(lambda: 0)
+
+        for ledger in balance_ledgers:
+            current_amount = final_account_balances[ledger["account_type__name"]]
+            if ledger["nature"] == "C":
+                current_amount += ledger["amount"]
+            else:
+                current_amount -= ledger["amount"]
+            final_account_balances[ledger["account_type__name"]] = current_amount
+
+        final_account_balances = get_account_balances(
+            final_account_balances, balance_external_cheques
+        )
+        final_account_balances = get_account_balances(
+            final_account_balances, balance_personal_cheques, "sub"
+        )
+        final_account_balances = get_account_balances(
+            final_account_balances, balance_expenses, "sub"
         )
 
         return Response(
             {
                 "expenses": expenses_serialized.data,
                 "ledgers": ledger_serialized.data,
-                "transactions": final_transactions,
-                "balance_ledgers": balance_ledgers,
+                "transactions": transactions_serialized,
+                "balance_ledgers": final_account_balances,
                 "balance_expenses": balance_expenses,
+                "external_cheques": external_cheques_serialized,
+                "external_cheques_history": external_cheques_history_serialized,
+                "personal_cheques": personal_cheques_serialized,
             },
             status=status.HTTP_200_OK,
         )

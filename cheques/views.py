@@ -26,7 +26,7 @@ from .models import (
     PersonalCheque,
     ExternalChequeTransfer,
 )
-from .utils import CHEQUE_ACCOUNT, create_ledger_entry_for_cheque, has_history
+from .utils import CHEQUE_ACCOUNT, create_ledger_entry_for_cheque, has_history, get_cheque_account
 from .choices import PersonalChequeStatusChoices
 
 from essentials.models import AccountType, LinkedAccount
@@ -103,7 +103,7 @@ def check_cheque_errors(cheque):
         today = date.today()
         if cheque.due_date > today:
             return return_error("Cheque due date is in future")
-        elif cheque.is_returned:
+        elif cheque.status == ChequeStatusChoices.RETURNED:
             return return_error("Cheque is already returned")
         elif cheque.status != ChequeStatusChoices.PENDING:
             return return_error(f"Cheque is in {cheque.status} state")
@@ -124,29 +124,37 @@ class PassExternalChequeView(APIView):
 
         check_cheque_errors(cheque)
 
+        cheque_account = get_cheque_account().account
+
         # check if this cheque has any history
         if ExternalChequeHistory.objects.filter(cheque=cheque).exists():
-            return return_error("This cheque has a history, it can not be passed")
+            remaining_amount = ExternalChequeHistory.get_remaining_amount(cheque, cheque_account)
+            if remaining_amount > 0:
+                return return_error("This cheque has a history, it can not be passed")
 
         # check if account type is cheque account
-        if LinkedAccount.objects.get(name=CHEQUE_ACCOUNT).account.id == account_type.id:
+        if cheque_account.id == account_type.id:
             return return_error("Please choose a different account type")
 
-        prev_history = ExternalChequeHistory.objects.filter(return_cheque=cheque)
-        parent = None
-        if prev_history.exists():
-            parent = prev_history[0].parent_cheque
-        else:
-            parent = cheque
+        # if there is remaining amount then create a cheque history for this entry
+        if remaining_amount > 0:
+            prev_history = ExternalChequeHistory.objects.filter(return_cheque=cheque)
+            parent = None
+            if prev_history.exists():
+                parent = prev_history[0].parent_cheque
+            else:
+                parent = cheque
 
-        ExternalChequeHistory.objects.create(
-            parent_cheque=parent,
-            cheque=cheque,
-            account_type=account_type,
-            amount=cheque.amount,
-        )
+            ExternalChequeHistory.objects.create(
+                parent_cheque=parent,
+                cheque=cheque,
+                account_type=account_type,
+                amount=cheque.amount,
+            )
 
         cheque.status = ChequeStatusChoices.CLEARED
+        if remaining_amount == 0:
+            cheque.is_passed_with_history = True
         cheque.save()
 
         return Response({"message": "Cheque passed"}, status=status.HTTP_201_CREATED)

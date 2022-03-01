@@ -54,10 +54,11 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
 
         balance_external_cheques = Ledger.get_external_cheque_balance(person)
         recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(person)
-        cleared_cheques = ExternalCheque.get_cleared_cheque_amount(person)
+        cleared_cheques = Ledger.get_passed_cheque_amount(person)
         PENDING_CHEQUES = balance_external_cheques - (
             recovered_external_cheque_amount + cleared_cheques
         )
+        NUM_OF_PENDING = ExternalCheque.get_number_of_pending_cheques(person=person)
 
         persons_transferred_cheques = ExternalCheque.get_sum_of_transferred_cheques(
             person
@@ -97,6 +98,7 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         page = self.get_paginated_response(ledger_data)
         page.data["opening_balance"] = opening_balance
         page.data["pending_cheques"] = PENDING_CHEQUES
+        page.data["pending_cheques_count"] = NUM_OF_PENDING
         page.data["transferred_cheques"] = persons_transferred_cheques
         page.data["transferred_to_this_person"] = sum_of_transferred_to_this_person
         page.data["personal_pending"] = personal_cheque_balance

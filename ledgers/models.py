@@ -56,3 +56,15 @@ class Ledger(models.Model):
             0,
         )
         return balance_of_external_cheques
+
+    @classmethod
+    def get_passed_cheque_amount(cls, person):
+        total = Ledger.objects.filter(
+            external_cheque__isnull=False,
+            person=person,
+            external_cheque__is_passed_with_history=False,
+        ).aggregate(total=Sum("external_cheque__amount"))
+        total = total.get("total", 0)
+        if total is not None:
+            return total
+        return 0
