@@ -1,30 +1,6 @@
 from django.db import models
 
 
-# Al Baraka Bank (Pakistan) Limited
-# Allied Bank Limited
-# Askari Bank
-# Bank Alfalah Limited
-# Bank Al-Habib Limited
-# BankIslami Pakistan Limited
-# Citi Bank
-# Deutsche Bank A.G
-# The Bank of Tokyo-Mitsubishi UFJ
-# Dubai Islamic Bank Pakistan Limited
-# Faysal Bank Limited
-# First Women Bank Limited
-# Habib Bank Limited
-# Standard Chartered Bank (Pakistan) Limited
-# Habib Metropolitan Bank Limited
-# Industrial and Commercial Bank of China
-# Industrial Development Bank of Pakistan
-# JS Bank Limited
-# MCB Bank Limited
-# MCB Islamic Bank Limited
-# Meezan Bank Limited
-# National Bank of Pakistan
-
-
 class ChequeStatusChoices(models.TextChoices):
     PENDING = "pending", "Pending"
     TRANSFERRED = "transferred", "Transferred"
@@ -40,6 +16,21 @@ class PersonalChequeStatusChoices(models.TextChoices):
 
 
 class BankChoices(models.TextChoices):
-    MEEZAN = "meezan", "Meezan Bank Limited"
-    AL_BARAKA = "al_baraka", "Al Baraka Bank (Pakistan) Limited"
-    HABIB_METRO = "habib_metro", "Habib Metropolitan Bank Limited"
+    MEEZAN = "meezan", "Meezan Bank"
+    AL_BARAKA = "al_baraka", "Al Baraka Bank"
+    HABIB_METRO = "habib_metro", "Habib Metropolitan Bank"
+    ASKARI = "askari", "Al Baraka Bank"
+    ALLIED = "allied", "Allied Bank"
+    ALFALAH = "alfalah", "Bank Alfalah"
+    AL_HABIB = "al_habib", "Bank Al-Habib"
+    DUBAI_ISLAMI = "dubai_islami", "Dubai Bank Islami"
+    CITI = "citi", "Citi Bank"
+    BANK_ISLAMI = "islami", "Bank Islami"
+    FAYSAL = "faysal", "Faysal Bank"
+    FIRST_WOMAN = "first_woman", "First Women Bank"
+    HBL = "hbl", "Habib Bank Limited"
+    STANDARD_CHARTERED = "standard_chartered", "Standard Chartered Bank"
+    JS = "js", "JS Bank Limited"
+    MCB = "mcb", "MCB Bank Limited"
+    MCB_ISLAMIC = "mcb_islamic", "MCB Islamic Bank Limited"
+    NATIONAL = "national", "National Bank of Pakistan"
