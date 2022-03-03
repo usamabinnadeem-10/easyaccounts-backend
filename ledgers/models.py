@@ -5,6 +5,7 @@ import uuid
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 
+from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, PersonalCheque
 from essentials.models import AccountType, Person
 from transactions.models import Transaction
@@ -47,6 +48,7 @@ class Ledger(models.Model):
                 person=person,
                 external_cheque__person=person,
             )
+            .exclude(external_cheque__status=ChequeStatusChoices.RETURNED)
             .annotate(amount=Sum("amount"))
         )
         balance_of_external_cheques = reduce(
@@ -63,6 +65,8 @@ class Ledger(models.Model):
             external_cheque__isnull=False,
             person=person,
             external_cheque__is_passed_with_history=False,
+            external_cheque__person=person,
+            external_cheque__status=ChequeStatusChoices.CLEARED,
         ).aggregate(total=Sum("external_cheque__amount"))
         total = total.get("total", 0)
         if total is not None:

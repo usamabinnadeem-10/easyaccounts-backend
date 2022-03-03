@@ -7,3 +7,7 @@ def get_account_balances(final_account_balances, array, operation="add"):
             current_amount -= value["total"]
         final_account_balances[value["account_type__name"]] = current_amount
     return final_account_balances
+
+
+def format_cheques_as_ledger(cheques, nature):
+    return list(map(lambda val: {**val, "nature": nature}, cheques))

@@ -4,11 +4,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from django.db.models import Sum
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .serializers import *
 from .models import *
-from .utils import get_account_balances
+from .utils import get_account_balances, format_cheques_as_ledger
 
 from datetime import date, datetime
 from itertools import chain
@@ -24,8 +25,9 @@ from ledgers.serializers import LedgerSerializer
 
 from essentials.pagination import CustomPagination, PaginationHandlerMixin
 
+from cheques.utils import get_cheque_account
 from cheques.models import ExternalChequeHistory, PersonalCheque, ExternalCheque
-from cheques.choices import PersonalChequeStatusChoices
+from cheques.choices import PersonalChequeStatusChoices, ChequeStatusChoices
 from cheques.serializers import (
     IssuePersonalChequeSerializer,
     ExternalChequeSerializer,
@@ -88,6 +90,8 @@ class DayBook(APIView):
             "date__lte": today,
         }
 
+        cheque_account = get_cheque_account().account
+
         expenses = ExpenseDetail.objects.filter(**filters)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
@@ -102,9 +106,12 @@ class DayBook(APIView):
             external_cheques, many=True
         ).data
 
-        external_cheques_history = ExternalChequeHistory.objects.select_related(
-            "parent_cheque"
-        ).filter(**filters, return_cheque__isnull=True)
+        external_cheques_history = (
+            ExternalChequeHistory.objects.select_related("parent_cheque")
+            .filter(**filters)
+            .exclude(return_cheque__status=ChequeStatusChoices.RETURNED)
+            .order_by("parent_cheque__serial")
+        )
         external_cheques_history_serialized = ShortExternalChequeHistorySerializer(
             external_cheques_history, many=True
         ).data
@@ -117,7 +124,12 @@ class DayBook(APIView):
         balance_ledgers = (
             Ledger.objects.values("account_type__name", "nature")
             .order_by("nature")
-            .filter(date__lte=today, account_type__isnull=False)
+            .filter(
+                date__lte=today,
+                account_type__isnull=False,
+                external_cheque__status=ChequeStatusChoices.PENDING,
+            )
+            .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
 
@@ -129,6 +141,13 @@ class DayBook(APIView):
         )
 
         balance_external_cheques = (
+            ExternalCheque.objects.values("status")
+            .filter(status=ChequeStatusChoices.PENDING)
+            .aggregate(total=Sum("amount"))
+        )
+        balance_external_cheques = balance_external_cheques.get("total", 0)
+
+        balance_external_cheques_history = (
             ExternalChequeHistory.objects.values(
                 "account_type__name",
             )
@@ -153,7 +172,7 @@ class DayBook(APIView):
             final_account_balances[ledger["account_type__name"]] = current_amount
 
         final_account_balances = get_account_balances(
-            final_account_balances, balance_external_cheques
+            final_account_balances, balance_external_cheques_history
         )
         final_account_balances = get_account_balances(
             final_account_balances, balance_personal_cheques, "sub"
@@ -161,6 +180,8 @@ class DayBook(APIView):
         final_account_balances = get_account_balances(
             final_account_balances, balance_expenses, "sub"
         )
+        if balance_external_cheques is not None:
+            final_account_balances.update({"Cheque Account": balance_external_cheques})
 
         return Response(
             {
@@ -213,15 +234,28 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             if end_date:
                 filters.update({"date__lte": end_date})
 
-            account = AccountType.objects.get(id=account)
-            ledger = Ledger.objects.filter(
-                **{**filters, "account_type": account}
-            ).values()
-            external_cheque_history = ExternalChequeHistory.objects.filter(
-                **filters
-            ).values()
+            account = get_object_or_404(AccountType, id=account)
+            filters.update({"account_type": account})
+            ledger = Ledger.objects.filter(**filters).values()
+
+            external_cheque_history = format_cheques_as_ledger(
+                ExternalChequeHistory.objects.filter(**filters).values(), "C"
+            )
+
+            personal_cheques = format_cheques_as_ledger(
+                PersonalCheque.objects.filter(
+                    **filters, status=PersonalChequeStatusChoices.CLEARED
+                ).values(),
+                "D",
+            )
+
+            expenses = format_cheques_as_ledger(
+                ExpenseDetail.objects.filter(**filters).values(), "D"
+            )
+
             final_result = sorted(
-                chain(ledger, external_cheque_history), key=lambda obj: obj["date"]
+                chain(ledger, external_cheque_history, personal_cheques, expenses),
+                key=lambda obj: obj["date"],
             )
             paginated = self.paginate_queryset(final_result)
             paginated = self.get_paginated_response(paginated).data

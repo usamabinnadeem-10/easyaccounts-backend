@@ -1,6 +1,5 @@
 from django.db import models
 from django.db.models import Sum, Max, Count
-from django.shortcuts import get_object_or_404
 from django.core.validators import MinValueValidator
 
 from rest_framework import serializers

@@ -86,7 +86,7 @@ def create_ledger_entry_for_cheque(
         "person": transfer_to if is_transfer else cheque_obj.person,
         "account_type": cheque_linked_account.account,
         "detail": (
-            f"""{message}{cheque_obj.get_bank_display()} -- {cheque_obj.cheque_number} / due date : {cheque_obj.due_date}"""
+            f"""{message}{cheque_obj.get_bank_display()} -- {cheque_obj.cheque_number} / due date : {cheque_obj.due_date} / serial ({cheque_obj.serial})"""
         ),
     }
 
