@@ -9,7 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .serializers import *
 from .models import *
-from .utils import get_account_balances, format_cheques_as_ledger
+from .utils import get_account_balances, format_cheques_as_ledger, add_type
 
 from datetime import date, datetime
 from itertools import chain
@@ -127,11 +127,12 @@ class DayBook(APIView):
             .filter(
                 date__lte=today,
                 account_type__isnull=False,
-                external_cheque__status=ChequeStatusChoices.PENDING,
+                # external_cheque__status=ChequeStatusChoices.PENDING,
             )
             .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
+        print(balance_ledgers)
 
         balance_expenses = (
             ExpenseDetail.objects.values("account_type__name")
@@ -237,9 +238,12 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             account = get_object_or_404(AccountType, id=account)
             filters.update({"account_type": account})
             ledger = Ledger.objects.filter(**filters).values()
+            ledger = add_type(ledger, "Ledger entry")
 
             external_cheque_history = format_cheques_as_ledger(
-                ExternalChequeHistory.objects.filter(**filters).values(), "C"
+                ExternalChequeHistory.objects.filter(**filters).values(),
+                "C",
+                "Party cheque",
             )
 
             personal_cheques = format_cheques_as_ledger(
@@ -247,10 +251,11 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
                     **filters, status=PersonalChequeStatusChoices.CLEARED
                 ).values(),
                 "D",
+                "Personal cheque",
             )
 
             expenses = format_cheques_as_ledger(
-                ExpenseDetail.objects.filter(**filters).values(), "D"
+                ExpenseDetail.objects.filter(**filters).values(), "D", "Expense"
             )
 
             final_result = sorted(

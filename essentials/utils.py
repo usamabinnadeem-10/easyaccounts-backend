@@ -9,5 +9,9 @@ def get_account_balances(final_account_balances, array, operation="add"):
     return final_account_balances
 
 
-def format_cheques_as_ledger(cheques, nature):
-    return list(map(lambda val: {**val, "nature": nature}, cheques))
+def format_cheques_as_ledger(cheques, nature, type):
+    return list(map(lambda val: {**val, "nature": nature, "type": type}, cheques))
+
+
+def add_type(array, type):
+    return list(map(lambda x: {**x, "type": type}, array))
