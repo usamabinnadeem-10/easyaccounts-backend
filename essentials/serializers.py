@@ -1,5 +1,3 @@
-from django.db import models
-from django.db.models import fields
 from rest_framework import serializers
 
 from .models import *
@@ -23,7 +21,7 @@ class PersonSerializer(serializers.ModelSerializer):
 class AccountTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = AccountType
-        fields = ["id", "name"]
+        fields = ["id", "name", "opening_balance"]
         read_only_fields = ["id"]
 
 
@@ -56,4 +54,11 @@ class StockSerializer(serializers.ModelSerializer):
             "stock_quantity",
             "yards_per_piece",
         ]
+        read_only_fields = ["id"]
+
+
+class AreaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Area
+        fields = ["id", "name", "city"]
         read_only_fields = ["id"]

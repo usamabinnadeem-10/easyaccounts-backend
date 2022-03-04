@@ -108,7 +108,7 @@ class ExternalChequeHistory(models.Model):
     )
     cheque = models.ForeignKey(
         ExternalCheque,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         related_name="cheque_history",
     )

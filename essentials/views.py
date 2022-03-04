@@ -1,9 +1,9 @@
 from rest_framework import status
-from rest_framework.generics import ListCreateAPIView, ListAPIView
+from rest_framework.generics import ListCreateAPIView, ListAPIView, CreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from django.db.models import Sum
+from django.db.models import Sum, F
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -37,9 +37,18 @@ from cheques.serializers import (
 from collections import defaultdict
 
 
-class CreateAndListPerson(ListCreateAPIView):
+class CreatePerson(CreateAPIView):
     """
-    create or list persons with the option of filtering by person_type
+    create person
+    """
+
+    queryset = Person.objects.all()
+    serializer_class = PersonSerializer
+
+
+class ListPerson(ListAPIView):
+    """
+    list persons with the option of filtering by person_type
     """
 
     queryset = Person.objects.all()
@@ -48,31 +57,76 @@ class CreateAndListPerson(ListCreateAPIView):
     filterset_fields = ["person_type"]
 
 
-class CreateAndListWarehouse(ListCreateAPIView):
+class CreateWarehouse(CreateAPIView):
     """
-    create or list warehouses
+    create warehouse
     """
 
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
 
 
-class CreateAndListProduct(ListCreateAPIView):
+class ListWarehouse(ListAPIView):
     """
-    create or list products
+    list warehouses
+    """
+
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializer
+
+
+class CreateProduct(CreateAPIView):
+    """
+    create product
     """
 
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
 
-class CreateAndListAccountType(ListCreateAPIView):
+class ListProduct(ListAPIView):
     """
-    create or list account types
+    list products
+    """
+
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+
+class CreateAccountType(CreateAPIView):
+    """
+    create account type
     """
 
     queryset = AccountType.objects.all()
     serializer_class = AccountTypeSerializer
+
+
+class ListAccountType(ListAPIView):
+    """
+    list account types
+    """
+
+    queryset = AccountType.objects.all()
+    serializer_class = AccountTypeSerializer
+
+
+class CreateArea(CreateAPIView):
+    """
+    create area
+    """
+
+    queryset = Area.objects.all()
+    serializer_class = AreaSerializer
+
+
+class ListArea(ListAPIView):
+    """
+    list areas
+    """
+
+    queryset = Area.objects.all()
+    serializer_class = AreaSerializer
 
 
 class DayBook(APIView):
@@ -121,6 +175,10 @@ class DayBook(APIView):
             personal_cheques, many=True
         ).data
 
+        accounts_opening_balances = AccountType.objects.all().values(
+            account_type__name=F("name"), total=F("opening_balance")
+        )
+
         balance_ledgers = (
             Ledger.objects.values("account_type__name", "nature")
             .order_by("nature")
@@ -132,7 +190,6 @@ class DayBook(APIView):
             .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
-        print(balance_ledgers)
 
         balance_expenses = (
             ExpenseDetail.objects.values("account_type__name")
@@ -172,6 +229,9 @@ class DayBook(APIView):
                 current_amount -= ledger["amount"]
             final_account_balances[ledger["account_type__name"]] = current_amount
 
+        final_account_balances = get_account_balances(
+            final_account_balances, accounts_opening_balances
+        )
         final_account_balances = get_account_balances(
             final_account_balances, balance_external_cheques_history
         )

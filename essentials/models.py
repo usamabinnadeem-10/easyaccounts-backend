@@ -7,11 +7,8 @@ from uuid import uuid4
 from .choices import *
 
 
-class ID(models.Model):
+class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-
-
-class Product(ID):
     si_unit = models.CharField(max_length=5, choices=QuantityChoices.choices)
     basic_unit = models.FloatField()
     name = models.CharField(max_length=100, unique=True)
@@ -20,7 +17,14 @@ class Product(ID):
         return self.name
 
 
-class Warehouse(ID):
+class Area(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    city = models.CharField(max_length=200)
+
+
+class Warehouse(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=50)
     address = models.CharField(max_length=50, null=True)
 
@@ -28,9 +32,10 @@ class Warehouse(ID):
         return self.name
 
 
-class Person(ID):
+class Person(models.Model):
     """Supplier or Customer Account"""
 
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
@@ -47,15 +52,18 @@ class Person(ID):
         unique=True,
     )
     city = models.CharField(max_length=100, null=True)
+    area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True)
 
     def __str__(self) -> str:
         return self.name + ": " + self.person_type
 
 
-class AccountType(ID):
+class AccountType(models.Model):
     """Account types like cash account or cheque account"""
 
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=100)
+    opening_balance = models.FloatField(default=0.0)
 
     def __str__(self) -> str:
         return self.name
@@ -75,7 +83,7 @@ class Stock(models.Model):
 
 
 class LinkedAccount(models.Model):
-
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=100)
     account = models.ForeignKey(AccountType, on_delete=models.CASCADE)
 

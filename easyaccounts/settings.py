@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     "ledgers",
     "transactions",
     "expenses",
-    "cheques",
+    "cheques.apps.ChequesConfig",
     "django_filters",
 ]
 
