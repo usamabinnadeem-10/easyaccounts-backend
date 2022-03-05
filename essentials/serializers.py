@@ -14,6 +14,7 @@ class PersonSerializer(serializers.ModelSerializer):
             "address",
             "city",
             "phone_number",
+            "area",
         ]
         read_only_fields = ["id"]
 
