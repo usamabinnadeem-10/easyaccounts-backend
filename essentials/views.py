@@ -300,6 +300,16 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             ledger = Ledger.objects.filter(**filters).values()
             ledger = add_type(ledger, "Ledger entry")
 
+            opening_balance = [
+                {
+                    "id": account.id,
+                    "date": None,
+                    "nature": "C" if account.opening_balance >= 0 else "D",
+                    "amount": account.opening_balance,
+                    "type": "Opening Balance",
+                }
+            ]
+
             external_cheque_history = format_cheques_as_ledger(
                 ExternalChequeHistory.objects.filter(**filters).values(),
                 "C",
@@ -317,11 +327,16 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             expenses = format_cheques_as_ledger(
                 ExpenseDetail.objects.filter(**filters).values(), "D", "Expense"
             )
-
             final_result = sorted(
-                chain(ledger, external_cheque_history, personal_cheques, expenses),
+                chain(
+                    ledger,
+                    external_cheque_history,
+                    personal_cheques,
+                    expenses,
+                ),
                 key=lambda obj: obj["date"],
             )
+            final_result = [*opening_balance, *final_result]
             paginated = self.paginate_queryset(final_result)
             paginated = self.get_paginated_response(paginated).data
             return Response({"data": paginated}, status=status.HTTP_200_OK)

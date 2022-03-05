@@ -19,7 +19,7 @@ class BankChoices(models.TextChoices):
     MEEZAN = "meezan", "Meezan Bank"
     AL_BARAKA = "al_baraka", "Al Baraka Bank"
     HABIB_METRO = "habib_metro", "Habib Metropolitan Bank"
-    ASKARI = "askari", "Al Baraka Bank"
+    ASKARI = "askari", "Askari Bank"
     ALLIED = "allied", "Allied Bank"
     ALFALAH = "alfalah", "Bank Alfalah"
     AL_HABIB = "al_habib", "Bank Al-Habib"
