@@ -1,5 +1,10 @@
 from rest_framework import status
-from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
+from rest_framework.generics import (
+    ListAPIView,
+    CreateAPIView,
+    UpdateAPIView,
+    DestroyAPIView,
+)
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -68,6 +73,7 @@ class CreateExternalChequeHistoryWithChequeView(CreateAPIView):
 
 
 class GetExternalChequeHistory(ListAPIView):
+    """get detailed history of external cheque"""
 
     queryset = ExternalCheque.objects.all()
     serializer_class = ListExternalChequeHistorySerializer
@@ -86,6 +92,8 @@ class GetExternalChequeHistory(ListAPIView):
 
 
 class ListExternalCheques(ListAPIView):
+    """list and filter external cheques"""
+
     queryset = ExternalCheque.objects.all()
     serializer_class = ExternalChequeSerializer
     filter_backends = [DjangoFilterBackend]
@@ -178,6 +186,7 @@ class PassExternalChequeView(APIView):
 
 
 class TransferExternalChequeView(CreateAPIView):
+    """transfer external cheque of a party"""
 
     queryset = ExternalChequeTransfer.objects.all()
     serializer_class = TransferExternalChequeSerializer
@@ -281,6 +290,8 @@ class CancelPersonalChequeView(UpdateAPIView):
 
 
 class ListPersonalChequeView(ListAPIView):
+    """list and filter personal cheques"""
+
     queryset = PersonalCheque.objects.all()
     serializer_class = IssuePersonalChequeSerializer
     filter_backends = [DjangoFilterBackend]
@@ -296,3 +307,17 @@ class ListPersonalChequeView(ListAPIView):
         "person": ["exact"],
         "account_type": ["exact"],
     }
+
+
+class DeleteExternalChequeView(DestroyAPIView):
+    """delete external cheque"""
+
+    queryset = ExternalCheque.objects.all()
+    serializer_class = ExternalChequeSerializer
+
+
+class DeletePersonalChequeView(DestroyAPIView):
+    """delete personal cheque"""
+
+    queryset = PersonalCheque.objects.all()
+    serializer_class = IssuePersonalChequeSerializer
