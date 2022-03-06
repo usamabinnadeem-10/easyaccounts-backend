@@ -1,11 +1,6 @@
 from django.db import models
 
 
-class QuantityChoices(models.TextChoices):
-    YARDS = "yards", "Yards"
-    PIECE = "piece", "Pieces"
-
-
 SUPPLIER = "S"
 CUSTOMER = "C"
 

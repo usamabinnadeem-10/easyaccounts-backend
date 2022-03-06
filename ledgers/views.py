@@ -90,8 +90,11 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         ledger_data = LedgerSerializer(
             self.paginate_queryset(
                 queryset.filter(date__gte=startDate).order_by(
-                    "date", "transaction__serial"
+                    F("date"), F("transaction__serial").desc(nulls_last=False)
                 )
+                # .order_by(
+                #     "date", "transaction__serial"
+                # )
             ),
             many=True,
         ).data

@@ -75,7 +75,10 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        parent_cheque = get_parent_cheque(validated_data)
+        cheque_account = get_cheque_account()
+        parent_cheque = get_parent_cheque(
+            {**validated_data, "cheque_account": cheque_account.account}
+        )
         external_cheque = ExternalChequeHistory.objects.create(
             **{**validated_data, "parent_cheque": parent_cheque}
         )
@@ -152,6 +155,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
                 {
                     "cheque": validated_data["cheque"],
                     "amount": cheque_obj.amount,
+                    "cheque_account": cheque_account.account,
                 }
             ),
         }

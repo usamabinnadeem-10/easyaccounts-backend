@@ -9,6 +9,7 @@ from datetime import date
 class PersonSerializer(serializers.ModelSerializer):
 
     opening_balance_date = serializers.DateField(default=date.today, write_only=True)
+    nature = serializers.CharField(write_only=True)
 
     class Meta:
         model = Person
@@ -23,15 +24,23 @@ class PersonSerializer(serializers.ModelSerializer):
             "area",
             "opening_balance",
             "opening_balance_date",
+            "nature",
         ]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
         opening_balance_date = validated_data.pop("opening_balance_date")
-        person = Person.objects.create(**validated_data)
+        nature = validated_data.pop("nature")
+        data_for_person = validated_data
+        data_for_person["opening_balance"] = (
+            abs(data_for_person["opening_balance"])
+            if nature == "C"
+            else -abs(data_for_person["opening_balance"])
+        )
+        person = Person.objects.create(**data_for_person)
         Ledger.objects.create(
             person=person,
-            nature="C" if person.opening_balance > 0 else "D",
+            nature=nature,
             date=opening_balance_date,
             detail="Opening Balance",
             amount=abs(person.opening_balance),
@@ -54,15 +63,36 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+
+    yards_per_piece = serializers.FloatField(write_only=True)
+    warehouse = serializers.UUIDField(write_only=True)
+
     class Meta:
         model = Product
         fields = [
             "id",
-            "si_unit",
             "name",
-            "basic_unit",
+            "opening_stock",
+            "opening_stock_rate",
+            "yards_per_piece",
+            "warehouse",
         ]
         read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        yards_per_piece = validated_data.pop("yards_per_piece")
+        warehouse = validated_data.pop("warehouse")
+        warehouse = Warehouse.objects.get(id=warehouse)
+        product = Product.objects.create(**validated_data)
+        Stock.objects.create(
+            **{
+                "product": product,
+                "warehouse": warehouse,
+                "stock_quantity": product.opening_stock,
+                "yards_per_piece": yards_per_piece,
+            }
+        )
+        return product
 
 
 class StockSerializer(serializers.ModelSerializer):

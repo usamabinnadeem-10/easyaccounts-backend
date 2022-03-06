@@ -252,6 +252,43 @@ class ReturnExternalCheque(APIView):
         )
 
 
+class CompleteExternalChequeWithHistory(APIView):
+    """complete external cheque that has a history"""
+
+    def post(self, request):
+        data = request.data
+        try:
+            cheque = get_object_or_404(
+                ExternalCheque,
+                id=data["cheque"],
+                status=ChequeStatusChoices.PENDING,
+            )
+        except:
+            return Response(
+                {"error": "Cheque not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # make sure that the cheque has a history
+        if not has_history(cheque):
+            return return_error("This cheque has no history, it can not be completed")
+
+        amount_received = ExternalChequeHistory.get_amount_received(cheque)
+
+        # make sure the amount received is not less than cheque's value
+        if amount_received < cheque.amount:
+            return return_error(
+                "This cheque has remaining amount, it can not be completed"
+            )
+
+        cheque.status = ChequeStatusChoices.COMPLETED_HISTORY
+        cheque.save()
+
+        return Response(
+            {"message": "Cheque returned successfully"}, status=status.HTTP_201_CREATED
+        )
+
+
 class IssuePersonalChequeView(CreateAPIView):
     """Issue personal cheque view"""
 

@@ -9,9 +9,9 @@ from .choices import *
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    si_unit = models.CharField(max_length=5, choices=QuantityChoices.choices)
-    basic_unit = models.FloatField()
     name = models.CharField(max_length=100, unique=True)
+    opening_stock = models.FloatField(default=0.0)
+    opening_stock_rate = models.FloatField(default=0.0)
 
     def __str__(self) -> str:
         return self.name

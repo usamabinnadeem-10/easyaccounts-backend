@@ -20,14 +20,22 @@ def get_cheque_account():
 
 def is_valid_history_entry(data, parent_cheque):
     """checks if amount is legal when history is created"""
-    cheque_account = get_cheque_account().account
     remaining_amount = ExternalChequeHistory.get_remaining_amount(
-        parent_cheque, cheque_account
+        parent_cheque, data["cheque_account"]
     )
+    total_amount_received = ExternalChequeHistory.get_amount_received(data["cheque"])
+    error = ""
     if remaining_amount >= data["amount"]:
-        return True
+        if parent_cheque.amount - total_amount_received >= data["amount"]:
+            return True
+        else:
+            error = f"Remaining amount = {parent_cheque.amount - total_amount_received}, you entered {data['amount']}"
+    else:
+        error = (
+            f"Remaining cheque value = {remaining_amount}, you entered {data['amount']}"
+        )
     raise serializers.ValidationError(
-        f"Remaining cheque value = {remaining_amount}, you entered {data['amount']}",
+        error,
         400,
     )
 

@@ -12,6 +12,7 @@ urlpatterns = [
     path("external/list/", ListExternalCheques.as_view()),
     path("external/list/cheque-history/", GetExternalChequeHistory.as_view()),
     path("external/pass/", PassExternalChequeView.as_view()),
+    path("external/complete-history/", CompleteExternalChequeWithHistory.as_view()),
     path("external/transfer/", TransferExternalChequeView.as_view()),
     path("external/transfer/return/", ReturnExternalTransferredCheque.as_view()),
     path("external/return/", ReturnExternalCheque.as_view()),

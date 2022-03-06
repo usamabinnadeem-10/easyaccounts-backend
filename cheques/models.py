@@ -34,7 +34,7 @@ class AbstractCheque(models.Model):
 
 class ExternalCheque(AbstractCheque):
     status = models.CharField(
-        max_length=12,
+        max_length=20,
         choices=ChequeStatusChoices.choices,
         default=ChequeStatusChoices.PENDING,
     )
@@ -133,6 +133,15 @@ class ExternalChequeHistory(models.Model):
         if len(recovered_amount):
             return parent_cheque.amount - recovered_amount[0]["amount"]
         return parent_cheque.amount
+
+    @classmethod
+    def get_amount_received(cls, parent_cheque):
+        amount = ExternalChequeHistory.objects.filter(
+            parent_cheque=parent_cheque
+        ).aggregate(total=Sum("amount"))
+        amount = amount.get("total", 0)
+        amount = amount if amount else 0
+        return amount
 
 
 class ExternalChequeTransfer(models.Model):

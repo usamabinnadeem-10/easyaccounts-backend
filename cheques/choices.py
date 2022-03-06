@@ -6,6 +6,7 @@ class ChequeStatusChoices(models.TextChoices):
     TRANSFERRED = "transferred", "Transferred"
     CLEARED = "cleared", "Cleared"
     RETURNED = "returned", "Returned"
+    COMPLETED_HISTORY = "completed_history", "Complete History"
 
 
 class PersonalChequeStatusChoices(models.TextChoices):

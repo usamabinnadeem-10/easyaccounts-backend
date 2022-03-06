@@ -161,23 +161,38 @@ class BusinessPerformanceHistory(APIView):
         )
 
         if start_date:
-            filters.update({"transaction__date__gte": start_date})
+            filters.update({"transaction_id__date__gte": start_date})
         if end_date:
-            filters.update({"transaction__date__lte": end_date})
+            filters.update({"transaction_id__date__lte": end_date})
 
         stats = (
             TransactionDetail.objects.values("transaction__nature")
+            .filter(**filters)
             .annotate(
                 quantity=Sum("quantity"),
                 number_of_transactions=Count("transaction__id"),
                 amount=Sum("amount"),
                 avg_rate=Avg("rate"),
+                avg_gazaana=Avg("yards_per_piece"),
             )
-            .filter(**filters)
         )
 
+        opening_stock = Product.objects.aggregate(
+            avg_rate=Avg("opening_stock_rate"), total_quantity=Sum("opening_stock")
+        )
+        opening_stock_avg_rate = opening_stock.get("avg_rate", 0)
+        opening_stock_avg_rate = opening_stock_avg_rate if opening_stock_avg_rate else 0
+        opening_quantity = opening_stock.get("total_quantity", 0)
+        opening_quantity = opening_quantity if opening_quantity else 0
+
         del filters["transaction__draft"]
-        expenses = ExpenseDetail.objects.filter(**filters).aggregate(
+        expense_filters = {}
+        if start_date:
+            expense_filters.update({"date__gte": start_date})
+        if end_date:
+            expense_filters.update({"date__lte": end_date})
+
+        expenses = ExpenseDetail.objects.filter(**expense_filters).aggregate(
             total_expenses=Sum("amount")
         )
         balances = GetAllBalances.as_view()(request=request._request).data
@@ -188,15 +203,18 @@ class BusinessPerformanceHistory(APIView):
             "quantity_sold": 0,
             "number_of_transactions_bought": 0,
             "number_of_transactions_sold": 0,
-            "quantity_bought": 0,
+            "quantity_bought": 0 + opening_quantity,
             "payable_total": 0,
             "recievable_total": 0,
-            "expenses_total": expenses["total_expenses"],
+            "expenses_total": expenses["total_expenses"]
+            if expenses["total_expenses"]
+            else 0,
             "profit": 0,
             "average_buying_rate": 0,
             "average_selling_rate": 0,
         }
-
+        avg_gazaana_bought = 0
+        avg_gazaana_sold = 0
         for stat in stats:
             if stat["transaction__nature"] == "D":
                 final_data["revenue"] += stat["amount"]
@@ -205,13 +223,14 @@ class BusinessPerformanceHistory(APIView):
                     "number_of_transactions"
                 ]
                 final_data["average_selling_rate"] += stat["avg_rate"]
+                avg_gazaana_sold += stat["avg_gazaana"] * stat["quantity"]
             else:
-                final_data["revenue"] -= stat["amount"]
                 final_data["quantity_bought"] += stat["quantity"]
                 final_data["number_of_transactions_bought"] += stat[
                     "number_of_transactions"
                 ]
                 final_data["average_buying_rate"] += stat["avg_rate"]
+                avg_gazaana_bought += stat["avg_gazaana"]
 
         for person, balance in balances.items():
             if balance >= 0:
@@ -219,8 +238,20 @@ class BusinessPerformanceHistory(APIView):
             else:
                 final_data["recievable_total"] += abs(balance)
 
+        divisor = 0
+        if opening_stock_avg_rate:
+            divisor += 1
+        if final_data["average_buying_rate"]:
+            divisor += 1
+
+        final_data["average_buying_rate"] = (
+            opening_stock_avg_rate + final_data["average_buying_rate"]
+        ) / (divisor or 1)
+
         final_data["cogs"] = (
-            final_data["average_buying_rate"] * final_data["quantity_sold"]
+            final_data["average_buying_rate"]
+            * final_data["quantity_sold"]
+            * avg_gazaana_bought
         )
 
         final_data["profit"] = final_data["revenue"] - (
