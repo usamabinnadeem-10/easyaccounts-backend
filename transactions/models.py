@@ -27,7 +27,7 @@ class Transaction(models.Model):
     manual_serial_type = models.CharField(max_length=3)
 
     class Meta:
-        ordering = ["-date", "-serial"]
+        ordering = ["serial"]
         unique_together = ("manual_invoice_serial", "manual_serial_type")
 
 
