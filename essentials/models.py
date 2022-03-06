@@ -50,9 +50,11 @@ class Person(models.Model):
             ),
         ],
         unique=True,
+        null=True,
     )
-    city = models.IntegerField()
+    city = models.IntegerField(null=True)
     area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True)
+    opening_balance = models.FloatField(default=0.0)
 
     def __str__(self) -> str:
         return self.name + ": " + self.person_type

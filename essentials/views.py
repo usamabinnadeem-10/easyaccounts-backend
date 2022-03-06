@@ -19,6 +19,7 @@ from transactions.serializers import TransactionSerializer
 
 from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
+from essentials.choices import PersonChoices
 
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
@@ -149,10 +150,14 @@ class DayBook(APIView):
         expenses = ExpenseDetail.objects.filter(**filters)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
-        ledgers = Ledger.objects.filter(**filters)
+        ledgers = Ledger.objects.filter(
+            person__person_type=PersonChoices.CUSTOMER, **filters
+        )
         ledger_serialized = LedgerSerializer(ledgers, many=True)
 
-        transactions = Transaction.objects.filter(**filters)
+        transactions = Transaction.objects.filter(
+            person__person_type=PersonChoices.CUSTOMER, **filters
+        )
         transactions_serialized = TransactionSerializer(transactions, many=True).data
 
         external_cheques = ExternalCheque.objects.filter(**filters)
@@ -200,7 +205,7 @@ class DayBook(APIView):
 
         balance_external_cheques = (
             ExternalCheque.objects.values("status")
-            .filter(status=ChequeStatusChoices.PENDING)
+            .filter(status=ChequeStatusChoices.PENDING, **filters)
             .aggregate(total=Sum("amount"))
         )
         balance_external_cheques = balance_external_cheques.get("total", 0)
@@ -209,13 +214,13 @@ class DayBook(APIView):
             ExternalChequeHistory.objects.values(
                 "account_type__name",
             )
-            .filter(return_cheque__isnull=True)
+            .filter(return_cheque__isnull=True, **filters)
             .annotate(total=Sum("amount"))
         )
 
         balance_personal_cheques = (
             PersonalCheque.objects.values("account_type__name")
-            .filter(status=PersonalChequeStatusChoices.CLEARED)
+            .filter(status=PersonalChequeStatusChoices.CLEARED, **filters)
             .annotate(total=Sum("amount"))
         )
 
