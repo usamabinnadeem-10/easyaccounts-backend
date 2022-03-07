@@ -79,6 +79,16 @@ class ExternalCheque(AbstractCheque):
             return pending_count
         return 0
 
+    @classmethod
+    def get_sum_of_cleared_transferred_cheques(cls, person):
+        cleared = ExternalCheque.objects.filter(
+            person=person, status=ChequeStatusChoices.COMPLETED_TRANSFER
+        ).aggregate(total=Sum("amount"))
+        cleared = cleared.get("total", 0)
+        if cleared is not None:
+            return cleared
+        return 0
+
 
 class PersonalCheque(AbstractCheque):
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
@@ -154,9 +164,9 @@ class ExternalChequeTransfer(models.Model):
 
     @classmethod
     def sum_of_transferred(cls, person):
-        transferred = ExternalChequeTransfer.objects.filter(person=person).aggregate(
-            total=Sum("cheque__amount")
-        )
+        transferred = ExternalChequeTransfer.objects.filter(
+            person=person, cheque__status=ChequeStatusChoices.TRANSFERRED
+        ).aggregate(total=Sum("cheque__amount"))
         transferred = transferred.get("total", 0)
         if transferred is not None:
             return transferred

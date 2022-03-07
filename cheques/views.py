@@ -24,6 +24,7 @@ from .serializers import (
     ReIssuePersonalChequeFromReturnedSerializer,
     ReturnPersonalChequeSerializer,
     ExternalChequeSerializer,
+    CompleteExternalTransferChequeSerializer,
 )
 from .models import (
     ExternalCheque,
@@ -190,6 +191,13 @@ class TransferExternalChequeView(CreateAPIView):
 
     queryset = ExternalChequeTransfer.objects.all()
     serializer_class = TransferExternalChequeSerializer
+
+
+class CompleteExternalTransferChequeView(UpdateAPIView):
+    """transfer external cheque of a party"""
+
+    queryset = ExternalCheque.objects.all()
+    serializer_class = CompleteExternalTransferChequeSerializer
 
 
 class ReturnExternalTransferredCheque(APIView):

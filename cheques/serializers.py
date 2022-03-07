@@ -29,10 +29,31 @@ CHEQUE_ACCOUNT = "cheque_account"
 
 
 class ExternalChequeSerializer(serializers.ModelSerializer):
+
+    transferred_to = serializers.SerializerMethodField()
+
     class Meta:
         model = ExternalCheque
-        fields = "__all__"
-        read_only_fields = ["id", "serial", "person"]
+        fields = [
+            "id",
+            "serial",
+            "cheque_number",
+            "bank",
+            "date",
+            "due_date",
+            "amount",
+            "person",
+            "status",
+            "is_passed_with_history",
+            "transferred_to",
+        ]
+        read_only_fields = ["id", "serial", "person", "transferred_to"]
+
+    def get_transferred_to(self, obj):
+        transfer = ExternalChequeTransfer.objects.filter(cheque=obj)
+        if transfer.exists():
+            return transfer[0].person.name
+        return None
 
 
 class ShortExternalChequeHistorySerializer(serializers.ModelSerializer):
@@ -217,6 +238,22 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
         cheque.save()
 
         return validated_data
+
+
+class CompleteExternalTransferChequeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExternalCheque
+        fields = "__all__"
+        read_only_fields = ["id"]
+
+    def update(self, instance, validated_data):
+        if instance.status != ChequeStatusChoices.TRANSFERRED:
+            raise serializers.ValidationError(
+                f"This cheque is not transferred, it is in {instance.status} state"
+            )
+        instance.status = ChequeStatusChoices.COMPLETED_TRANSFER
+        instance.save()
+        return instance
 
 
 class IssuePersonalChequeSerializer(serializers.ModelSerializer):
