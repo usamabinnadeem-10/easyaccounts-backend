@@ -39,3 +39,21 @@ class LoginSerializer(serializers.Serializer):
             branch.save()
 
         return validated_data
+
+
+class LogoutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserBranchRelation
+        fields = ["id"]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        user_branches = UserBranchRelation.objects.filter(
+            user=self.context["request"].user
+        )
+
+        for branch in user_branches:
+            branch.is_logged_in = False
+            branch.save()
+
+        return {}
