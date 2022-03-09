@@ -39,6 +39,12 @@ from .utils import (
     get_cheque_account,
 )
 from .choices import PersonalChequeStatusChoices
+from .queries import (
+    ExternalChequeQuery,
+    ExternalChequeHistoryQuery,
+    ExternalChequeTransferQuery,
+    PersonalChequeQuery,
+)
 
 from essentials.models import AccountType, LinkedAccount
 
@@ -52,31 +58,29 @@ def return_error(error_msg):
     )
 
 
-class CreateExternalChequeEntryView(CreateAPIView):
+class CreateExternalChequeEntryView(ExternalChequeQuery, CreateAPIView):
     """create external cheque"""
 
-    queryset = ExternalCheque.objects.all()
     serializer_class = CreateExternalChequeEntrySerializer
 
 
-class CreateExternalChequeHistoryView(CreateAPIView):
+class CreateExternalChequeHistoryView(ExternalChequeHistoryQuery, CreateAPIView):
     """create external cheque's history (does not allow cheque account)"""
 
-    queryset = ExternalChequeHistory.objects.all()
     serializer_class = ExternalChequeHistorySerializer
 
 
-class CreateExternalChequeHistoryWithChequeView(CreateAPIView):
+class CreateExternalChequeHistoryWithChequeView(
+    ExternalChequeHistoryQuery, CreateAPIView
+):
     """create external cheque history (only cheque account allowed)"""
 
-    queryset = ExternalChequeHistory.objects.all()
     serializer_class = ExternalChequeHistoryWithChequeSerializer
 
 
-class GetExternalChequeHistory(ListAPIView):
+class GetExternalChequeHistory(ExternalChequeQuery, ListAPIView):
     """get detailed history of external cheque"""
 
-    queryset = ExternalCheque.objects.all()
     serializer_class = ListExternalChequeHistorySerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -92,10 +96,9 @@ class GetExternalChequeHistory(ListAPIView):
     }
 
 
-class ListExternalCheques(ListAPIView):
+class ListExternalCheques(ExternalChequeQuery, ListAPIView):
     """list and filter external cheques"""
 
-    queryset = ExternalCheque.objects.all()
     serializer_class = ExternalChequeSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -133,20 +136,21 @@ class PassExternalChequeView(APIView):
     def post(self, request):
         cheque = None
         data = request.data
-        account_type = AccountType.objects.get(id=data["account_type"])
-        cheque = get_object_or_404(ExternalCheque, id=data["cheque"])
+        branch = request.branch
+        account_type = AccountType.objects.get(id=data["account_type"], branch=branch)
+        cheque = get_object_or_404(ExternalCheque, id=data["cheque"], branch=branch)
 
         check_cheque_errors(cheque)
 
-        cheque_account = get_cheque_account().account
+        cheque_account = get_cheque_account(branch).account
         remaining_amount = None
         # check if this cheque has any history
-        if ExternalChequeHistory.objects.filter(cheque=cheque).exists():
+        if ExternalChequeHistory.objects.filter(cheque=cheque, branch=branch).exists():
             remaining_amount = ExternalChequeHistory.get_remaining_amount(
-                cheque, cheque_account
+                cheque, cheque_account, branch
             )
             is_return_cheque = ExternalChequeHistory.objects.filter(
-                return_cheque=cheque
+                return_cheque=cheque, branch=branch
             ).exists()
             # if this cheque has history but is a return cheque then pass it
             if is_return_cheque:
@@ -164,7 +168,9 @@ class PassExternalChequeView(APIView):
 
         # if there is remaining amount then create a cheque history for this entry
         if (remaining_amount is None) or (remaining_amount > 0):
-            prev_history = ExternalChequeHistory.objects.filter(return_cheque=cheque)
+            prev_history = ExternalChequeHistory.objects.filter(
+                return_cheque=cheque, branch=branch
+            )
             parent = None
             if prev_history.exists():
                 parent = prev_history[0].parent_cheque
@@ -176,6 +182,7 @@ class PassExternalChequeView(APIView):
                 cheque=cheque,
                 account_type=account_type,
                 amount=cheque.amount,
+                branch=branch,
             )
 
         cheque.status = ChequeStatusChoices.CLEARED
@@ -186,17 +193,15 @@ class PassExternalChequeView(APIView):
         return Response({"message": "Cheque passed"}, status=status.HTTP_201_CREATED)
 
 
-class TransferExternalChequeView(CreateAPIView):
+class TransferExternalChequeView(ExternalChequeTransferQuery, CreateAPIView):
     """transfer external cheque of a party"""
 
-    queryset = ExternalChequeTransfer.objects.all()
     serializer_class = TransferExternalChequeSerializer
 
 
-class CompleteExternalTransferChequeView(UpdateAPIView):
+class CompleteExternalTransferChequeView(ExternalChequeQuery, UpdateAPIView):
     """transfer external cheque of a party"""
 
-    queryset = ExternalCheque.objects.all()
     serializer_class = CompleteExternalTransferChequeSerializer
 
 
@@ -205,15 +210,15 @@ class ReturnExternalTransferredCheque(APIView):
 
     def post(self, request):
         data = request.data
+        branch = request.branch
         cheque = get_object_or_404(
             ExternalCheque,
             id=data["cheque"],
             status=ChequeStatusChoices.TRANSFERRED,
+            branch=branch,
         )
 
-        transfer = ExternalChequeTransfer.objects.get(
-            cheque=cheque,
-        )
+        transfer = ExternalChequeTransfer.objects.get(cheque=cheque, branch=branch)
 
         # create a credit entry in the ledger of the person the cheque is being returned from
         create_ledger_entry_for_cheque(cheque, "C", True, transfer.person)
@@ -235,11 +240,13 @@ class ReturnExternalCheque(APIView):
 
     def post(self, request):
         data = request.data
+        branch = request.branch
         try:
             cheque = get_object_or_404(
                 ExternalCheque,
                 id=data["cheque"],
                 status=ChequeStatusChoices.PENDING,
+                branch=branch,
             )
         except:
             return Response(
@@ -248,7 +255,7 @@ class ReturnExternalCheque(APIView):
             )
 
         # make sure cheque does not have a history
-        if has_history(cheque):
+        if has_history(cheque, branch):
             return return_error("This cheque has history, it can not be returned")
 
         create_ledger_entry_for_cheque(cheque, "D")
@@ -265,11 +272,13 @@ class CompleteExternalChequeWithHistory(APIView):
 
     def post(self, request):
         data = request.data
+        branch = request.branch
         try:
             cheque = get_object_or_404(
                 ExternalCheque,
                 id=data["cheque"],
                 status=ChequeStatusChoices.PENDING,
+                branch=branch,
             )
         except:
             return Response(
@@ -278,10 +287,10 @@ class CompleteExternalChequeWithHistory(APIView):
             )
 
         # make sure that the cheque has a history
-        if not has_history(cheque):
+        if not has_history(cheque, branch):
             return return_error("This cheque has no history, it can not be completed")
 
-        amount_received = ExternalChequeHistory.get_amount_received(cheque)
+        amount_received = ExternalChequeHistory.get_amount_received(cheque, branch)
 
         # make sure the amount received is not less than cheque's value
         if amount_received < cheque.amount:
@@ -297,47 +306,45 @@ class CompleteExternalChequeWithHistory(APIView):
         )
 
 
-class IssuePersonalChequeView(CreateAPIView):
+class IssuePersonalChequeView(PersonalChequeQuery, CreateAPIView):
     """Issue personal cheque view"""
 
-    queryset = PersonalCheque.objects.all()
     serializer_class = IssuePersonalChequeSerializer
 
 
-class ReturnPersonalChequeView(CreateAPIView):
+class ReturnPersonalChequeView(PersonalChequeQuery, CreateAPIView):
     """return personal cheque from a person"""
 
     serializer_class = ReturnPersonalChequeSerializer
-    queryset = PersonalCheque.objects.all()
 
 
-class ReIssuePersonalChequeFromReturnedView(CreateAPIView):
+class ReIssuePersonalChequeFromReturnedView(PersonalChequeQuery, CreateAPIView):
     """issue a personal cheque which was returned by a person"""
 
     serializer_class = ReIssuePersonalChequeFromReturnedSerializer
-    queryset = PersonalCheque.objects.all()
 
 
-class PassPersonalChequeView(UpdateAPIView):
+class PassPersonalChequeView(PersonalChequeQuery, UpdateAPIView):
     """set the status of cheque from pending to completed"""
 
     serializer_class = PassPersonalChequeSerializer
-    queryset = PersonalCheque.objects.filter(status=PersonalChequeStatusChoices.PENDING)
+
+    def get_queryset(self):
+        return self.get_queryset().filter(status=PersonalChequeStatusChoices.PENDING)
 
 
-class CancelPersonalChequeView(UpdateAPIView):
+class CancelPersonalChequeView(PersonalChequeQuery, UpdateAPIView):
     """set the status of cheque from returned to cancelled"""
 
     serializer_class = CancelPersonalChequeSerializer
-    queryset = PersonalCheque.objects.filter(
-        status=PersonalChequeStatusChoices.RETURNED
-    )
+
+    def get_queryset(self):
+        return self.get_queryset().filter(status=PersonalChequeStatusChoices.RETURNED)
 
 
-class ListPersonalChequeView(ListAPIView):
+class ListPersonalChequeView(PersonalChequeQuery, ListAPIView):
     """list and filter personal cheques"""
 
-    queryset = PersonalCheque.objects.all()
     serializer_class = IssuePersonalChequeSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -354,15 +361,13 @@ class ListPersonalChequeView(ListAPIView):
     }
 
 
-class DeleteExternalChequeView(DestroyAPIView):
+class DeleteExternalChequeView(ExternalChequeQuery, DestroyAPIView):
     """delete external cheque"""
 
-    queryset = ExternalCheque.objects.all()
     serializer_class = ExternalChequeSerializer
 
 
-class DeletePersonalChequeView(DestroyAPIView):
+class DeletePersonalChequeView(PersonalChequeQuery, DestroyAPIView):
     """delete personal cheque"""
 
-    queryset = PersonalCheque.objects.all()
     serializer_class = IssuePersonalChequeSerializer

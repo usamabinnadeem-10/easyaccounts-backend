@@ -8,6 +8,10 @@ class ExpenseAccountSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
         read_only_fields = ["id"]
 
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        super().create(validated_data)
+
 
 class ExpenseDetailSerializer(serializers.ModelSerializer):
 
@@ -29,3 +33,7 @@ class ExpenseDetailSerializer(serializers.ModelSerializer):
             "account_type_name",
         ]
         read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        super().create(validated_data)

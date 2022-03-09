@@ -23,6 +23,8 @@ class LoginSerializer(serializers.Serializer):
         try:
             user = self.context["request"].user
             branch = validated_data["branch_id"]
+            user_branch = UserBranchRelation.objects.filter(user=user, branch=branch)
+            print(user_branch)
             user_branch = UserBranchRelation.objects.get(user=user, branch=branch)
         except UserBranchRelation.DoesNotExist:
             raise PermissionDenied("You are not a member of this branch")

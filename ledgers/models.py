@@ -13,14 +13,16 @@ from transactions.models import Transaction
 from datetime import date
 from functools import reduce
 
+from authentication.models import BranchAwareModel
+
 
 class TransactionChoices(models.TextChoices):
     CREDIT = "C", _("Credit")
     DEBIT = "D", _("Debit")
 
 
-class Ledger(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class Ledger(BranchAwareModel):
+    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     date = models.DateField(default=date.today)
     detail = models.TextField(max_length=1000, null=True, blank=True)
     amount = models.FloatField(validators=[MinValueValidator(0.0)])
@@ -40,10 +42,11 @@ class Ledger(models.Model):
         ordering = ["date"]
 
     @classmethod
-    def get_external_cheque_balance(cls, person):
+    def get_external_cheque_balance(cls, person, branch):
         all_external_cheques = (
             Ledger.objects.values("nature")
             .filter(
+                branch=branch,
                 external_cheque__isnull=False,
                 person=person,
                 external_cheque__person=person,
@@ -60,8 +63,9 @@ class Ledger(models.Model):
         return balance_of_external_cheques
 
     @classmethod
-    def get_passed_cheque_amount(cls, person):
+    def get_passed_cheque_amount(cls, person, branch):
         total = Ledger.objects.filter(
+            branch=branch,
             external_cheque__isnull=False,
             person=person,
             external_cheque__is_passed_with_history=False,

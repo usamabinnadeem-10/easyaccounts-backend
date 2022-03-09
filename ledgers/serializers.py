@@ -38,3 +38,7 @@ class LedgerSerializer(serializers.ModelSerializer):
             "account_type": {"required": False},
             "transaction": {"required": False},
         }
+
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        super().create(validated_data)

@@ -37,6 +37,7 @@ class PersonSerializer(serializers.ModelSerializer):
             if nature == "C"
             else -abs(data_for_person["opening_balance"])
         )
+        data_for_person["branch"] = self.context["request"].branch
         person = Person.objects.create(**data_for_person)
         Ledger.objects.create(
             person=person,
@@ -44,6 +45,7 @@ class PersonSerializer(serializers.ModelSerializer):
             date=opening_balance_date,
             detail="Opening Balance",
             amount=abs(person.opening_balance),
+            branch=person.branch,
         )
         return person
 
@@ -54,12 +56,20 @@ class AccountTypeSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "opening_balance"]
         read_only_fields = ["id"]
 
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        super().create(validated_data)
+
 
 class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
         fields = ["id", "name", "address"]
         read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        super().create(validated_data)
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -83,6 +93,7 @@ class ProductSerializer(serializers.ModelSerializer):
         yards_per_piece = validated_data.pop("yards_per_piece")
         warehouse = validated_data.pop("warehouse")
         warehouse = Warehouse.objects.get(id=warehouse)
+        validated_data["branch"] = self.context["request"].branch
         product = Product.objects.create(**validated_data)
         Stock.objects.create(
             **{
@@ -90,6 +101,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 "warehouse": warehouse,
                 "stock_quantity": product.opening_stock,
                 "yards_per_piece": yards_per_piece,
+                "branch": product.branch,
             }
         )
         return product
@@ -107,9 +119,17 @@ class StockSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        super().create(validated_data)
+
 
 class AreaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Area
         fields = ["id", "name", "city"]
         read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        super().create(validated_data)

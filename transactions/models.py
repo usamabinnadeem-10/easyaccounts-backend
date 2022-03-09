@@ -10,9 +10,11 @@ from django.db.models import Sum
 
 from .choices import *
 
+from authentication.models import BranchAwareModel
 
-class Transaction(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+
+class Transaction(BranchAwareModel):
+    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     date = models.DateField(default=date.today)
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
@@ -31,8 +33,8 @@ class Transaction(models.Model):
         unique_together = ("manual_invoice_serial", "manual_serial_type")
 
 
-class TransactionDetail(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class TransactionDetail(BranchAwareModel):
+    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
@@ -46,8 +48,8 @@ class TransactionDetail(models.Model):
     amount = models.FloatField(validators=[MinValueValidator(0.0)])
 
 
-class CancelledInvoice(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class CancelledInvoice(BranchAwareModel):
+    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     manual_invoice_serial = models.BigIntegerField(unique=True)
     manual_serial_type = models.CharField(max_length=3)
     comment = models.CharField(max_length=500)
@@ -56,8 +58,8 @@ class CancelledInvoice(models.Model):
         unique_together = ("manual_invoice_serial", "manual_serial_type")
 
 
-class TransferEntry(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class TransferEntry(BranchAwareModel):
+    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     date = models.DateField(default=date.today)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     yards_per_piece = models.FloatField(validators=[MinValueValidator(0.0)])
@@ -68,6 +70,9 @@ class TransferEntry(models.Model):
         Warehouse, on_delete=models.CASCADE, related_name="to_warehouse"
     )
     quantity = models.FloatField(validators=[MinValueValidator(0.0)])
+
+    class Meta:
+        verbose_name_plural = "Transfer entries"
 
     @classmethod
     def calculateTransferredAmount(cls, warehouse, product, filters):
