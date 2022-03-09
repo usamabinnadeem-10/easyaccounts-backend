@@ -4,8 +4,6 @@ from .mixins import IsAuthenticatedPermissionMixin
 from .queries import UserBranchQuery
 from .serializers import UserBranchSerializer, LoginSerializer, LogoutSerializer
 
-from rest_framework.permissions import IsAuthenticated
-
 
 class UserBranchesView(IsAuthenticatedPermissionMixin, UserBranchQuery, ListAPIView):
     """get all the branches user is a part of"""

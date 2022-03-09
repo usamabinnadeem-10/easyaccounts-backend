@@ -21,22 +21,14 @@ class LoginSerializer(serializers.Serializer):
     def create(self, validated_data):
 
         try:
-            user_branch = UserBranchRelation.objects.get(
-                user=self.context["request"].user, branch=validated_data["branch_id"]
-            )
+            user = self.context["request"].user
+            branch = validated_data["branch_id"]
+            user_branch = UserBranchRelation.objects.get(user=user, branch=branch)
         except UserBranchRelation.DoesNotExist:
             raise PermissionDenied("You are not a member of this branch")
 
         user_branch.login()
-
-        # log out from other branches
-        other_branches = UserBranchRelation.objects.filter(
-            user=self.context["request"].user
-        ).exclude(branch=user_branch.branch)
-
-        for branch in other_branches:
-            branch.is_logged_in = False
-            branch.save()
+        UserBranchRelation.utils.logout_from_other_branches(user, branch)
 
         return validated_data
 
@@ -48,12 +40,6 @@ class LogoutSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        user_branches = UserBranchRelation.objects.filter(
-            user=self.context["request"].user
-        )
-
-        for branch in user_branches:
-            branch.is_logged_in = False
-            branch.save()
+        UserBranchRelation.utils.logout_all(self.context["request"].user)
 
         return {}
