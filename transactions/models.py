@@ -14,7 +14,6 @@ from authentication.models import BranchAwareModel
 
 
 class Transaction(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     date = models.DateField(default=date.today)
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
@@ -34,7 +33,6 @@ class Transaction(BranchAwareModel):
 
 
 class TransactionDetail(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
@@ -49,8 +47,7 @@ class TransactionDetail(BranchAwareModel):
 
 
 class CancelledInvoice(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    manual_invoice_serial = models.BigIntegerField(unique=True)
+    manual_invoice_serial = models.BigIntegerField()
     manual_serial_type = models.CharField(max_length=3)
     comment = models.CharField(max_length=500)
 
@@ -59,7 +56,6 @@ class CancelledInvoice(BranchAwareModel):
 
 
 class TransferEntry(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     date = models.DateField(default=date.today)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     yards_per_piece = models.FloatField(validators=[MinValueValidator(0.0)])

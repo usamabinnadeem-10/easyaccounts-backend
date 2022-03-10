@@ -115,7 +115,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         if cancelled:
             raise NotAcceptable(
-                f"invoice with {cancelled.manual_serial_type}-{cancelled.manual_invoice_serial} exists"
+                f"invoice with {cancelled.manual_serial_type}-{cancelled.manual_invoice_serial} is cancelled"
             )
 
         transaction = Transaction.objects.create(
@@ -328,15 +328,9 @@ class CancelledInvoiceSerializer(serializers.ModelSerializer):
         model = CancelledInvoice
         fields = ["id", "manual_invoice_serial", "manual_serial_type", "comment"]
         read_only_fields = ["id"]
-        validators = [
-            serializers.UniqueTogetherValidator(
-                queryset=CancelledInvoice.objects.all(),
-                fields=("manual_invoice_serial", "manual_serial_type"),
-                message="Invoice with that book number exists.",
-            )
-        ]
 
     def validate(self, data):
+        print("inside validateee")
         branch = self.context["request"].branch
         if CancelledInvoice.objects.filter(
             branch=branch,
@@ -344,7 +338,7 @@ class CancelledInvoiceSerializer(serializers.ModelSerializer):
             manual_serial_type=data["manual_serial_type"],
         ).exists():
             raise serializers.ValidationError(
-                "Invoice with that book number exists.", 400
+                "Invoice with that book number is already cancelled.", 400
             )
         return data
 
@@ -359,6 +353,7 @@ class CancelledInvoiceSerializer(serializers.ModelSerializer):
             )
         except Exception:
             pass
+
         if not serial:
             validated_data["branch"] = branch
             return super().create(validated_data)
