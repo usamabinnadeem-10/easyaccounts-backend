@@ -17,7 +17,7 @@ class LoginView(IsAuthenticatedPermissionMixin, CreateAPIView):
     serializer_class = LoginSerializer
 
 
-class LogoutView(CreateAPIView, UserBranchQuery):
+class LogoutView(IsAuthenticatedPermissionMixin, CreateAPIView, UserBranchQuery):
     """log user out of all branches"""
 
     serializer_class = LogoutSerializer

@@ -50,8 +50,7 @@ class ExternalChequeSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial", "person", "transferred_to"]
 
     def get_transferred_to(self, obj):
-        branch = self.context["request"].branch
-        transfer = ExternalChequeTransfer.objects.filter(cheque=obj, branch=branch)
+        transfer = ExternalChequeTransfer.objects.filter(cheque=obj)
         if transfer.exists():
             return transfer[0].person.name
         return None

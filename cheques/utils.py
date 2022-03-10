@@ -86,7 +86,7 @@ def create_ledger_entry_for_cheque(
         message = "Cheque return -- "
     elif is_transfer and nature == "D":
         message = "Cheque transfer -- "
-    cheque_linked_account = get_cheque_account()
+    cheque_linked_account = get_cheque_account(cheque_obj.branch)
     data_for_ledger = {
         "branch": cheque_obj.branch,
         "date": cheque_obj.date,

@@ -58,7 +58,8 @@ class AccountTypeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
-        super().create(validated_data)
+        instance = super().create(validated_data)
+        return instance
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -69,7 +70,8 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
-        super().create(validated_data)
+        instance = instance = super().create(validated_data)
+        return instance
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -90,20 +92,24 @@ class ProductSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
+
         yards_per_piece = validated_data.pop("yards_per_piece")
         warehouse = validated_data.pop("warehouse")
         warehouse = Warehouse.objects.get(id=warehouse)
+
         validated_data["branch"] = self.context["request"].branch
         product = Product.objects.create(**validated_data)
-        Stock.objects.create(
-            **{
-                "product": product,
-                "warehouse": warehouse,
-                "stock_quantity": product.opening_stock,
-                "yards_per_piece": yards_per_piece,
-                "branch": product.branch,
-            }
-        )
+
+        if validated_data["opening_stock"] and validated_data["opening_stock_rate"]:
+            Stock.objects.create(
+                **{
+                    "product": product,
+                    "warehouse": warehouse,
+                    "stock_quantity": product.opening_stock,
+                    "yards_per_piece": yards_per_piece,
+                    "branch": product.branch,
+                }
+            )
         return product
 
 
@@ -121,7 +127,8 @@ class StockSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
-        super().create(validated_data)
+        instance = super().create(validated_data)
+        return instance
 
 
 class AreaSerializer(serializers.ModelSerializer):
@@ -132,4 +139,5 @@ class AreaSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
-        super().create(validated_data)
+        instance = super().create(validated_data)
+        return instance

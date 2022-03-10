@@ -21,7 +21,7 @@ class Transaction(BranchAwareModel):
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     draft = models.BooleanField(default=False)
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
-    serial = models.BigIntegerField(unique=True)
+    serial = models.BigIntegerField()
     detail = models.CharField(max_length=1000, null=True)
     account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
     paid_amount = models.FloatField(default=0.0)
@@ -30,7 +30,7 @@ class Transaction(BranchAwareModel):
 
     class Meta:
         ordering = ["serial"]
-        unique_together = ("manual_invoice_serial", "manual_serial_type")
+        unique_together = ("manual_invoice_serial", "manual_serial_type", "branch")
 
 
 class TransactionDetail(BranchAwareModel):
@@ -55,7 +55,7 @@ class CancelledInvoice(BranchAwareModel):
     comment = models.CharField(max_length=500)
 
     class Meta:
-        unique_together = ("manual_invoice_serial", "manual_serial_type")
+        unique_together = ("manual_invoice_serial", "manual_serial_type", "branch")
 
 
 class TransferEntry(BranchAwareModel):

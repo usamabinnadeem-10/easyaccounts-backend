@@ -145,7 +145,7 @@ class DayBook(APIView):
             "branch": request.branch,
         }
 
-        cheque_account = get_cheque_account().account
+        cheque_account = get_cheque_account(request.branch).account
 
         expenses = ExpenseDetail.objects.filter(**filters)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)

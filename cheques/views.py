@@ -330,7 +330,7 @@ class PassPersonalChequeView(PersonalChequeQuery, UpdateAPIView):
     serializer_class = PassPersonalChequeSerializer
 
     def get_queryset(self):
-        return self.get_queryset().filter(status=PersonalChequeStatusChoices.PENDING)
+        return super().get_queryset().filter(status=PersonalChequeStatusChoices.PENDING)
 
 
 class CancelPersonalChequeView(PersonalChequeQuery, UpdateAPIView):
@@ -339,7 +339,9 @@ class CancelPersonalChequeView(PersonalChequeQuery, UpdateAPIView):
     serializer_class = CancelPersonalChequeSerializer
 
     def get_queryset(self):
-        return self.get_queryset().filter(status=PersonalChequeStatusChoices.RETURNED)
+        return (
+            super().get_queryset().filter(status=PersonalChequeStatusChoices.RETURNED)
+        )
 
 
 class ListPersonalChequeView(PersonalChequeQuery, ListAPIView):

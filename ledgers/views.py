@@ -140,16 +140,17 @@ class GetAllBalances(APIView):
 
     def get(self, request):
         filters = {"branch": request.branch}
+
         if request.query_params.get("person"):
             filters.update({"person__person_type": request.query_params.get("person")})
         if request.query_params.get("person_id"):
             filters.update({"person": request.query_params.get("person_id")})
 
         balances = (
-            Ledger.objects.values("nature", name=F("person__name"))
+            Ledger.objects.filter(**filters)
+            .values("nature", name=F("person__name"))
             .order_by("nature")
             .annotate(balance=Sum("amount"))
-            .filter(**filters)
         )
 
         data = {}

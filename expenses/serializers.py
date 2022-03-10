@@ -10,7 +10,8 @@ class ExpenseAccountSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
-        super().create(validated_data)
+        instance = super().create(validated_data)
+        return instance
 
 
 class ExpenseDetailSerializer(serializers.ModelSerializer):
@@ -36,4 +37,5 @@ class ExpenseDetailSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
-        super().create(validated_data)
+        instance = super().create(validated_data)
+        return instance

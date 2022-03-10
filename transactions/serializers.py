@@ -57,13 +57,18 @@ class TransactionSerializer(serializers.ModelSerializer):
             "manual_serial_type",
         ]
         read_only_fields = ["id"]
-        validators = [
-            serializers.UniqueTogetherValidator(
-                queryset=Transaction.objects.all(),
-                fields=("manual_invoice_serial", "manual_serial_type"),
-                message="Invoice with that book number exists.",
+
+    def validate(self, data):
+        branch = self.context["request"].branch
+        if Transaction.objects.filter(
+            branch=branch,
+            manual_invoice_serial=data["manual_invoice_serial"],
+            manual_serial_type=data["manual_serial_type"],
+        ).exists():
+            raise serializers.ValidationError(
+                "Invoice with that book number exists.", 400
             )
-        ]
+        return data
 
     def create(self, validated_data):
         transaction_details = validated_data.pop("transaction_detail")
@@ -126,7 +131,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             )
             if not transaction.draft:
                 ledger_string += create_ledger_string(detail)
-                update_stock(transaction.nature, detail)
+                update_stock(transaction.nature, {**detail, **branch_filter})
 
         transactions = TransactionDetail.objects.bulk_create(details)
         if not transaction.draft:
@@ -330,6 +335,18 @@ class CancelledInvoiceSerializer(serializers.ModelSerializer):
                 message="Invoice with that book number exists.",
             )
         ]
+
+    def validate(self, data):
+        branch = self.context["request"].branch
+        if CancelledInvoice.objects.filter(
+            branch=branch,
+            manual_invoice_serial=data["manual_invoice_serial"],
+            manual_serial_type=data["manual_serial_type"],
+        ).exists():
+            raise serializers.ValidationError(
+                "Invoice with that book number exists.", 400
+            )
+        return data
 
     def create(self, validated_data):
         serial = None
