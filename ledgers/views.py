@@ -15,8 +15,10 @@ from cheques.models import ExternalCheque, PersonalCheque, ExternalChequeTransfe
 from datetime import date, datetime, timedelta
 from functools import reduce
 
+from .queries import LedgerQuery
 
-class CreateOrListLedgerDetail(generics.ListCreateAPIView):
+
+class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
     """
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance
@@ -25,21 +27,26 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
     serializer_class = LedgerSerializer
     pagination_class = CustomPagination
 
-    def get_queryset(self):
+    def filter_queryset(self):
         if self.request.method == "POST":
-            return Ledger.objects.all()
+            return self.get_queryset()
         elif self.request.method == "GET":
             qp = self.request.query_params
             person = qp.get("person")
             endDate = qp.get("end") or date.today()
             return Ledger.objects.select_related(
                 "person", "account_type", "transaction"
-            ).filter(person=person, date__lte=endDate, draft=False)
+            ).filter(
+                branch=self.request.branch,
+                person=person,
+                date__lte=endDate,
+                draft=False,
+            )
 
     def list(self, request, *args, **kwargs):
         qp = self.request.query_params
         person = qp.get("person")
-        queryset = self.get_queryset()
+        queryset = self.filter_queryset()
 
         startDate = (
             datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None
@@ -52,11 +59,15 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
             .filter(date__lte=startDateMinusOne)
         )
 
-        balance_external_cheques = Ledger.get_external_cheque_balance(person)
-        recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(person)
-        cleared_cheques = Ledger.get_passed_cheque_amount(person)
+        branch = request.branch
+
+        balance_external_cheques = Ledger.get_external_cheque_balance(person, branch)
+        recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(
+            person, branch
+        )
+        cleared_cheques = Ledger.get_passed_cheque_amount(person, branch)
         cleared_transferred_cheques = (
-            ExternalCheque.get_sum_of_cleared_transferred_cheques(person)
+            ExternalCheque.get_sum_of_cleared_transferred_cheques(person, branch)
         )
 
         PENDING_CHEQUES = balance_external_cheques - (
@@ -64,10 +75,10 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
             + cleared_cheques
             + cleared_transferred_cheques
         )
-        NUM_OF_PENDING = ExternalCheque.get_number_of_pending_cheques(person=person)
+        NUM_OF_PENDING = ExternalCheque.get_number_of_pending_cheques(branch)
 
         persons_transferred_cheques = ExternalCheque.get_sum_of_transferred_cheques(
-            person
+            person, branch
         )
 
         # sum of cheques that have been transferred to this person
@@ -81,10 +92,10 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
             lambda prev, curr: prev + curr["amount"], balance_cheques, 0
         )
         sum_of_transferred_to_this_person = ExternalChequeTransfer.sum_of_transferred(
-            person
+            person, branch
         )
 
-        personal_cheque_balance = PersonalCheque.get_pending_cheques(person)
+        personal_cheque_balance = PersonalCheque.get_pending_cheques(person, branch)
 
         opening_balance = reduce(
             lambda prev, curr: prev
@@ -98,9 +109,6 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
                 queryset.filter(date__gte=startDate).order_by(
                     F("date"), F("transaction__serial").desc(nulls_last=False)
                 )
-                # .order_by(
-                #     "date", "transaction__serial"
-                # )
             ),
             many=True,
         ).data
@@ -115,12 +123,11 @@ class CreateOrListLedgerDetail(generics.ListCreateAPIView):
         return Response(page.data, status=status.HTTP_200_OK)
 
 
-class EditUpdateDeleteLedgerDetail(generics.RetrieveUpdateDestroyAPIView):
+class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.RetrieveUpdateDestroyAPIView):
     """
     Edit / Update / Delete a ledger record
     """
 
-    queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
 
 
@@ -132,17 +139,18 @@ class GetAllBalances(APIView):
     """
 
     def get(self, request):
-        filters = {}
+        filters = {"branch": request.branch}
+
         if request.query_params.get("person"):
             filters.update({"person__person_type": request.query_params.get("person")})
         if request.query_params.get("person_id"):
             filters.update({"person": request.query_params.get("person_id")})
 
         balances = (
-            Ledger.objects.values("nature", name=F("person__name"))
+            Ledger.objects.filter(**filters)
+            .values("nature", name=F("person__name"))
             .order_by("nature")
             .annotate(balance=Sum("amount"))
-            .filter(**filters)
         )
 
         data = {}
@@ -174,13 +182,12 @@ class GetAllBalances(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 
-class FilterLedger(generics.ListAPIView):
+class FilterLedger(LedgerQuery, generics.ListAPIView):
     """
     filter ledger records
     """
 
     serializer_class = LedgerSerializer
-    queryset = Ledger.objects.all()
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
         "date": ["gte", "lte"],

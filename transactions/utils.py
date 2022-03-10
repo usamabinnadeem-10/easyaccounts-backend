@@ -29,6 +29,7 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
                 "person": transaction.person,
                 "date": transaction.date,
                 "draft": transaction.draft,
+                "branch": transaction.branch,
             }
         )
     ]
@@ -74,6 +75,7 @@ def update_stock(
         "product": detail["product"],
         "warehouse": detail["warehouse"],
         "yards_per_piece": detail["yards_per_piece"],
+        "branch": detail["branch"],
     }
     created = False
     if current_nature == "C":
@@ -92,7 +94,8 @@ def update_stock(
             not created
             and (old_gazaana == detail["yards_per_piece"])
             and (old_product == detail["product"])
-            and (old_warehouse == detail["warehouse"])):
+            and (old_warehouse == detail["warehouse"])
+        ):
             if current_nature == "C" and old_nature == "C":
                 stock_to_update.stock_quantity += difference
 
@@ -110,11 +113,15 @@ def update_stock(
         # if a new stock entry is created
         # now stock_to_update is new!
         else:
-            old_stock = get_object_or_404(Stock, **{
-                "product": old_product,
-                "warehouse": old_warehouse,
-                "yards_per_piece": old_gazaana,
-            })
+            old_stock = get_object_or_404(
+                Stock,
+                **{
+                    "product": old_product,
+                    "warehouse": old_warehouse,
+                    "yards_per_piece": old_gazaana,
+                    "branch": detail["branch"],
+                },
+            )
 
             if current_nature == "C" and old_nature == "C":
                 stock_to_update.stock_quantity += current_quantity
@@ -134,7 +141,7 @@ def update_stock(
                 is_low_quantity(stock_to_update, current_quantity)
                 stock_to_update.stock_quantity -= current_quantity
                 old_stock.stock_quantity += old_quantity
-            
+
             old_stock.save()
 
     else:

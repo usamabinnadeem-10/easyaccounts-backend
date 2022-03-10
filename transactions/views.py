@@ -19,6 +19,10 @@ from .serializers import (
     CancelledInvoiceSerializer,
 )
 from .utils import *
+from .queries import (
+    TransactionQuery,
+    CancelledInvoiceQuery,
+)
 
 from django.db.models import Min, Max, Avg, Sum, Count, Q
 from datetime import date, datetime, timedelta
@@ -33,12 +37,14 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
     pagination_class = CustomPagination
 
     def get_queryset(self):
-        transactions = Transaction.objects.select_related(
-            "person", "account_type"
-        ).prefetch_related(
-            "transaction_detail",
-            "transaction_detail__product",
-            "transaction_detail__warehouse",
+        transactions = (
+            Transaction.objects.select_related("person", "account_type")
+            .prefetch_related(
+                "transaction_detail",
+                "transaction_detail__product",
+                "transaction_detail__warehouse",
+            )
+            .filter(branch=self.request.branch)
         )
         qp = self.request.query_params
         person = qp.get("person")
@@ -59,19 +65,20 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
         return queryset
 
 
-class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
+class EditUpdateDeleteTransaction(
+    TransactionQuery, generics.RetrieveUpdateDestroyAPIView
+):
     """
     Edit / Update / Delete a transaction
     """
 
-    queryset = Transaction.objects.all()
     serializer_class = UpdateTransactionSerializer
 
     def delete(self, *args, **kwargs):
         instance = self.get_object()
 
         transaction_details = TransactionDetail.objects.filter(
-            transaction=instance
+            branch=self.request.branch, transaction=instance
         ).values(
             "product",
             "quantity",
@@ -86,9 +93,8 @@ class EditUpdateDeleteTransaction(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class FilterTransactions(generics.ListAPIView):
+class FilterTransactions(TransactionQuery, generics.ListAPIView):
 
-    queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend]
@@ -112,7 +118,11 @@ class ProductPerformanceHistory(APIView):
     """
 
     def get(self, request):
-        filters = {"transaction__nature": "D", "transaction__person__person_type": "C"}
+        filters = {
+            "branch": request.branch,
+            "transaction__nature": "D",
+            "transaction__person__person_type": "C",
+        }
         values = ["product__name"]
         person = request.query_params.get("person")
         product = request.query_params.get("product")
@@ -151,6 +161,8 @@ class BusinessPerformanceHistory(APIView):
 
     def get(self, request):
         qp = request.query_params
+        branch = self.context["request"].branch
+        branch_filter = {"branch": branch}
         filters = {"transaction__draft": False}
 
         start_date = (
@@ -167,7 +179,7 @@ class BusinessPerformanceHistory(APIView):
 
         stats = (
             TransactionDetail.objects.values("transaction__nature")
-            .filter(**filters)
+            .filter(**filters, **branch_filter)
             .annotate(
                 quantity=Sum("quantity"),
                 number_of_transactions=Count("transaction__id"),
@@ -177,7 +189,7 @@ class BusinessPerformanceHistory(APIView):
             )
         )
 
-        opening_stock = Product.objects.aggregate(
+        opening_stock = Product.objects.filter(**branch_filter).aggregate(
             avg_rate=Avg("opening_stock_rate"), total_quantity=Sum("opening_stock")
         )
         opening_stock_avg_rate = opening_stock.get("avg_rate", 0)
@@ -186,7 +198,7 @@ class BusinessPerformanceHistory(APIView):
         opening_quantity = opening_quantity if opening_quantity else 0
 
         del filters["transaction__draft"]
-        expense_filters = {}
+        expense_filters = {"branch": branch}
         if start_date:
             expense_filters.update({"date__gte": start_date})
         if end_date:
@@ -266,7 +278,8 @@ class TransferStock(APIView):
 
     def post(self, request):
         body = request.data
-        stock = Stock.objects.get(id=body["id"])
+        branch = request.branch
+        stock = Stock.objects.get(id=body["id"], branch=branch)
         product = stock.product
         warehouse = stock.warehouse
         if body["to_warehouse"] and body["transfer_quantity"]:
@@ -275,13 +288,15 @@ class TransferStock(APIView):
                 "warehouse": warehouse,
                 "yards_per_piece": stock.yards_per_piece,
                 "quantity": body["transfer_quantity"],
+                "branch": branch,
             }
             update_stock("D", data)
-            to_warehouse = Warehouse.objects.get(id=body["to_warehouse"])
+            to_warehouse = Warehouse.objects.get(id=body["to_warehouse"], branch=branch)
             data.update({"warehouse": to_warehouse})
             update_stock("C", data)
 
             TransferEntry.objects.create(
+                branch=branch,
                 product=product,
                 yards_per_piece=stock.yards_per_piece,
                 from_warehouse=warehouse,
@@ -295,9 +310,8 @@ class TransferStock(APIView):
         )
 
 
-class CancelInvoice(generics.ListCreateAPIView):
+class CancelInvoice(CancelledInvoiceQuery, generics.ListCreateAPIView):
 
-    queryset = CancelledInvoice.objects.all()
     serializer_class = CancelledInvoiceSerializer
 
 
@@ -306,12 +320,9 @@ class DetailedStockView(APIView):
         qp = request.query_params
         product = get_object_or_404(Product, id=qp.get("product"))
         opening_stock = 0.0
-        filters = {
-            "product": product,
-        }
-        filters_transfers = {
-            "product": product,
-        }
+        branch = request.branch
+        filters = {"product": product, "branch": branch}
+        filters_transfers = {"product": product, "branch": branch}
         if qp.get("start"):
             start = datetime.strptime(qp.get("start"), "%Y-%m-%d")
             filters.update({"transaction__date__gte": start})
@@ -321,7 +332,11 @@ class DetailedStockView(APIView):
             old_stock = (
                 TransactionDetail.objects.values("transaction__nature")
                 .annotate(quantity=Sum("quantity"))
-                .filter(transaction__date__lte=startDateMinusOne, product=product)
+                .filter(
+                    transaction__date__lte=startDateMinusOne,
+                    product=product,
+                    branch=branch,
+                )
             )
             for old in old_stock:
                 if old["transaction__nature"] == "C":
@@ -346,6 +361,7 @@ class DetailedStockView(APIView):
                 qp.get("product"),
                 {
                     "date__lte": startDateMinusOne,
+                    "branch": branch,
                 },
             )
             opening_stock += old_transfer_quantity

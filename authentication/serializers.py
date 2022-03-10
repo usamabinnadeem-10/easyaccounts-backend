@@ -17,12 +17,14 @@ class UserBranchSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
 
     branch_id = serializers.UUIDField()
+    branch_name = serializers.CharField(read_only=True)
 
     def create(self, validated_data):
 
         try:
             user = self.context["request"].user
             branch = validated_data["branch_id"]
+            user_branch = UserBranchRelation.objects.filter(user=user, branch=branch)
             user_branch = UserBranchRelation.objects.get(user=user, branch=branch)
         except UserBranchRelation.DoesNotExist:
             raise PermissionDenied("You are not a member of this branch")
@@ -30,6 +32,7 @@ class LoginSerializer(serializers.Serializer):
         user_branch.login()
         UserBranchRelation.utils.logout_from_other_branches(user, branch)
 
+        validated_data["branch_name"] = user_branch.branch.name
         return validated_data
 
 

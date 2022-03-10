@@ -84,7 +84,8 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "return_cheque", "parent_cheque"]
 
     def validate(self, data):
-        cheque_account = get_cheque_account()
+        branch = self.context["request"].branch
+        cheque_account = get_cheque_account(branch)
         if data["account_type"] == cheque_account.account:
             raise serializers.ValidationError(
                 "Account type can not be cheque account", 400
@@ -96,12 +97,17 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        cheque_account = get_cheque_account()
+        branch = self.context["request"].branch
+        cheque_account = get_cheque_account(branch)
         parent_cheque = get_parent_cheque(
-            {**validated_data, "cheque_account": cheque_account.account}
+            {
+                **validated_data,
+                "cheque_account": cheque_account.account,
+                "branch": branch,
+            }
         )
         external_cheque = ExternalChequeHistory.objects.create(
-            **{**validated_data, "parent_cheque": parent_cheque}
+            **{**validated_data, "parent_cheque": parent_cheque, "branch": branch}
         )
         return external_cheque
 
@@ -126,7 +132,12 @@ class CreateExternalChequeEntrySerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial"]
 
     def create(self, validated_data):
-        data_for_cheque = {**validated_data, "serial": ExternalCheque.get_next_serial()}
+        branch = self.context["request"].branch
+        data_for_cheque = {
+            **validated_data,
+            "serial": ExternalCheque.get_next_serial(branch),
+            "branch": branch,
+        }
         cheque_obj = ExternalCheque.objects.create(**data_for_cheque)
         create_ledger_entry_for_cheque(cheque_obj)
         return cheque_obj
@@ -158,17 +169,21 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        branch = self.context["request"].branch
+        branch_filter = {"branch": branch}
         data_for_cheque = validated_data.pop("cheque_data")
         cheque_obj = ExternalCheque.objects.create(
             **{
                 **data_for_cheque,
+                **branch_filter,
                 "serial": ExternalCheque.get_next_serial(),
                 "person": validated_data["cheque"].person,
             }
         )
-        cheque_account = get_cheque_account()
+        cheque_account = get_cheque_account(branch)
         data_for_cheque_history = {
             **validated_data,
+            **branch_filter,
             "amount": cheque_obj.amount,
             "account_type": cheque_account.account,
             "return_cheque": cheque_obj,
@@ -177,6 +192,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
                     "cheque": validated_data["cheque"],
                     "amount": cheque_obj.amount,
                     "cheque_account": cheque_account.account,
+                    **branch_filter,
                 }
             ),
         }
@@ -198,8 +214,9 @@ class ListExternalChequeHistorySerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial"]
 
     def get_remaining_amount(self, obj):
-        cheque_account = get_cheque_account().account
-        return ExternalChequeHistory.get_remaining_amount(obj, cheque_account)
+        branch = self.context["request"].branch
+        cheque_account = get_cheque_account(branch).account
+        return ExternalChequeHistory.get_remaining_amount(obj, cheque_account, branch)
 
 
 class TransferExternalChequeSerializer(serializers.ModelSerializer):
@@ -209,10 +226,10 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-
+        branch = self.context["request"].branch
         cheque = validated_data["cheque"]
         # cheque with hisotry can not be transferred
-        if has_history(cheque):
+        if has_history(cheque, branch):
             raise serializers.ValidationError(
                 "Cheque with history can not be transferred", 400
             )
@@ -229,7 +246,9 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
                 "Cleared cheque can not be transferred", 400
             )
 
-        transfer = ExternalChequeTransfer.objects.create(**validated_data)
+        transfer = ExternalChequeTransfer.objects.create(
+            **validated_data, branch=branch
+        )
         create_ledger_entry_for_cheque(
             transfer.cheque, "D", True, validated_data["person"]
         )
@@ -276,8 +295,13 @@ class IssuePersonalChequeSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial", "status"]
 
     def create(self, validated_data):
-        is_not_cheque_account(validated_data["account_type"])
-        data_for_cheque = {**validated_data, "serial": PersonalCheque.get_next_serial()}
+        branch = self.context["request"].branch
+        is_not_cheque_account(validated_data["account_type"], branch)
+        data_for_cheque = {
+            **validated_data,
+            "serial": PersonalCheque.get_next_serial(branch),
+            "branch": branch,
+        }
         personal_cheque = PersonalCheque.objects.create(**data_for_cheque)
         create_ledger_entry_for_cheque(
             personal_cheque, "D", **{"cheque_type": "personal"}
@@ -291,10 +315,12 @@ class ReturnPersonalChequeSerializer(serializers.Serializer):
     cheque = serializers.UUIDField()
 
     def create(self, validated_data):
+        branch = self.context["request"].branch
         cheque = get_object_or_404(
             PersonalCheque,
             id=validated_data["cheque"],
             status=PersonalChequeStatusChoices.PENDING,
+            branch=branch,
         )
         cheque.status = PersonalChequeStatusChoices.RETURNED
         cheque.save()
@@ -311,12 +337,14 @@ class ReIssuePersonalChequeFromReturnedSerializer(serializers.Serializer):
     person = serializers.UUIDField()
 
     def create(self, validated_data):
+        branch = self.context["request"].branch
         cheque = get_object_or_404(
             PersonalCheque,
             id=validated_data["cheque"],
             status=PersonalChequeStatusChoices.RETURNED,
+            branch=branch,
         )
-        person = get_object_or_404(Person, id=validated_data["person"])
+        person = get_object_or_404(Person, id=validated_data["person"], branch=branch)
         cheque.person = person
         cheque.status = PersonalChequeStatusChoices.PENDING
         cheque.save()

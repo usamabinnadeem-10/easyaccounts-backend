@@ -57,31 +57,40 @@ class TransactionSerializer(serializers.ModelSerializer):
             "manual_serial_type",
         ]
         read_only_fields = ["id"]
-        validators = [
-            serializers.UniqueTogetherValidator(
-                queryset=Transaction.objects.all(),
-                fields=("manual_invoice_serial", "manual_serial_type"),
-                message="Invoice with that book number exists.",
+
+    def validate(self, data):
+        branch = self.context["request"].branch
+        if Transaction.objects.filter(
+            branch=branch,
+            manual_invoice_serial=data["manual_invoice_serial"],
+            manual_serial_type=data["manual_serial_type"],
+        ).exists():
+            raise serializers.ValidationError(
+                "Invoice with that book number exists.", 400
             )
-        ]
+        return data
 
     def create(self, validated_data):
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
 
+        branch_filter = {"branch": self.context["request"].branch}
         last_serial_num = (
-            Transaction.objects.aggregate(Max("serial"))["serial__max"] or 0
+            Transaction.objects.filter(**branch_filter).aggregate(Max("serial"))[
+                "serial__max"
+            ]
+            or 0
         )
         book_serial = validated_data["manual_invoice_serial"]
         max_from_cancelled = (
             CancelledInvoice.objects.filter(
-                manual_serial_type=validated_data["manual_serial_type"]
+                **branch_filter, manual_serial_type=validated_data["manual_serial_type"]
             ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
             or 0
         )
         max_from_transactions = (
             Transaction.objects.filter(
-                manual_serial_type=validated_data["manual_serial_type"]
+                **branch_filter, manual_serial_type=validated_data["manual_serial_type"]
             ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
             or 0
         )
@@ -97,6 +106,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         cancelled = None
         try:
             cancelled = CancelledInvoice.objects.get(
+                **branch_filter,
                 manual_invoice_serial=validated_data["manual_invoice_serial"],
                 manual_serial_type=validated_data["manual_serial_type"],
             )
@@ -105,19 +115,23 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         if cancelled:
             raise NotAcceptable(
-                f"invoice with {cancelled.manual_serial_type}-{cancelled.manual_invoice_serial} exists"
+                f"invoice with {cancelled.manual_serial_type}-{cancelled.manual_invoice_serial} is cancelled"
             )
 
         transaction = Transaction.objects.create(
-            **validated_data, serial=last_serial_num + 1
+            **branch_filter, **validated_data, serial=last_serial_num + 1
         )
         details = []
         ledger_string = ""
         for detail in transaction_details:
-            details.append(TransactionDetail(transaction_id=transaction.id, **detail))
+            details.append(
+                TransactionDetail(
+                    transaction_id=transaction.id, **detail, **branch_filter
+                )
+            )
             if not transaction.draft:
                 ledger_string += create_ledger_string(detail)
-                update_stock(transaction.nature, detail)
+                update_stock(transaction.nature, {**detail, **branch_filter})
 
         transactions = TransactionDetail.objects.bulk_create(details)
         if not transaction.draft:
@@ -183,10 +197,10 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         transaction_detail = validated_data.pop("transaction_detail")
-
+        branch_filter = {"branch": self.context["request"].branch}
         # delete all the other transaction details which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(
-            transaction=instance
+            **branch_filter, transaction=instance
         ).values("id", "product", "warehouse", "quantity", "yards_per_piece")
         ids_to_keep = []
 
@@ -199,7 +213,9 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         # and add stock of those products
         for transaction in all_transaction_details:
             if not transaction["id"] in ids_to_keep:
-                to_delete = TransactionDetail.objects.get(id=transaction["id"])
+                to_delete = TransactionDetail.objects.get(
+                    id=transaction["id"], **branch_filter
+                )
                 update_stock(
                     "C" if instance.nature == "D" else "D", transaction, instance.nature
                 )
@@ -213,9 +229,13 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             old_quantity = 0.0
             if detail["new"]:
                 detail.pop("new")
-                TransactionDetail.objects.create(transaction=instance, **detail)
+                TransactionDetail.objects.create(
+                    transaction=instance, **detail, **branch_filter
+                )
             else:
-                detail_instance = TransactionDetail.objects.get(id=detail["id"])
+                detail_instance = TransactionDetail.objects.get(
+                    id=detail["id"], **branch_filter
+                )
                 old_quantity = detail_instance.quantity
                 old_gazaana = detail_instance.yards_per_piece
                 old_warehouse = detail_instance.warehouse
@@ -243,7 +263,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 
         amount -= validated_data["discount"]
         ledger_instance = Ledger.objects.get(
-            transaction=instance, account_type__isnull=True
+            transaction=instance, account_type__isnull=True, **branch_filter
         )
         ledger_instance.detail = ledger_string + f'{validated_data["detail"]}\n'
         ledger_instance.draft = validated_data["draft"]
@@ -273,20 +293,23 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                     "person": instance.person,
                     "date": instance.date,
                     "draft": instance.draft,
+                    "branch": instance.branch,
                 }
             )
 
         # if transaction was paid and is now unpaid then delete the old ledger entry
         if validated_data["type"] != "paid" and instance.type == "paid":
             paid_instance = Ledger.objects.get(
-                transaction=instance, account_type__isnull=False
+                transaction=instance, account_type__isnull=False, **branch_filter
             )
             paid_instance.delete()
 
         # if both types are paid then update the Ledger entry
         if validated_data["type"] == instance.type and instance.type == "paid":
             paid_instance = Ledger.objects.get(
-                transaction=instance, account_type__isnull=False
+                transaction=instance,
+                account_type__isnull=False,
+                **branch_filter,
             )
             paid_instance.amount = validated_data["paid_amount"]
             paid_instance.account_type = validated_data["account_type"]
@@ -305,24 +328,34 @@ class CancelledInvoiceSerializer(serializers.ModelSerializer):
         model = CancelledInvoice
         fields = ["id", "manual_invoice_serial", "manual_serial_type", "comment"]
         read_only_fields = ["id"]
-        validators = [
-            serializers.UniqueTogetherValidator(
-                queryset=CancelledInvoice.objects.all(),
-                fields=("manual_invoice_serial", "manual_serial_type"),
-                message="Invoice with that book number exists.",
+
+    def validate(self, data):
+        print("inside validateee")
+        branch = self.context["request"].branch
+        if CancelledInvoice.objects.filter(
+            branch=branch,
+            manual_invoice_serial=data["manual_invoice_serial"],
+            manual_serial_type=data["manual_serial_type"],
+        ).exists():
+            raise serializers.ValidationError(
+                "Invoice with that book number is already cancelled.", 400
             )
-        ]
+        return data
 
     def create(self, validated_data):
         serial = None
+        branch = self.context["request"].branch
         try:
             serial = Transaction.objects.get(
+                branch=branch,
                 manual_invoice_serial=validated_data["manual_invoice_serial"],
                 manual_serial_type=validated_data["manual_serial_type"],
             )
         except Exception:
             pass
+
         if not serial:
+            validated_data["branch"] = branch
             return super().create(validated_data)
         else:
             raise NotAcceptable(

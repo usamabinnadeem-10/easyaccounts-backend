@@ -42,7 +42,7 @@ def is_valid_history_entry(data, parent_cheque):
 
 def get_parent_cheque(validated_data):
     previous_history = ExternalChequeHistory.objects.filter(
-        return_cheque=validated_data["cheque"]
+        return_cheque=validated_data["cheque"], branch=validated_data["branch"]
     )
     parent = None
     if previous_history.exists():
@@ -53,9 +53,9 @@ def get_parent_cheque(validated_data):
     return parent
 
 
-def has_history(cheque):
+def has_history(cheque, branch):
     """check if this cheque has a history"""
-    return ExternalChequeHistory.objects.filter(cheque=cheque).exists()
+    return ExternalChequeHistory.objects.filter(cheque=cheque, branch=branch).exists()
 
 
 def is_transferred(cheque):
@@ -63,17 +63,17 @@ def is_transferred(cheque):
     return cheque.status == ChequeStatusChoices.TRANSFERRED
 
 
-def get_cheque_account():
+def get_cheque_account(branch):
     """get cheque account"""
     try:
-        return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT)
+        return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT, branch=branch)
     except:
         raise serializers.ValidationError("Please create a cheque account first", 400)
 
 
-def is_not_cheque_account(account_type):
+def is_not_cheque_account(account_type, branch):
     """raise error if it's a cheque account"""
-    cheque_account = get_cheque_account().account
+    cheque_account = get_cheque_account(branch).account
     if cheque_account == account_type:
         raise serializers.ValidationError("Please select another account type", 400)
 
@@ -86,8 +86,9 @@ def create_ledger_entry_for_cheque(
         message = "Cheque return -- "
     elif is_transfer and nature == "D":
         message = "Cheque transfer -- "
-    cheque_linked_account = get_cheque_account()
+    cheque_linked_account = get_cheque_account(cheque_obj.branch)
     data_for_ledger = {
+        "branch": cheque_obj.branch,
         "date": cheque_obj.date,
         "amount": cheque_obj.amount,
         "nature": nature,

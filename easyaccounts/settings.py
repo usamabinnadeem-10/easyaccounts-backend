@@ -13,7 +13,7 @@ SECRET_KEY = "django-insecure-eb7!+icg1r0+*z+@+6h66g-7o*(oq-@0@6r%k=oikq84w)%56-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1", "953e-39-59-98-82.ngrok.io"]
+ALLOWED_HOSTS = ["127.0.0.1", "1c6a-39-59-100-64.ngrok.io"]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -154,7 +154,7 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,

@@ -5,9 +5,10 @@ from uuid import uuid4
 
 from .choices import *
 
+from authentication.models import BranchAwareModel
 
-class Product(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+
+class Product(BranchAwareModel):
     name = models.CharField(max_length=100, unique=True)
     opening_stock = models.FloatField(default=0.0)
     opening_stock_rate = models.FloatField(default=0.0)
@@ -16,14 +17,12 @@ class Product(models.Model):
         return self.name
 
 
-class Area(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class Area(BranchAwareModel):
     name = models.CharField(max_length=100)
     city = models.IntegerField()
 
 
-class Warehouse(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class Warehouse(BranchAwareModel):
     name = models.CharField(max_length=50)
     address = models.CharField(max_length=50, null=True)
 
@@ -31,10 +30,9 @@ class Warehouse(models.Model):
         return self.name
 
 
-class Person(models.Model):
+class Person(BranchAwareModel):
     """Supplier or Customer Account"""
 
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=100, unique=True)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
@@ -59,10 +57,9 @@ class Person(models.Model):
         return self.name + ": " + self.person_type
 
 
-class AccountType(models.Model):
+class AccountType(BranchAwareModel):
     """Account types like cash account or cheque account"""
 
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=100)
     opening_balance = models.FloatField(default=0.0)
 
@@ -70,10 +67,9 @@ class AccountType(models.Model):
         return self.name
 
 
-class Stock(models.Model):
+class Stock(BranchAwareModel):
     """Product stock quantity"""
 
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=False)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=False)
     stock_quantity = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
@@ -83,7 +79,6 @@ class Stock(models.Model):
         unique_together = ("product", "warehouse", "yards_per_piece")
 
 
-class LinkedAccount(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class LinkedAccount(BranchAwareModel):
     name = models.CharField(max_length=100)
     account = models.ForeignKey(AccountType, on_delete=models.CASCADE)

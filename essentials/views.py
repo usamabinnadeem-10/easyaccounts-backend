@@ -37,96 +37,95 @@ from cheques.serializers import (
 
 from collections import defaultdict
 
+from .queries import (
+    AreaQuery,
+    PersonQuery,
+    ProductQuery,
+    StockQuery,
+    WarehouseQuery,
+    AccountTypeQuery,
+)
 
-class CreatePerson(CreateAPIView):
+
+class CreatePerson(PersonQuery, CreateAPIView):
     """
     create person
     """
 
-    queryset = Person.objects.all()
     serializer_class = PersonSerializer
 
 
-class ListPerson(ListAPIView):
+class ListPerson(PersonQuery, ListAPIView):
     """
     list persons with the option of filtering by person_type
     """
 
-    queryset = Person.objects.all()
     serializer_class = PersonSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["person_type"]
 
 
-class CreateWarehouse(CreateAPIView):
+class CreateWarehouse(WarehouseQuery, CreateAPIView):
     """
     create warehouse
     """
 
-    queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
 
 
-class ListWarehouse(ListAPIView):
+class ListWarehouse(WarehouseQuery, ListAPIView):
     """
     list warehouses
     """
 
-    queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
 
 
-class CreateProduct(CreateAPIView):
+class CreateProduct(ProductQuery, CreateAPIView):
     """
     create product
     """
 
-    queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
 
-class ListProduct(ListAPIView):
+class ListProduct(ProductQuery, ListAPIView):
     """
     list products
     """
 
-    queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
 
-class CreateAccountType(CreateAPIView):
+class CreateAccountType(AccountTypeQuery, CreateAPIView):
     """
     create account type
     """
 
-    queryset = AccountType.objects.all()
     serializer_class = AccountTypeSerializer
 
 
-class ListAccountType(ListAPIView):
+class ListAccountType(AccountTypeQuery, ListAPIView):
     """
     list account types
     """
 
-    queryset = AccountType.objects.all()
     serializer_class = AccountTypeSerializer
 
 
-class CreateArea(CreateAPIView):
+class CreateArea(AreaQuery, CreateAPIView):
     """
     create area
     """
 
-    queryset = Area.objects.all()
     serializer_class = AreaSerializer
 
 
-class ListArea(ListAPIView):
+class ListArea(AreaQuery, ListAPIView):
     """
     list areas
     """
 
-    queryset = Area.objects.all()
     serializer_class = AreaSerializer
 
 
@@ -143,9 +142,10 @@ class DayBook(APIView):
         filters = {
             "date__gte": today,
             "date__lte": today,
+            "branch": request.branch,
         }
 
-        cheque_account = get_cheque_account().account
+        cheque_account = get_cheque_account(request.branch).account
 
         expenses = ExpenseDetail.objects.filter(**filters)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
@@ -180,9 +180,9 @@ class DayBook(APIView):
             personal_cheques, many=True
         ).data
 
-        accounts_opening_balances = AccountType.objects.all().values(
-            account_type__name=F("name"), total=F("opening_balance")
-        )
+        accounts_opening_balances = AccountType.objects.filter(
+            branch=request.branch
+        ).values(account_type__name=F("name"), total=F("opening_balance"))
 
         balance_ledgers = (
             Ledger.objects.values("account_type__name", "nature")
@@ -190,6 +190,7 @@ class DayBook(APIView):
             .filter(
                 date__lte=today,
                 account_type__isnull=False,
+                branch=request.branch
                 # external_cheque__status=ChequeStatusChoices.PENDING,
             )
             .exclude(account_type=cheque_account)
@@ -199,7 +200,7 @@ class DayBook(APIView):
         balance_expenses = (
             ExpenseDetail.objects.values("account_type__name")
             .order_by("date")
-            .filter(date__lte=today)
+            .filter(date__lte=today, branch=request.branch)
             .annotate(total=Sum("amount"))
         )
 
@@ -264,9 +265,8 @@ class DayBook(APIView):
         )
 
 
-class GetStockQuantity(ListAPIView):
+class GetStockQuantity(StockQuery, ListAPIView):
 
-    queryset = Stock.objects.all()
     serializer_class = StockSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -286,7 +286,7 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
         try:
             qp = request.query_params
             account = qp.get("account")
-            filters = {}
+            filters = {"branch": request.branch}
             start_date = (
                 datetime.strptime(qp.get("start"), "%Y-%m-%d")
                 if qp.get("start")
@@ -300,7 +300,7 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             if end_date:
                 filters.update({"date__lte": end_date})
 
-            account = get_object_or_404(AccountType, id=account)
+            account = get_object_or_404(AccountType, id=account, branch=request.branch)
             filters.update({"account_type": account})
             ledger = Ledger.objects.filter(**filters).values()
             ledger = add_type(ledger, "Ledger entry")

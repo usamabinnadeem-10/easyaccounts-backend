@@ -11,6 +11,13 @@ class Branch(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=255)
 
+    class Meta:
+        verbose_name = "Branch"
+        verbose_name_plural = "Branches"
+
+    def __str__(self):
+        return self.name
+
 
 class UserBranchRelation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -34,7 +41,7 @@ class UserBranchRelation(models.Model):
 
 
 class BranchAwareModel(models.Model):
-
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     branch = models.ForeignKey(
         Branch, related_name="%(class)s", on_delete=models.CASCADE
     )
