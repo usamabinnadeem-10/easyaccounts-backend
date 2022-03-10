@@ -9,7 +9,7 @@ class IsLoggedIn(permissions.BasePermission):
     def has_permission(self, request, view):
         try:
             user_branch = UserBranchRelation.objects.get(
-                user=request.user, is_logged_in=True
+                user=request.user, is_logged_in=True, is_active=True
             )
         except UserBranchRelation.DoesNotExist:
             return False

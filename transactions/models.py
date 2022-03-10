@@ -26,6 +26,7 @@ class Transaction(BranchAwareModel):
     paid_amount = models.FloatField(default=0.0)
     manual_invoice_serial = models.BigIntegerField()
     manual_serial_type = models.CharField(max_length=3)
+    requires_action = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["serial"]

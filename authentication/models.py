@@ -27,6 +27,7 @@ class UserBranchRelation(models.Model):
         max_length=20, choices=RoleChoices.choices, default=RoleChoices.ACCOUNTANT
     )
     is_logged_in = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
 
     objects = models.Manager()
     utils = UserBranchManager()

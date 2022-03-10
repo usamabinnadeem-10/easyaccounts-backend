@@ -55,6 +55,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "person_name",
             "person_type",
             "manual_serial_type",
+            "requires_action",
         ]
         read_only_fields = ["id"]
 
@@ -193,6 +194,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             "detail",
             "manual_invoice_serial",
             "manual_serial_type",
+            "requires_action",
         ]
 
     def update(self, instance, validated_data):
