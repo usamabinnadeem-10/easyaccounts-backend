@@ -21,9 +21,11 @@ def get_cheque_account():
 def is_valid_history_entry(data, parent_cheque):
     """checks if amount is legal when history is created"""
     remaining_amount = ExternalChequeHistory.get_remaining_amount(
-        parent_cheque, data["cheque_account"]
+        parent_cheque, data["cheque_account"], data["branch"]
     )
-    total_amount_received = ExternalChequeHistory.get_amount_received(data["cheque"])
+    total_amount_received = ExternalChequeHistory.get_amount_received(
+        data["cheque"], data["branch"]
+    )
     error = ""
     if remaining_amount >= data["amount"]:
         if parent_cheque.amount - total_amount_received >= data["amount"]:

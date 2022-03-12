@@ -108,6 +108,7 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         "discount": ["gte", "lte"],
         "type": ["exact"],
         "transaction_detail__amount": ["gte", "lte"],
+        "requires_action": ["exact"]
     }
 
 

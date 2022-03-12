@@ -176,7 +176,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
             **{
                 **data_for_cheque,
                 **branch_filter,
-                "serial": ExternalCheque.get_next_serial(),
+                "serial": ExternalCheque.get_next_serial(branch),
                 "person": validated_data["cheque"].person,
             }
         )

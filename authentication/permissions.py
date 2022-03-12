@@ -1,6 +1,7 @@
 from rest_framework import permissions
 
 from .models import UserBranchRelation
+from .choices import RoleChoices
 
 
 class IsLoggedIn(permissions.BasePermission):
@@ -23,3 +24,24 @@ class IsBranchMember(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return UserBranchRelation.objects.filter(user=request.user).exists()
+
+
+class IsAdmin(permissions.BasePermission):
+    """Permission class to check whether user is an admin"""
+
+    def has_permission(self, request, view):
+        return request.role == RoleChoices.ADMIN
+
+
+class IsPurchaser(permissions.BasePermission):
+    """Permission class to check whether user is a purchaser"""
+
+    def has_permission(self, request, view):
+        return request.role == RoleChoices.PURCHASER
+
+
+class IsSaleman(permissions.BasePermission):
+    """Permission class to check whether user is a saleman"""
+
+    def has_permission(self, request, view):
+        return request.role == RoleChoices.SALEMAN

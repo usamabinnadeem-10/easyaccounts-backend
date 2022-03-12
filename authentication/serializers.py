@@ -18,6 +18,7 @@ class LoginSerializer(serializers.Serializer):
 
     branch_id = serializers.UUIDField()
     branch_name = serializers.CharField(read_only=True)
+    role = serializers.CharField(read_only=True)
 
     def create(self, validated_data):
 
@@ -33,6 +34,7 @@ class LoginSerializer(serializers.Serializer):
         UserBranchRelation.utils.logout_from_other_branches(user, branch)
 
         validated_data["branch_name"] = user_branch.branch.name
+        validated_data["role"] = user_branch.role
         return validated_data
 
 

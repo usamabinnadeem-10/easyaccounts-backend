@@ -9,9 +9,12 @@ from authentication.models import BranchAwareModel
 
 
 class Product(BranchAwareModel):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     opening_stock = models.FloatField(default=0.0)
     opening_stock_rate = models.FloatField(default=0.0)
+
+    class Meta:
+        unique_together = ("name", "branch")
 
     def __str__(self) -> str:
         return self.name
@@ -33,7 +36,7 @@ class Warehouse(BranchAwareModel):
 class Person(BranchAwareModel):
     """Supplier or Customer Account"""
 
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
     business_name = models.CharField(max_length=100, null=True)
     address = models.CharField(max_length=300, null=True)
@@ -53,6 +56,9 @@ class Person(BranchAwareModel):
     area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True)
     opening_balance = models.FloatField(default=0.0)
 
+    class Meta:
+        unique_together = ("name", "branch")
+
     def __str__(self) -> str:
         return self.name + ": " + self.person_type
 
@@ -64,7 +70,7 @@ class AccountType(BranchAwareModel):
     opening_balance = models.FloatField(default=0.0)
 
     def __str__(self) -> str:
-        return self.name
+        return f"{self.name} {self.branch.name}"
 
 
 class Stock(BranchAwareModel):
@@ -76,7 +82,7 @@ class Stock(BranchAwareModel):
     yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])
 
     class Meta:
-        unique_together = ("product", "warehouse", "yards_per_piece")
+        unique_together = ("product", "warehouse", "yards_per_piece", "branch")
 
 
 class LinkedAccount(BranchAwareModel):
