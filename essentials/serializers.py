@@ -75,41 +75,15 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-
-    yards_per_piece = serializers.FloatField(write_only=True)
-    warehouse = serializers.UUIDField(write_only=True)
-
     class Meta:
         model = Product
-        fields = [
-            "id",
-            "name",
-            "opening_stock",
-            "opening_stock_rate",
-            "yards_per_piece",
-            "warehouse",
-        ]
+        fields = ["id", "name"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
 
-        yards_per_piece = validated_data.pop("yards_per_piece")
-        warehouse = validated_data.pop("warehouse")
-        warehouse = Warehouse.objects.get(id=warehouse)
-
         validated_data["branch"] = self.context["request"].branch
         product = Product.objects.create(**validated_data)
-
-        if validated_data["opening_stock"] and validated_data["opening_stock_rate"]:
-            Stock.objects.create(
-                **{
-                    "product": product,
-                    "warehouse": warehouse,
-                    "stock_quantity": product.opening_stock,
-                    "yards_per_piece": yards_per_piece,
-                    "branch": product.branch,
-                }
-            )
         return product
 
 
@@ -122,11 +96,21 @@ class StockSerializer(serializers.ModelSerializer):
             "warehouse",
             "stock_quantity",
             "yards_per_piece",
+            "opening_stock",
+            "opening_stock_rate",
         ]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
+        if Stock.objects.filter(
+            product=validated_data["product"],
+            warehouse=validated_data["warehouse"],
+            yards_per_piece=validated_data["yards_per_piece"],
+            branch=validated_data["branch"],
+        ).exists():
+            raise serializers.ValidationError("Opening stock exists for this product")
+        validated_data["stock_quantity"] = validated_data["opening_stock"]
         instance = super().create(validated_data)
         return instance
 

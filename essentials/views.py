@@ -351,3 +351,8 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
                 {"error": "Please choose an account type"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class CreateOpeningStock(StockQuery, CreateAPIView):
+
+    serializer_class = StockSerializer

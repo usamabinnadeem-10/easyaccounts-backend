@@ -10,8 +10,6 @@ from authentication.models import BranchAwareModel
 
 class Product(BranchAwareModel):
     name = models.CharField(max_length=100)
-    opening_stock = models.FloatField(default=0.0)
-    opening_stock_rate = models.FloatField(default=0.0)
 
     class Meta:
         unique_together = ("name", "branch")
@@ -80,6 +78,8 @@ class Stock(BranchAwareModel):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=False)
     stock_quantity = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
     yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])
+    opening_stock = models.FloatField(default=0.0)
+    opening_stock_rate = models.FloatField(default=0.0)
 
     class Meta:
         unique_together = ("product", "warehouse", "yards_per_piece", "branch")

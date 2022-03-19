@@ -8,7 +8,7 @@ class UserBranchQuery:
 
     def get_queryset(self):
         user_branches = UserBranchRelation.objects.select_related("branch").filter(
-            user=self.request.user
+            user=self.request.user, is_active=True
         )
         if not user_branches:
             raise AuthenticationFailed("User does not exist")
