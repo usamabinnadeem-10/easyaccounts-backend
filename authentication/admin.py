@@ -8,7 +8,7 @@ class BranchAdmin(admin.ModelAdmin):
 
 
 class UserBranchRelationAdmin(admin.ModelAdmin):
-    list_display = ["user", "branch", "role"]
+    list_display = ["user", "branch", "role", "is_logged_in"]
 
 
 # Register your models here.
