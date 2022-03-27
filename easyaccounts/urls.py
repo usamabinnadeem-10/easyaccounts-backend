@@ -24,4 +24,6 @@ urlpatterns = [
     path("expense/", include("expenses.urls")),
     path("cheque/", include("cheques.urls")),
     path("auth/", include("authentication.urls")),
+    path("raw/", include("rawtransactions.urls")),
+    path("dying/", include("dying.urls")),
 ]

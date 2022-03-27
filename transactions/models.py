@@ -38,7 +38,7 @@ class TransactionDetail(BranchAwareModel):
         Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
     product = models.ForeignKey(
-        Product, on_delete=models.SET_NULL, null=True, name="product"
+        Product, on_delete=models.PROTECT, null=True, name="product"
     )
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
     yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])

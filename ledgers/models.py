@@ -5,9 +5,11 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 
 from cheques.choices import ChequeStatusChoices
+
 from cheques.models import ExternalCheque, PersonalCheque
 from essentials.models import AccountType, Person
 from transactions.models import Transaction
+from rawtransactions.models import RawTransaction
 
 from datetime import date
 from functools import reduce
@@ -35,6 +37,9 @@ class Ledger(BranchAwareModel):
     )
     personal_cheque = models.ForeignKey(
         PersonalCheque, on_delete=models.CASCADE, null=True
+    )
+    raw_transaction = models.ForeignKey(
+        RawTransaction, on_delete=models.CASCADE, null=True
     )
 
     class Meta:

@@ -6,7 +6,7 @@ from .models import (
     RawProductOpeningStock,
     RawTransaction,
     RawTransactionLot,
-    RawLotDetails,
+    RawLotDetail,
 )
 
 # Register your models here.
@@ -15,4 +15,4 @@ admin.site.register(RawProduct)
 admin.site.register(RawProductOpeningStock)
 admin.site.register(RawTransaction)
 admin.site.register(RawTransactionLot)
-admin.site.register(RawLotDetails)
+admin.site.register(RawLotDetail)
