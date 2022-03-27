@@ -33,12 +33,6 @@ class CreateRawTransaction(RawTransactionQuery, generics.CreateAPIView):
 class ListFormula(FormulaQuery, generics.ListAPIView):
 
     serializer_class = FormulaSerializer
-    filter_backends = [DjangoFilterBackend]
-    filter_fields = {
-        "name": ["contains"],
-        "person": ["exact"],
-        "type": ["exact"],
-    }
 
 
 class CreateFormula(FormulaQuery, generics.CreateAPIView):
