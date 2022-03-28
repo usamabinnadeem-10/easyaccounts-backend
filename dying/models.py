@@ -13,6 +13,9 @@ class DyingUnit(BranchAwareModel):
     class Meta:
         unique_together = ("name", "branch")
 
+    def __str__(self):
+        return self.name
+
 
 class DyingIssue(BranchAwareModel):
 
@@ -22,10 +25,10 @@ class DyingIssue(BranchAwareModel):
     date = models.DateField(default=date.today)
 
     @classmethod
-    def next_serial(cls):
-        next_serial = DyingIssue.objects.aggregate(max_serial=Max("dying_lot_number"))[
-            "max_serial"
-        ]
+    def next_serial(cls, branch):
+        next_serial = DyingIssue.objects.filter(branch=branch).aggregate(
+            max_serial=Max("dying_lot_number")
+        )["max_serial"]
         next_serial = next_serial + 1 if next_serial else 1
         return next_serial
 

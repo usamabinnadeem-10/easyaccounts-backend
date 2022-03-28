@@ -15,6 +15,9 @@ class Formula(BranchAwareModel):
     numerator = models.FloatField()
     denominator = models.FloatField()
 
+    def __str__(self):
+        return f"{self.numerator}/{self.denominator}"
+
 
 class RawProduct(BranchAwareModel):
 
@@ -25,6 +28,9 @@ class RawProduct(BranchAwareModel):
     class Meta:
         unique_together = ("person", "name", "branch", "type")
 
+    def __str__(self):
+        return f"{self.name} - {self.person} - {self.type}"
+
 
 class RawProductOpeningStock(BranchAwareModel):
 
@@ -33,12 +39,21 @@ class RawProductOpeningStock(BranchAwareModel):
     opening_stock_rate = models.FloatField()
     gazaana = models.FloatField()
 
+    class Meta:
+        unique_together = ("product", "gazaana", "branch")
+
 
 class RawTransaction(BranchAwareModel):
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     date = models.DateField(default=date.today)
     manual_invoice_serial = models.PositiveBigIntegerField()
+
+    class Meta:
+        unique_together = ("manual_invoice_serial", "branch")
+
+    def __str__(self):
+        return f"{self.manual_invoice_serial} - {self.person}"
 
 
 class RawTransactionLot(BranchAwareModel):
@@ -56,6 +71,9 @@ class RawTransactionLot(BranchAwareModel):
             )["max_lot"]
             or 0
         ) + 1
+
+    def __str__(self):
+        return f"{self.raw_transaction} - {self.lot_number}"
 
 
 class RawLotDetail(BranchAwareModel):

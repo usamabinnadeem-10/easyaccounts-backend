@@ -1,4 +1,4 @@
-from dying.models import DyingIssue
+from dying.models import DyingIssue, DyingUnit
 from essentials.choices import PersonChoices
 from ledgers.models import Ledger
 from rest_framework import serializers, status
@@ -25,7 +25,12 @@ class FormulaSerializer(serializers.ModelSerializer):
 class RawProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = RawProduct
-        fields = ["id", "name", "person", "type"]
+        fields = [
+            "id",
+            "name",
+            "person",
+            "type",
+        ]
         read_only_fields = ["id"]
 
     def validate(self, data):
@@ -42,7 +47,8 @@ class RawProductSerializer(serializers.ModelSerializer):
             branch=branch,
         ).exists():
             raise serializers.ValidationError(
-                "This product already exists", status.HTTP_400_BAD_REQUEST
+                "This product already exists",
+                status.HTTP_400_BAD_REQUEST,
             )
         return data
 
@@ -54,6 +60,7 @@ class RawProductSerializer(serializers.ModelSerializer):
 
 class RawLotDetailsSerializer(serializers.ModelSerializer):
     class Meta:
+        model = RawLotDetail
         fields = [
             "id",
             "lot_number",
@@ -63,28 +70,35 @@ class RawLotDetailsSerializer(serializers.ModelSerializer):
             "formula",
             "warehouse",
             "nature",
+            "rate",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "lot_number"]
 
 
 class RawTransactionLotSerializer(serializers.ModelSerializer):
 
-    lot_details = RawLotDetailsSerializer(many=True)
-    dying_unit = serializers.UUIDField(required=False, write_only=True)
+    lot_detail = RawLotDetailsSerializer(many=True)
+    dying_unit = serializers.UUIDField(required=False, write_only=True, allow_null=True)
 
     class Meta:
+        model = RawTransactionLot
         fields = [
             "id",
             "raw_transaction",
             "lot_number",
             "issued",
-            "lot_details",
+            "lot_detail",
             "dying_unit",
+            "raw_product",
         ]
-        read_only_fields = ["id", "lot_number"]
+        read_only_fields = [
+            "id",
+            "lot_number",
+            "raw_transaction",
+        ]
 
 
-def create_ledger_entry(raw_transaction, ledger_string, amount):
+def create_ledger_entry(raw_transaction, ledger_string, amount, branch):
     Ledger.objects.create(
         detail=ledger_string,
         nature="C",
@@ -92,6 +106,7 @@ def create_ledger_entry(raw_transaction, ledger_string, amount):
         person=raw_transaction.person,
         date=raw_transaction.date,
         amount=amount,
+        branch=branch,
     )
 
 
@@ -101,32 +116,52 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RawTransaction
-        fields = ["id", "person", "manual_invoice_serial", "date", "lots"]
+        fields = [
+            "id",
+            "person",
+            "manual_invoice_serial",
+            "date",
+            "lots",
+        ]
         read_only_fields = ["id"]
+
+    def validate(self, data):
+        branch = self.context["request"].branch
+        if RawTransaction.objects.filter(
+            branch=branch, manual_invoice_serial=data["manual_invoice_serial"]
+        ).exists():
+            raise serializers.ValidationError(
+                "This book number exists", status.HTTP_400_BAD_REQUEST
+            )
 
     def create(self, validated_data):
         lots = validated_data.pop("lots")
         branch = self.context["request"].branch
-        transaction = RawTransaction.objects.create(**validated_data, branch=branch)
+        transaction = RawTransaction.objects.create(
+            **validated_data,
+            branch=branch,
+        )
 
         ledger_string = "Kora wasooli\n"
         amount = 0
         for lot in lots:
             current_lot = RawTransactionLot.objects.create(
                 raw_transaction=transaction,
-                issues=lot["issued"],
+                issued=lot["issued"],
                 raw_product=lot["raw_product"],
                 branch=branch,
                 lot_number=RawTransactionLot.get_next_serial(branch),
             )
             ledger_string += f"Lot # {current_lot.lot_number}\n"
-            if current_lot.issue:
+            if current_lot.issued:
+                dying = DyingUnit.objects.get(id=lot["dying_unit"])
                 try:
                     DyingIssue.objects.create(
-                        dying_unit=lot["dying_unit"],
+                        dying_unit=dying,
                         lot_number=current_lot,
-                        dying_lot_number=DyingIssue.next_serial(),
+                        dying_lot_number=DyingIssue.next_serial(branch),
                         date=transaction.date,
+                        branch=branch,
                     )
                 except ValidationError:
                     raise serializers.ValidationError(
@@ -135,13 +170,13 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
             # ensure that warehouse is added if lot is not for issue
             # also ensure that the product belongs to the person
-            for lot in lot["lot_detail"]:
-                if not lot["issue"] and not lot["warehouse"]:
+            for lot_detail in lot["lot_detail"]:
+                if not current_lot.issued and not lot_detail["warehouse"]:
                     raise serializers.ValidationError(
                         "Add warehouse for the non-issue lot",
                         status.HTTP_400_BAD_REQUEST,
                     )
-                if transaction.person != lot["person"]:
+                if transaction.person != transaction.person:
                     raise serializers.ValidationError(
                         "The product does not belong to the supplier",
                         status.HTTP_400_BAD_REQUEST,
@@ -150,14 +185,15 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
             current_lot_detail = map(
                 lambda l: {
                     **l,
-                    "warehouse": None if current_lot.issue else l["warehouse"],
+                    "warehouse": None if current_lot.issued else l["warehouse"],
                 },
                 lot["lot_detail"],
             )
+            print(current_lot_detail)
 
             for detail in current_lot_detail:
                 current_detail = RawLotDetail.objects.create(
-                    **detail, lot_number=current_lot
+                    **detail, lot_number=current_lot, branch=branch
                 )
                 amount += (
                     current_detail.quantity
@@ -169,6 +205,12 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                     )
                 )
 
-        create_ledger_entry(transaction, ledger_string, amount)
+        create_ledger_entry(transaction, ledger_string, amount, branch)
 
-        return {**transaction, "lots": lots}
+        return {
+            "id": transaction.id,
+            "person": transaction.person,
+            "manual_invoice_serial": transaction.manual_invoice_serial,
+            "date": transaction.date,
+            "lots": lots,
+        }
