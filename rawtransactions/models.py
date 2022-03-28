@@ -3,7 +3,7 @@ from datetime import date
 from authentication.models import BranchAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Max
+from django.db.models import Max, Sum
 from essentials.models import Person, Warehouse
 from transactions.choices import TransactionChoices
 
@@ -90,3 +90,19 @@ class RawLotDetail(BranchAwareModel):
         choices=TransactionChoices.choices,
         default=TransactionChoices.CREDIT,
     )
+
+    @classmethod
+    def get_lot_stock(cls, branch):
+        balance = (
+            RawLotDetail.objects.values(
+                "lot_number",
+                "nature",
+                "actual_gazaana",
+                "expected_gazaana",
+                "lot_number__raw_product",
+                "warehouse",
+            )
+            .filter(branch=branch, lot_number__issued=False)
+            .annotate(quantity=Sum("quantity"))
+        )
+        return list(balance)

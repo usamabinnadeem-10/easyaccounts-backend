@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from dying.models import DyingIssue, DyingUnit
 from essentials.choices import PersonChoices
 from ledgers.models import Ledger
@@ -5,6 +7,7 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 
 from .models import Formula, RawLotDetail, RawProduct, RawTransaction, RawTransactionLot
+from .utils import is_array_unique
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -134,6 +137,8 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                 "This book number exists", status.HTTP_400_BAD_REQUEST
             )
 
+        return data
+
     def create(self, validated_data):
         lots = validated_data.pop("lots")
         branch = self.context["request"].branch
@@ -214,3 +219,39 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
             "date": transaction.date,
             "lots": lots,
         }
+
+
+class RawReturnSerializer(serializers.Serializer):
+    class Serializer(serializers.Serializer):
+
+        lot_number = serializers.IntegerField()
+        detail = RawLotDetailsSerializer(many=True)
+
+    return_data = Serializer(many=True)
+
+    # make sure lot numbers are unique
+    def validate(self, data):
+        if not is_array_unique(data["return_data"], "lot_number"):
+            raise ValidationError(
+                "Lot numbers must be unique", status.HTTP_400_BAD_REQUEST
+            )
+        return data
+
+    def create(self, validated_data):
+        branch = self.context["request"].branch
+        stock = RawLotDetail.get_lot_stock(branch)
+
+        for data in validated_data["return_data"]:
+
+            try:
+                lot_number = data["lot_number"]
+                lot = RawTransactionLot.objects.get(lot_number=lot_number, branch=branch)
+            except Exception:
+                raise ValidationError(
+                    f"Lot {lot_number} does not exist", status.HTTP_400_BAD_REQUEST
+                )
+
+            lot_stock = filter(lambda stock: stock["lot_number"] == lot.id, stock)
+            print(list(lot_stock))
+
+        return {}

@@ -1,11 +1,18 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
 
-from .queries import FormulaQuery, RawProductQuery, RawTransactionQuery
+from .models import RawTransactionLot
+from .queries import (
+    FormulaQuery,
+    RawProductQuery,
+    RawTransactionLotQuery,
+    RawTransactionQuery,
+)
 from .serializers import (
     CreateRawTransactionSerializer,
     FormulaSerializer,
     RawProductSerializer,
+    RawReturnSerializer,
 )
 
 
@@ -38,3 +45,8 @@ class ListFormula(FormulaQuery, generics.ListAPIView):
 class CreateFormula(FormulaQuery, generics.CreateAPIView):
 
     serializer_class = FormulaSerializer
+
+
+class RawReturnView(generics.CreateAPIView):
+
+    serializer_class = RawReturnSerializer
