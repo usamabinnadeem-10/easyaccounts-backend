@@ -1,13 +1,13 @@
-from django.db import models
-from django.db.models import Max, Sum
-from django.core.validators import MinValueValidator
+from datetime import date
 
-from .choices import RawProductTypes
-from essentials.models import Person, Warehouse
 from authentication.models import BranchAwareModel
+from django.core.validators import MinValueValidator
+from django.db import models
+from django.db.models import Max
+from essentials.models import Person, Warehouse
 from transactions.choices import TransactionChoices
 
-from datetime import date
+from .choices import RawProductTypes
 
 
 class Formula(BranchAwareModel):

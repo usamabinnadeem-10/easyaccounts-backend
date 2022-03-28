@@ -1,10 +1,9 @@
-from django.db import models
-from django.db.models import Max
+from datetime import date
 
 from authentication.models import BranchAwareModel
-from rawtransactions.models import RawTransactionLot, Formula
-
-from datetime import date
+from django.db import models
+from django.db.models import Max
+from rawtransactions.models import Formula, RawTransactionLot
 
 
 class DyingUnit(BranchAwareModel):

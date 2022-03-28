@@ -1,4 +1,4 @@
-from .models import Transaction, TransactionDetail, TransferEntry, CancelledInvoice
+from .models import CancelledInvoice, Transaction, TransactionDetail, TransferEntry
 
 
 class TransactionQuery:

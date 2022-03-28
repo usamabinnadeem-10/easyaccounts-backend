@@ -1,11 +1,11 @@
 from django.urls import path
 
 from .views import (
+    CreateFormula,
+    CreateRawProduct,
     CreateRawTransaction,
     ListFormula,
-    CreateFormula,
     ListRawProducts,
-    CreateRawProduct,
 )
 
 urlpatterns = [

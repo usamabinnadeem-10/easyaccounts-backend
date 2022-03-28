@@ -1,16 +1,12 @@
-from django.db import models
-from django.core.validators import MinValueValidator
-from uuid import uuid4
-
-from essentials.models import AccountType, Warehouse, Product, Person
-
 from datetime import date
 
-from django.db.models import Sum
-
-from .choices import *
-
 from authentication.models import BranchAwareModel
+from django.core.validators import MinValueValidator
+from django.db import models
+from django.db.models import Sum
+from essentials.models import AccountType, Person, Product, Warehouse
+
+from .choices import TransactionChoices, TransactionTypes
 
 
 class Transaction(BranchAwareModel):
@@ -30,7 +26,11 @@ class Transaction(BranchAwareModel):
 
     class Meta:
         ordering = ["serial"]
-        unique_together = ("manual_invoice_serial", "manual_serial_type", "branch")
+        unique_together = (
+            "manual_invoice_serial",
+            "manual_serial_type",
+            "branch",
+        )
 
 
 class TransactionDetail(BranchAwareModel):
@@ -53,7 +53,11 @@ class CancelledInvoice(BranchAwareModel):
     comment = models.CharField(max_length=500)
 
     class Meta:
-        unique_together = ("manual_invoice_serial", "manual_serial_type", "branch")
+        unique_together = (
+            "manual_invoice_serial",
+            "manual_serial_type",
+            "branch",
+        )
 
 
 class TransferEntry(BranchAwareModel):

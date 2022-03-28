@@ -1,3 +1,29 @@
 {
-  "python.formatting.provider": "black"
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "tabnine.experimentalAutoImports": true,
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.colorTheme": "Visual Studio Dark",
+  "git.autofetch": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.singleQuote": true,
+  "prettier.jsxBracketSameLine": true,
+  "prettier.jsxSingleQuote": true,
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "python.linting.enabled": true,
+  "python.linting.lintOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": null,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    }
+  },
+  "python.sortImports.args": ["--profile", "black"],
+  "python.formatting.provider": "black",
+  "editor.formatOnSave": true,
+  "python.formatting.blackArgs": ["--line-length=90"]
 }

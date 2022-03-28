@@ -1,4 +1,4 @@
-from .models import RawProduct, RawTransaction, Formula
+from .models import Formula, RawProduct, RawTransaction
 
 
 class RawProductQuery:

@@ -1,54 +1,51 @@
-from rest_framework import status
-from rest_framework.generics import (
-    ListAPIView,
-    CreateAPIView,
-    UpdateAPIView,
-    DestroyAPIView,
-)
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from datetime import date
 
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-
-from .choices import ChequeStatusChoices
-from .serializers import (
-    ExternalChequeHistorySerializer,
-    CreateExternalChequeEntrySerializer,
-    ExternalChequeHistoryWithChequeSerializer,
-    ListExternalChequeHistorySerializer,
-    TransferExternalChequeSerializer,
-    IssuePersonalChequeSerializer,
-    CancelPersonalChequeSerializer,
-    PassPersonalChequeSerializer,
-    ReIssuePersonalChequeFromReturnedSerializer,
-    ReturnPersonalChequeSerializer,
-    ExternalChequeSerializer,
-    CompleteExternalTransferChequeSerializer,
+from essentials.models import AccountType, LinkedAccount
+from rest_framework import status
+from rest_framework.generics import (
+    CreateAPIView,
+    DestroyAPIView,
+    ListAPIView,
+    UpdateAPIView,
 )
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from .models import (
     ExternalCheque,
     ExternalChequeHistory,
-    PersonalCheque,
     ExternalChequeTransfer,
+    PersonalCheque,
+)
+from .queries import (
+    ExternalChequeHistoryQuery,
+    ExternalChequeQuery,
+    ExternalChequeTransferQuery,
+    PersonalChequeQuery,
+)
+from .serializers import (
+    CancelPersonalChequeSerializer,
+    CompleteExternalTransferChequeSerializer,
+    CreateExternalChequeEntrySerializer,
+    ExternalChequeHistorySerializer,
+    ExternalChequeHistoryWithChequeSerializer,
+    ExternalChequeSerializer,
+    IssuePersonalChequeSerializer,
+    ListExternalChequeHistorySerializer,
+    PassPersonalChequeSerializer,
+    ReIssuePersonalChequeFromReturnedSerializer,
+    ReturnPersonalChequeSerializer,
+    TransferExternalChequeSerializer,
 )
 from .utils import (
     CHEQUE_ACCOUNT,
     create_ledger_entry_for_cheque,
-    has_history,
     get_cheque_account,
+    has_history,
 )
-from .choices import PersonalChequeStatusChoices
-from .queries import (
-    ExternalChequeQuery,
-    ExternalChequeHistoryQuery,
-    ExternalChequeTransferQuery,
-    PersonalChequeQuery,
-)
-
-from essentials.models import AccountType, LinkedAccount
-
-from datetime import date
 
 
 def return_error(error_msg):
@@ -339,9 +336,7 @@ class CancelPersonalChequeView(PersonalChequeQuery, UpdateAPIView):
     serializer_class = CancelPersonalChequeSerializer
 
     def get_queryset(self):
-        return (
-            super().get_queryset().filter(status=PersonalChequeStatusChoices.RETURNED)
-        )
+        return super().get_queryset().filter(status=PersonalChequeStatusChoices.RETURNED)
 
 
 class ListPersonalChequeView(PersonalChequeQuery, ListAPIView):

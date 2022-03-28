@@ -1,9 +1,9 @@
+from datetime import date
+
+from ledgers.models import Ledger
 from rest_framework import serializers
 
 from .models import *
-from ledgers.models import Ledger
-
-from datetime import date
 
 
 class PersonSerializer(serializers.ModelSerializer):

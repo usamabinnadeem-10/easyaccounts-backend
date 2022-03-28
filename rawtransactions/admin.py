@@ -2,11 +2,11 @@ from django.contrib import admin
 
 from .models import (
     Formula,
+    RawLotDetail,
     RawProduct,
     RawProductOpeningStock,
     RawTransaction,
     RawTransactionLot,
-    RawLotDetail,
 )
 
 # Register your models here.

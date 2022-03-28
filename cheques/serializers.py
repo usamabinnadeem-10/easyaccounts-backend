@@ -1,24 +1,22 @@
-from rest_framework import serializers
-
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
-
 from essentials.models import Person
+from rest_framework import serializers
 
+from .choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from .models import (
     ExternalCheque,
     ExternalChequeHistory,
-    PersonalCheque,
     ExternalChequeTransfer,
+    PersonalCheque,
 )
-from .choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from .utils import (
+    create_ledger_entry_for_cheque,
     get_cheque_account,
     get_parent_cheque,
-    is_transferred,
-    create_ledger_entry_for_cheque,
     has_history,
     is_not_cheque_account,
+    is_transferred,
 )
 
 # from ledgers.models import Ledger
@@ -91,9 +89,7 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
                 "Account type can not be cheque account", 400
             )
         if is_transferred(data["cheque"]):
-            raise serializers.ValidationError(
-                "Cheque has already been transferred", 400
-            )
+            raise serializers.ValidationError("Cheque has already been transferred", 400)
         return data
 
     def create(self, validated_data):
@@ -163,9 +159,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         if is_transferred(data["cheque"]):
-            raise serializers.ValidationError(
-                "Cheque has already been transferred", 400
-            )
+            raise serializers.ValidationError("Cheque has already been transferred", 400)
         return data
 
     def create(self, validated_data):
@@ -246,9 +240,7 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
                 "Cleared cheque can not be transferred", 400
             )
 
-        transfer = ExternalChequeTransfer.objects.create(
-            **validated_data, branch=branch
-        )
+        transfer = ExternalChequeTransfer.objects.create(**validated_data, branch=branch)
         create_ledger_entry_for_cheque(
             transfer.cheque, "D", True, validated_data["person"]
         )

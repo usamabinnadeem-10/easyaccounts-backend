@@ -1,11 +1,9 @@
-from django.db import models
-
-from essentials.models import AccountType
-
 from datetime import date
 from uuid import uuid4
 
 from authentication.models import BranchAwareModel
+from django.db import models
+from essentials.models import AccountType
 
 
 class ExpenseAccount(BranchAwareModel):

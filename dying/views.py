@@ -1,13 +1,11 @@
 from django.shortcuts import render
+from django_filters.rest_framework import DjangoFilterBackend
 
 # Create your views here.
 from rest_framework import generics
-from django_filters.rest_framework import DjangoFilterBackend
 
 from .queries import DyingUnitQuery
-from .serializers import (
-    DyingUnitSerializer,
-)
+from .serializers import DyingUnitSerializer
 
 
 class CreateDyingUnit(DyingUnitQuery, generics.CreateAPIView):

@@ -1,20 +1,16 @@
-from django.db import models
-from django.db.models import Sum
-
-from django.utils.translation import gettext_lazy as _
-from django.core.validators import MinValueValidator
-
-from cheques.choices import ChequeStatusChoices
-
-from cheques.models import ExternalCheque, PersonalCheque
-from essentials.models import AccountType, Person
-from transactions.models import Transaction
-from rawtransactions.models import RawTransaction
-
 from datetime import date
 from functools import reduce
 
 from authentication.models import BranchAwareModel
+from cheques.choices import ChequeStatusChoices
+from cheques.models import ExternalCheque, PersonalCheque
+from django.core.validators import MinValueValidator
+from django.db import models
+from django.db.models import Sum
+from django.utils.translation import gettext_lazy as _
+from essentials.models import AccountType, Person
+from rawtransactions.models import RawTransaction
+from transactions.models import Transaction
 
 
 class TransactionChoices(models.TextChoices):

@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import *
+from .models import (
+    CancelledInvoice,
+    Transaction,
+    TransactionDetail,
+    TransferEntry,
+)
 
 
 class TransactionAdmin(admin.ModelAdmin):

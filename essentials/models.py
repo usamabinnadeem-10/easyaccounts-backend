@@ -1,11 +1,11 @@
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-from django.core.validators import MinValueValidator, RegexValidator
 from uuid import uuid4
 
-from .choices import *
-
 from authentication.models import BranchAwareModel
+from django.core.validators import MinValueValidator, RegexValidator
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+from .choices import *
 
 
 class Product(BranchAwareModel):

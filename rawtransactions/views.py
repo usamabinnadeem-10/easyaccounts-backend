@@ -1,11 +1,11 @@
-from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics
 
-from .queries import RawProductQuery, RawTransactionQuery, FormulaQuery, RawProduct
+from .queries import FormulaQuery, RawProductQuery, RawTransactionQuery
 from .serializers import (
-    RawProductSerializer,
     CreateRawTransactionSerializer,
     FormulaSerializer,
+    RawProductSerializer,
 )
 
 

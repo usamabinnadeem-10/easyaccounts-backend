@@ -1,13 +1,10 @@
-from rest_framework import serializers, status
-
 from dying.models import DyingIssue
-from ledgers.models import Ledger
-
 from essentials.choices import PersonChoices
-from transactions.choices import TransactionChoices
+from ledgers.models import Ledger
+from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
 
-
-from .models import RawProduct, RawTransaction, RawTransactionLot, RawLotDetail, Formula
+from .models import Formula, RawLotDetail, RawProduct, RawTransaction, RawTransactionLot
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -34,11 +31,15 @@ class RawProductSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data["person"].person_type == PersonChoices.CUSTOMER:
             raise serializers.ValidationError(
-                "Customer can not have a raw product", status.HTTP_400_BAD_REQUEST
+                "Customer can not have a raw product",
+                status.HTTP_400_BAD_REQUEST,
             )
         branch = self.context["request"].branch
         if RawProduct.objects.filter(
-            name=data["name"], person=data["person"], type=data["type"], branch=branch
+            name=data["name"],
+            person=data["person"],
+            type=data["type"],
+            branch=branch,
         ).exists():
             raise serializers.ValidationError(
                 "This product already exists", status.HTTP_400_BAD_REQUEST
@@ -121,15 +122,29 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
             ledger_string += f"Lot # {current_lot.lot_number}\n"
             if current_lot.issue:
                 try:
-                    lot_issue = DyingIssue.objects.create(
+                    DyingIssue.objects.create(
                         dying_unit=lot["dying_unit"],
                         lot_number=current_lot,
                         dying_lot_number=DyingIssue.next_serial(),
                         date=transaction.date,
                     )
-                except:
+                except ValidationError:
                     raise serializers.ValidationError(
                         "Please enter dying unit for issued lot"
+                    )
+
+            # ensure that warehouse is added if lot is not for issue
+            # also ensure that the product belongs to the person
+            for lot in lot["lot_detail"]:
+                if not lot["issue"] and not lot["warehouse"]:
+                    raise serializers.ValidationError(
+                        "Add warehouse for the non-issue lot",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+                if transaction.person != lot["person"]:
+                    raise serializers.ValidationError(
+                        "The product does not belong to the supplier",
+                        status.HTTP_400_BAD_REQUEST,
                     )
 
             current_lot_detail = map(

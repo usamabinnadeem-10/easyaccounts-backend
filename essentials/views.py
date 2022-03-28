@@ -1,50 +1,43 @@
-from rest_framework import status
-from rest_framework.generics import ListCreateAPIView, ListAPIView, CreateAPIView
-from rest_framework.views import APIView
-from rest_framework.response import Response
-
-from django.db.models import Sum, F
-from django.shortcuts import get_object_or_404
-from django_filters.rest_framework import DjangoFilterBackend
-
-from .serializers import *
-from .models import *
-from .utils import get_account_balances, format_cheques_as_ledger, add_type
-
+from collections import defaultdict
 from datetime import date, datetime
 from itertools import chain
 
+from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
+from cheques.models import ExternalCheque, ExternalChequeHistory, PersonalCheque
+from cheques.serializers import (
+    ExternalChequeSerializer,
+    IssuePersonalChequeSerializer,
+    ShortExternalChequeHistorySerializer,
+)
+from cheques.utils import get_cheque_account
+from django.db.models import F, Sum
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from expenses.models import ExpenseDetail
+from expenses.serializers import ExpenseDetailSerializer
+from ledgers.models import Ledger
+from ledgers.serializers import LedgerSerializer
+from rest_framework import status
+from rest_framework.generics import CreateAPIView, ListAPIView, ListCreateAPIView
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from transactions.models import Transaction
 from transactions.serializers import TransactionSerializer
 
-from expenses.models import ExpenseDetail
-from expenses.serializers import ExpenseDetailSerializer
 from essentials.choices import PersonChoices
-
-from ledgers.models import Ledger
-from ledgers.serializers import LedgerSerializer
-
 from essentials.pagination import CustomPagination, PaginationHandlerMixin
 
-from cheques.utils import get_cheque_account
-from cheques.models import ExternalChequeHistory, PersonalCheque, ExternalCheque
-from cheques.choices import PersonalChequeStatusChoices, ChequeStatusChoices
-from cheques.serializers import (
-    IssuePersonalChequeSerializer,
-    ExternalChequeSerializer,
-    ShortExternalChequeHistorySerializer,
-)
-
-from collections import defaultdict
-
+from .models import *
 from .queries import (
+    AccountTypeQuery,
     AreaQuery,
     PersonQuery,
     ProductQuery,
     StockQuery,
     WarehouseQuery,
-    AccountTypeQuery,
 )
+from .serializers import *
+from .utils import add_type, format_cheques_as_ledger, get_account_balances
 
 
 class CreatePerson(PersonQuery, CreateAPIView):

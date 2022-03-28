@@ -1,13 +1,10 @@
+from django.db.models import Max
+from ledgers.models import Ledger
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
-from essentials.models import Stock
-from .models import *
-from ledgers.models import Ledger
 
-from django.db.models import Max
-from django.shortcuts import get_object_or_404
-
-from .utils import *
+from .models import CancelledInvoice, Transaction, TransactionDetail
+from .utils import create_ledger_entries, create_ledger_string, update_stock
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
@@ -82,16 +79,18 @@ class TransactionSerializer(serializers.ModelSerializer):
             ]
             or 0
         )
-        book_serial = validated_data["manual_invoice_serial"]
+        validated_data["manual_invoice_serial"]
         max_from_cancelled = (
             CancelledInvoice.objects.filter(
-                **branch_filter, manual_serial_type=validated_data["manual_serial_type"]
+                **branch_filter,
+                manual_serial_type=validated_data["manual_serial_type"],
             ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
             or 0
         )
         max_from_transactions = (
             Transaction.objects.filter(
-                **branch_filter, manual_serial_type=validated_data["manual_serial_type"]
+                **branch_filter,
+                manual_serial_type=validated_data["manual_serial_type"],
             ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
             or 0
         )
@@ -200,7 +199,8 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         transaction_detail = validated_data.pop("transaction_detail")
         branch_filter = {"branch": self.context["request"].branch}
-        # delete all the other transaction details which were not in the transaction_detail
+        # delete all the other transaction details
+        # which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(
             **branch_filter, transaction=instance
         ).values("id", "product", "warehouse", "quantity", "yards_per_piece")
@@ -219,7 +219,9 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
                     id=transaction["id"], **branch_filter
                 )
                 update_stock(
-                    "C" if instance.nature == "D" else "D", transaction, instance.nature
+                    "C" if instance.nature == "D" else "D",
+                    transaction,
+                    instance.nature,
                 )
                 to_delete.delete()
 
@@ -302,7 +304,9 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         # if transaction was paid and is now unpaid then delete the old ledger entry
         if validated_data["type"] != "paid" and instance.type == "paid":
             paid_instance = Ledger.objects.get(
-                transaction=instance, account_type__isnull=False, **branch_filter
+                transaction=instance,
+                account_type__isnull=False,
+                **branch_filter,
             )
             paid_instance.delete()
 
@@ -328,7 +332,12 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 class CancelledInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = CancelledInvoice
-        fields = ["id", "manual_invoice_serial", "manual_serial_type", "comment"]
+        fields = [
+            "id",
+            "manual_invoice_serial",
+            "manual_serial_type",
+            "comment",
+        ]
         read_only_fields = ["id"]
 
     def validate(self, data):

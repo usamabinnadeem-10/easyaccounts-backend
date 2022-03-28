@@ -1,4 +1,4 @@
-from .models import Person, Warehouse, Area, AccountType, Product, Stock, LinkedAccount
+from .models import AccountType, Area, LinkedAccount, Person, Product, Stock, Warehouse
 
 
 class PersonQuery:

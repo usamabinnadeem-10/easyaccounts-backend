@@ -1,10 +1,9 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
 
-from django_filters.rest_framework import DjangoFilterBackend
-
 from .models import ExpenseAccount, ExpenseDetail
-from .serializers import ExpenseAccountSerializer, ExpenseDetailSerializer
 from .queries import ExpenseAccountQuery, ExpenseDetailQuery
+from .serializers import ExpenseAccountSerializer, ExpenseDetailSerializer
 
 
 class CreateExpenseAccount(ExpenseAccountQuery, generics.ListCreateAPIView):

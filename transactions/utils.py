@@ -1,8 +1,7 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import NotAcceptable
-
 from essentials.models import Stock
 from ledgers.models import Ledger
+from rest_framework.exceptions import NotAcceptable
 
 
 def is_low_quantity(stock_to_update, value):
