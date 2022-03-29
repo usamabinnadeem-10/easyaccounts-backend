@@ -1,7 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
 
-from .models import RawTransactionLot
 from .queries import (
     FormulaQuery,
     RawProductQuery,
@@ -11,6 +10,7 @@ from .queries import (
 from .serializers import (
     CreateRawTransactionSerializer,
     FormulaSerializer,
+    RawLotNumberAndIdSerializer,
     RawProductSerializer,
     RawReturnSerializer,
 )
@@ -50,3 +50,20 @@ class CreateFormula(FormulaQuery, generics.CreateAPIView):
 class RawReturnView(generics.CreateAPIView):
 
     serializer_class = RawReturnSerializer
+
+
+class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
+
+    serializer_class = RawLotNumberAndIdSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        "raw_transaction__person": ["exact"],
+    }
+
+    def get_queryset(self):
+        qp = self.request.query_params
+        if "issued" in qp:
+            issued = False if qp.get("issued") == "false" else True
+            queryset = super().get_queryset()
+            return queryset.filter(issued=issued)
+        return super().get_queryset()

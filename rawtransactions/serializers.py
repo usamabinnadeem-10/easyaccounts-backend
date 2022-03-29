@@ -1,13 +1,16 @@
 from collections import defaultdict
+from functools import reduce
 
 from dying.models import DyingIssue, DyingUnit
 from essentials.choices import PersonChoices
+from essentials.models import Person
 from ledgers.models import Ledger
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
+from transactions.choices import TransactionChoices
 
 from .models import Formula, RawLotDetail, RawProduct, RawTransaction, RawTransactionLot
-from .utils import is_array_unique
+from .utils import calculate_amount, is_array_unique
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -194,7 +197,6 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                 },
                 lot["lot_detail"],
             )
-            print(current_lot_detail)
 
             for detail in current_lot_detail:
                 current_detail = RawLotDetail.objects.create(
@@ -221,37 +223,114 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         }
 
 
-class RawReturnSerializer(serializers.Serializer):
+class RawStockAwareSerializer(serializers.Serializer):
     class Serializer(serializers.Serializer):
 
-        lot_number = serializers.IntegerField()
-        detail = RawLotDetailsSerializer(many=True)
+        lot_number = serializers.UUIDField(write_only=True)
+        detail = RawLotDetailsSerializer(many=True, write_only=True)
 
-    return_data = Serializer(many=True)
+    data = Serializer(many=True, write_only=True)
+    branch = None
+    amount = 0
 
     # make sure lot numbers are unique
     def validate(self, data):
-        if not is_array_unique(data["return_data"], "lot_number"):
+        if not is_array_unique(data["data"], "lot_number"):
             raise ValidationError(
                 "Lot numbers must be unique", status.HTTP_400_BAD_REQUEST
             )
         return data
 
-    def create(self, validated_data):
-        branch = self.context["request"].branch
-        stock = RawLotDetail.get_lot_stock(branch)
-
-        for data in validated_data["return_data"]:
-
+    def check_stock(self, array, check_person=False, person=None):
+        self.branch = self.context["request"].branch
+        stock = RawLotDetail.get_lot_stock(self.branch)
+        for data in array:
             try:
-                lot_number = data["lot_number"]
-                lot = RawTransactionLot.objects.get(lot_number=lot_number, branch=branch)
+                lot = RawTransactionLot.objects.get(
+                    id=data["lot_number"], branch=self.branch
+                )
             except Exception:
+                raise ValidationError(f"Lot does not exist", status.HTTP_400_BAD_REQUEST)
+
+            if check_person and lot.raw_transaction.person != person:
                 raise ValidationError(
-                    f"Lot {lot_number} does not exist", status.HTTP_400_BAD_REQUEST
+                    f"Lot {lot.lot_number} does not belong to this person"
                 )
 
-            lot_stock = filter(lambda stock: stock["lot_number"] == lot.id, stock)
-            print(list(lot_stock))
+            for detail in data["detail"]:
+                lot_stock = list(
+                    filter(
+                        lambda val: val["lot_number"] == lot.id
+                        and val["actual_gazaana"] == detail["actual_gazaana"]
+                        and val["expected_gazaana"] == detail["expected_gazaana"]
+                        and val["formula"] == detail["formula"].id
+                        and val["warehouse"] == detail["warehouse"].id,
+                        stock,
+                    )
+                )
+                quantity = reduce(
+                    lambda prev, curr: prev
+                    + (
+                        curr["quantity"]
+                        if curr["nature"] == TransactionChoices.CREDIT
+                        else -curr["quantity"]
+                    ),
+                    lot_stock,
+                    0,
+                )
+                if quantity < detail["quantity"]:
+                    raise ValidationError(
+                        f"Stock for lot # {lot.lot_number} is low",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
 
+    def create_detail_entries(self, validated_data):
+
+        for data in validated_data["data"]:
+            current_details = []
+            lot = RawTransactionLot.objects.get(id=data["lot_number"])
+            for detail in data["detail"]:
+                current_details.append(
+                    RawLotDetail(
+                        lot_number=lot,
+                        **detail,
+                        nature=TransactionChoices.DEBIT,
+                        branch=self.branch,
+                    )
+                )
+            RawLotDetail.objects.bulk_create(current_details)
+
+    def set_amount(self, validated_data):
+        _amount = 0
+        for data in validated_data["data"]:
+            _amount += calculate_amount(data["detail"])
+        self.amount = _amount
+
+    class Meta:
+        abstract = True
+
+
+class RawReturnSerializer(RawStockAwareSerializer):
+
+    person = serializers.UUIDField(write_only=True)
+
+    def create(self, validated_data):
+        person = Person.objects.get(id=validated_data["person"])
+        self.check_stock(validated_data["data"], True, person)
+        self.create_detail_entries(validated_data)
+        self.set_amount(validated_data)
+        Ledger.objects.create(
+            detail="Kora maal wapsi",
+            nature="D",
+            person=person,
+            amount=self.amount,
+            branch=self.branch,
+        )
         return {}
+
+
+class RawLotNumberAndIdSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = RawTransactionLot
+        fields = ['id', 'lot_number']

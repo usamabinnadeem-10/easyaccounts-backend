@@ -5,6 +5,7 @@ from .views import (
     CreateRawProduct,
     CreateRawTransaction,
     ListFormula,
+    ListLotNumberAndIdView,
     ListRawProducts,
     RawReturnView,
 )
@@ -13,6 +14,7 @@ urlpatterns = [
     # -----------------Raw Transaction--------------------- #
     path("transaction/create/", CreateRawTransaction.as_view()),
     path("transaction/return/", RawReturnView.as_view()),
+    path("lot-numbers/list/", ListLotNumberAndIdView.as_view()),
     # -----------------Formula--------------------- #
     path("formula/list/", ListFormula.as_view()),
     path("formula/create/", CreateFormula.as_view()),

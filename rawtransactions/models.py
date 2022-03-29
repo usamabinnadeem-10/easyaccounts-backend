@@ -79,10 +79,10 @@ class RawTransactionLot(BranchAwareModel):
 class RawLotDetail(BranchAwareModel):
 
     lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
-    actual_gazaana = models.FloatField()
-    expected_gazaana = models.FloatField()
-    rate = models.FloatField(validators=[MinValueValidator(0.0)])
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1.0)])
+    actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
+    expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
+    rate = models.FloatField(validators=[MinValueValidator(1.0)])
     formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)
     nature = models.CharField(
@@ -101,6 +101,7 @@ class RawLotDetail(BranchAwareModel):
                 "expected_gazaana",
                 "lot_number__raw_product",
                 "warehouse",
+                "formula",
             )
             .filter(branch=branch, lot_number__issued=False)
             .annotate(quantity=Sum("quantity"))
