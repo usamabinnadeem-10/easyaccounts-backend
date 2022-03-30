@@ -2,12 +2,12 @@ from django.contrib import admin
 
 from .models import (
     Formula,
+    RawDebit,
+    RawDebitLot,
+    RawDebitLotDetail,
     RawLotDetail,
     RawProduct,
     RawProductOpeningStock,
-    RawReturn,
-    RawReturnLot,
-    RawReturnLotDetail,
     RawTransaction,
     RawTransactionLot,
 )
@@ -28,6 +28,6 @@ admin.site.register(RawProductOpeningStock)
 admin.site.register(RawTransaction)
 admin.site.register(RawTransactionLot, RawTransactionLotAdmin)
 admin.site.register(RawLotDetail, RawLotDetailAdmin)
-admin.site.register(RawReturn)
-admin.site.register(RawReturnLot)
-admin.site.register(RawReturnLotDetail)
+admin.site.register(RawDebit)
+admin.site.register(RawDebitLot)
+admin.site.register(RawDebitLotDetail)

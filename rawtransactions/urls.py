@@ -7,13 +7,13 @@ from .views import (
     ListFormula,
     ListLotNumberAndIdView,
     ListRawProducts,
-    RawReturnView,
+    RawDebitView,
 )
 
 urlpatterns = [
     # -----------------Raw Transaction--------------------- #
     path("transaction/create/", CreateRawTransaction.as_view()),
-    path("transaction/return/", RawReturnView.as_view()),
+    path("transaction/debit/", RawDebitView.as_view()),
     path("lot-numbers/list/", ListLotNumberAndIdView.as_view()),
     # -----------------Formula--------------------- #
     path("formula/list/", ListFormula.as_view()),

@@ -10,9 +10,9 @@ from .queries import (
 from .serializers import (
     CreateRawTransactionSerializer,
     FormulaSerializer,
+    RawDebitSerializer,
     RawLotNumberAndIdSerializer,
     RawProductSerializer,
-    RawReturnSerializer,
 )
 
 
@@ -47,9 +47,9 @@ class CreateFormula(FormulaQuery, generics.CreateAPIView):
     serializer_class = FormulaSerializer
 
 
-class RawReturnView(generics.CreateAPIView):
+class RawDebitView(generics.CreateAPIView):
 
-    serializer_class = RawReturnSerializer
+    serializer_class = RawDebitSerializer
 
 
 class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):

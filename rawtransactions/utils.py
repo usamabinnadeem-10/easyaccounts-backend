@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from django.db.models import Sum
 
-from .models import RawLotDetail, RawReturnLotDetail
+from .models import RawDebitLotDetail, RawLotDetail
 
 
 def is_array_unique(array, key):
@@ -46,7 +46,7 @@ def get_all_raw_stock(branch):
     balance_lots = list(map(lambda obj: {**obj, "nature": "C"}, balance_lots))
     balance_returns = list(
         (
-            RawReturnLotDetail.objects.values(
+            RawDebitLotDetail.objects.values(
                 "return_lot__lot_number",
                 "actual_gazaana",
                 "expected_gazaana",

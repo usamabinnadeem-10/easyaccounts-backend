@@ -6,7 +6,7 @@ from django.db import models
 from django.db.models import Max
 from essentials.models import Person, Warehouse
 
-from .choices import RawProductTypes
+from .choices import RawDebitTypes, RawProductTypes
 
 
 class Formula(BranchAwareModel):
@@ -44,7 +44,7 @@ class RawProductOpeningStock(BranchAwareModel):
 
 class RawTransaction(BranchAwareModel):
 
-    person = models.ForeignKey(Person, on_delete=models.CASCADE)
+    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     date = models.DateField(default=date.today)
     manual_invoice_serial = models.PositiveBigIntegerField()
 
@@ -57,9 +57,9 @@ class RawTransaction(BranchAwareModel):
 
 class NextSerial:
     @classmethod
-    def get_next_serial(cls, branch, field):
+    def get_next_serial(cls, branch, field, **kwargs):
         return (
-            cls.objects.filter(branch=branch).aggregate(max_serial=Max(field))[
+            cls.objects.filter(branch=branch, **kwargs).aggregate(max_serial=Max(field))[
                 "max_serial"
             ]
             or 0
@@ -95,20 +95,28 @@ class RawLotDetail(AbstractRawLotDetail):
     lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
 
 
-class RawReturn(BranchAwareModel, NextSerial):
+class RawDebit(BranchAwareModel, NextSerial):
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     manual_invoice_serial = models.PositiveBigIntegerField()
     bill_number = models.PositiveBigIntegerField()
     date = models.DateField(default=date.today)
+    debit_type = models.CharField(max_length=10, choices=RawDebitTypes.choices)
+
+    @classmethod
+    def is_serial_unique(cls, **kwargs):
+        return not RawDebit.objects.filter(**kwargs).exists()
+
+    class Meta:
+        unique_together = ("manual_invoice_serial", "branch", "debit_type")
 
 
-class RawReturnLot(BranchAwareModel):
+class RawDebitLot(BranchAwareModel):
 
-    bill_number = models.ForeignKey(RawReturn, on_delete=models.CASCADE)
+    bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)
     lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
 
 
-class RawReturnLotDetail(AbstractRawLotDetail):
+class RawDebitLotDetail(AbstractRawLotDetail):
 
-    return_lot = models.ForeignKey(RawReturnLot, on_delete=models.CASCADE)
+    return_lot = models.ForeignKey(RawDebitLot, on_delete=models.CASCADE)

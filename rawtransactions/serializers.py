@@ -9,13 +9,14 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from transactions.choices import TransactionChoices
 
+from .choices import RawDebitTypes
 from .models import (
     Formula,
+    RawDebit,
+    RawDebitLot,
+    RawDebitLotDetail,
     RawLotDetail,
     RawProduct,
-    RawReturn,
-    RawReturnLot,
-    RawReturnLotDetail,
     RawTransaction,
     RawTransactionLot,
 )
@@ -282,56 +283,82 @@ class StockCheck:
                     )
 
 
-class RawReturnSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
+class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
     class Serializer(serializers.ModelSerializer):
 
         detail = RawLotDetailsSerializer(many=True)
 
         class Meta:
-            model = RawReturnLot
+            model = RawDebitLot
             fields = ["lot_number", "detail"]
 
     data = Serializer(many=True)
 
     class Meta:
-        model = RawReturn
-        fields = ["id", "person", "manual_invoice_serial", "bill_number", "date", "data"]
+        model = RawDebit
+        fields = [
+            "id",
+            "person",
+            "manual_invoice_serial",
+            "bill_number",
+            "date",
+            "data",
+            "debit_type",
+        ]
         read_only_fields = ["id", "bill_number"]
+
+    def validate(self, data):
+        super().validate(data)
+        if not RawDebit.is_serial_unique(
+            manual_invoice_serial=data["manual_invoice_serial"],
+            debit_type=data["debit_type"],
+            branch=self.context["request"].branch,
+        ):
+            raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
+        return data
 
     def create(self, validated_data):
         data = validated_data.pop("data")
-        self.check_stock(data)
-        return_instance = RawReturn.objects.create(
+        check_person = (
+            True if validated_data["debit_type"] == RawDebitTypes.RETURN else False
+        )
+        person = validated_data["person"] if check_person else None
+        self.check_stock(data, check_person, person)
+        debit_instance = RawDebit.objects.create(
             **validated_data,
             branch=self.branch,
-            bill_number=RawReturn.get_next_serial(self.branch, "bill_number"),
+            bill_number=RawDebit.get_next_serial(
+                self.branch, "bill_number", debit_type=validated_data["debit_type"]
+            ),
         )
 
         ledger_amount = 0
         for lot in data:
             ledger_amount += calculate_amount(lot["detail"])
-            raw_return_lot_instance = RawReturnLot.objects.create(
+            raw_debit_lot_instance = RawDebitLot.objects.create(
                 lot_number=lot["lot_number"],
-                bill_number=return_instance,
+                bill_number=debit_instance,
                 branch=self.branch,
             )
             current_return_details = []
             for detail in lot["detail"]:
                 current_return_details.append(
-                    RawReturnLotDetail(
-                        return_lot=raw_return_lot_instance,
+                    RawDebitLotDetail(
+                        return_lot=raw_debit_lot_instance,
                         branch=self.branch,
                         **detail,
                     )
                 )
 
-            RawReturnLotDetail.objects.bulk_create(current_return_details)
+            RawDebitLotDetail.objects.bulk_create(current_return_details)
 
         Ledger.objects.create(
-            raw_return=return_instance,
+            raw_debit=debit_instance,
             nature="D",
-            detail="Kora maal wapsi",
-            person=return_instance.person,
+            detail="Kora maal wapsi"
+            if debit_instance.debit_type == RawDebitTypes.RETURN
+            else "Kora sale",
+            person=debit_instance.person,
             amount=ledger_amount,
             branch=self.branch,
         )
