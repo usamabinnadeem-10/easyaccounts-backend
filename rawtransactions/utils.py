@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from django.db.models import Sum
+from dying.models import DyingIssueDetail
 
 from .models import RawDebitLotDetail, RawLotDetail
 
@@ -69,5 +70,29 @@ def get_all_raw_stock(branch):
             balance_returns,
         )
     )
-    print(balance_lots, balance_returns)
-    return [*balance_lots, *balance_returns]
+    balance_dyings = list(
+        (
+            DyingIssueDetail.objects.values(
+                "dying_lot_number__lot_number__raw_product",
+                "dying_lot_number__lot_number",
+                "actual_gazaana",
+                "expected_gazaana",
+                "formula",
+                "warehouse",
+            )
+            .filter(branch=branch, dying_lot_number__lot_number__issued=False)
+            .annotate(quantity=Sum("quantity"))
+        )
+    )
+    balance_dyings = list(
+        map(
+            lambda obj: {
+                **obj,
+                "nature": "D",
+                "raw_product": obj["dying_lot_number__lot_number__raw_product"],
+                "lot_number": obj["dying_lot_number__lot_number"],
+            },
+            balance_dyings,
+        )
+    )
+    return [*balance_lots, *balance_returns, *balance_dyings]

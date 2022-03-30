@@ -1,7 +1,8 @@
 from rawtransactions.models import RawLotDetail
+from rawtransactions.serializers import StockCheck, UniqueLotNumbers
 from rest_framework import serializers
 
-from .models import DyingIssue, DyingIssueDetail, DyingUnit
+from .models import DyingIssue, DyingIssueDetail, DyingIssueLot, DyingUnit
 
 
 class DyingUnitSerializer(serializers.ModelSerializer):
@@ -35,26 +36,102 @@ class DyingIssueDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
-class DyingIssueSerializer(serializers.ModelSerializer):
+class DyingIssueLotSerializer(serializers.ModelSerializer):
 
     auto_issued_detail = serializers.SerializerMethodField(allow_null=True)
-    dying_issue_details = DyingIssueDetailSerializer(many=True)
+    dying_issue_lot_number = DyingIssueDetailSerializer(many=True)
 
     class Meta:
-        model = DyingIssue
+        model = DyingIssueLot
         fields = [
             "id",
-            "dying_unit",
+            "dying_lot",
             "lot_number",
-            "dying_lot_number",
-            "date",
-            "dying_issue_details",
+            "dying_issue_lot_number",
             "auto_issued_detail",
         ]
-        read_only_fields = ["id", "dying_lot_number"]
 
     def get_auto_issued_detail(self, obj):
         if obj.lot_number.issued:
             return RawLotDetail.objects.filter(lot_number=obj.lot_number.id).values()
         else:
             return []
+
+
+class DyingIssueSerializer(serializers.ModelSerializer):
+
+    dying_issue_lot = DyingIssueLotSerializer(many=True)
+
+    class Meta:
+        model = DyingIssue
+        fields = [
+            "id",
+            "dying_unit",
+            "dying_lot_number",
+            "date",
+            "dying_issue_lot",
+        ]
+        read_only_fields = ["id", "dying_lot_number"]
+
+
+class LotNumberAndDetail(serializers.ModelSerializer):
+    class Serializer(serializers.ModelSerializer):
+        class Meta:
+            model = DyingIssueDetail
+            fields = [
+                "quantity",
+                "actual_gazaana",
+                "expected_gazaana",
+                "formula",
+                "warehouse",
+            ]
+
+    detail = Serializer(many=True, required=True)
+
+    class Meta:
+        model = DyingIssueLot
+        fields = ["id", "lot_number", "dying_lot", "detail"]
+        read_only_fields = ["id", "dying_lot"]
+
+
+class IssueForDyingSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
+
+    data = LotNumberAndDetail(many=True, required=True)
+
+    class Meta:
+        model = DyingIssue
+        fields = [
+            "id",
+            "dying_unit",
+            "dying_lot_number",
+            "date",
+            "data",
+        ]
+        read_only_fields = ["id", "dying_lot_number"]
+
+    def create(self, validated_data):
+        self.check_stock(validated_data["data"])
+        data = validated_data.pop("data")
+        dying_issue_instance = DyingIssue.objects.create(
+            **validated_data,
+            branch=self.branch,
+            dying_lot_number=DyingIssue.get_next_serial(self.branch, "dying_lot_number")
+        )
+        for lot in data:
+            dying_issue_lot_instance = DyingIssueLot.objects.create(
+                branch=self.branch,
+                dying_lot=dying_issue_instance,
+                lot_number=lot["lot_number"],
+            )
+            current_details = []
+            for detail in lot["detail"]:
+                current_details.append(
+                    DyingIssueDetail(
+                        branch=self.branch,
+                        dying_lot_number=dying_issue_lot_instance,
+                        **detail
+                    )
+                )
+            DyingIssueDetail.objects.bulk_create(current_details)
+        validated_data["data"] = data
+        return validated_data

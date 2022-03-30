@@ -127,7 +127,7 @@ def create_ledger_entry(raw_transaction, ledger_string, amount, branch):
 
 class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
-    lots = RawTransactionLotSerializer(many=True)
+    lots = RawTransactionLotSerializer(many=True, required=True)
 
     class Meta:
         model = RawTransaction
@@ -168,13 +168,11 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
             ledger_string += f"Lot # {current_lot.lot_number}\n"
             if current_lot.issued:
                 try:
-                    dying = DyingUnit.objects.get(id=lot["dying_unit"])
-                    DyingIssue.objects.create(
-                        dying_unit=dying,
-                        lot_number=current_lot,
-                        dying_lot_number=DyingIssue.next_serial(branch),
-                        date=transaction.date,
+                    DyingIssue.create_auto_issued_lot(
                         branch=branch,
+                        dying_unit=lot["dying_unit"],
+                        lot_number=current_lot,
+                        date=transaction.date,
                     )
                 except:
                     raise serializers.ValidationError(
@@ -248,6 +246,7 @@ class StockCheck:
     def check_stock(self, array, check_person=False, person=None):
         self.branch = self.context["request"].branch
         stock = get_all_raw_stock(self.branch)
+        print(stock)
         for data in array:
             lot = data["lot_number"]
             if check_person and lot.raw_transaction.person != person:
@@ -286,7 +285,7 @@ class StockCheck:
 class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
     class Serializer(serializers.ModelSerializer):
 
-        detail = RawLotDetailsSerializer(many=True)
+        detail = RawLotDetailsSerializer(many=True, required=True)
 
         class Meta:
             model = RawDebitLot

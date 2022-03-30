@@ -5,7 +5,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
 
 from .queries import DyingIssueQuery, DyingUnitQuery
-from .serializers import DyingIssueSerializer, DyingUnitSerializer
+from .serializers import (
+    DyingIssueSerializer,
+    DyingUnitSerializer,
+    IssueForDyingSerializer,
+)
 
 
 class CreateDyingUnit(DyingUnitQuery, generics.CreateAPIView):
@@ -26,5 +30,10 @@ class ListIssuedLotsView(DyingIssueQuery, generics.ListAPIView):
         "date": ["gte", "lte", "exact"],
         "dying_lot_number": ["gte", "lte", "exact"],
         "dying_unit": ["exact"],
-        "lot_number__lot_number": ["gte", "lte", "exact"],
+        "dying_issue_lot__lot_number": ["gte", "lte", "exact"],
     }
+
+
+class IssueForDyingView(DyingIssueQuery, generics.CreateAPIView):
+
+    serializer_class = IssueForDyingSerializer

@@ -2,8 +2,8 @@ from datetime import date
 
 from authentication.models import BranchAwareModel
 from django.db import models
-from django.db.models import Max
-from rawtransactions.models import Formula, RawTransactionLot
+from essentials.models import Warehouse
+from rawtransactions.models import Formula, NextSerial, RawTransactionLot
 
 
 class DyingUnit(BranchAwareModel):
@@ -17,28 +17,40 @@ class DyingUnit(BranchAwareModel):
         return self.name
 
 
-class DyingIssue(BranchAwareModel):
+class DyingIssue(BranchAwareModel, NextSerial):
 
     dying_unit = models.ForeignKey(DyingUnit, on_delete=models.CASCADE)
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
     dying_lot_number = models.PositiveBigIntegerField()
     date = models.DateField(default=date.today)
 
     @classmethod
-    def next_serial(cls, branch):
-        next_serial = DyingIssue.objects.filter(branch=branch).aggregate(
-            max_serial=Max("dying_lot_number")
-        )["max_serial"]
-        next_serial = next_serial + 1 if next_serial else 1
-        return next_serial
+    def create_auto_issued_lot(cls, branch, dying_unit, lot_number, **kwargs):
+        instance = DyingIssue.objects.create(
+            branch=branch,
+            dying_unit=DyingUnit.objects.get(id=dying_unit),
+            dying_lot_number=DyingIssue.get_next_serial(branch, "dying_lot_number"),
+            **kwargs
+        )
+        DyingIssueLot.objects.create(
+            dying_lot=instance, lot_number=lot_number, branch=branch
+        )
+
+
+class DyingIssueLot(BranchAwareModel):
+
+    dying_lot = models.ForeignKey(
+        DyingIssue, on_delete=models.CASCADE, related_name="dying_issue_lot"
+    )
+    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
 
 
 class DyingIssueDetail(BranchAwareModel):
 
     dying_lot_number = models.ForeignKey(
-        DyingIssue, on_delete=models.CASCADE, related_name="dying_issue_details"
+        DyingIssueLot, on_delete=models.CASCADE, related_name="dying_issue_lot_number"
     )
     quantity = models.PositiveIntegerField()
     actual_gazaana = models.FloatField()
     expected_gazaana = models.FloatField()
     formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
