@@ -35,7 +35,9 @@ class DyingIssue(BranchAwareModel):
 
 class DyingIssueDetail(BranchAwareModel):
 
-    dying_lot_number = models.ForeignKey(DyingIssue, on_delete=models.CASCADE)
+    dying_lot_number = models.ForeignKey(
+        DyingIssue, on_delete=models.CASCADE, related_name="dying_issue_details"
+    )
     quantity = models.PositiveIntegerField()
     actual_gazaana = models.FloatField()
     expected_gazaana = models.FloatField()

@@ -68,7 +68,9 @@ class NextSerial:
 
 class RawTransactionLot(BranchAwareModel, NextSerial):
 
-    raw_transaction = models.ForeignKey(RawTransaction, on_delete=models.CASCADE)
+    raw_transaction = models.ForeignKey(
+        RawTransaction, on_delete=models.CASCADE, related_name="transaction_lot"
+    )
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT)
     lot_number = models.PositiveBigIntegerField()
     issued = models.BooleanField(default=False)
@@ -92,7 +94,9 @@ class AbstractRawLotDetail(BranchAwareModel):
 
 class RawLotDetail(AbstractRawLotDetail):
 
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+    lot_number = models.ForeignKey(
+        RawTransactionLot, on_delete=models.CASCADE, related_name="raw_lot_detail"
+    )
 
 
 class RawDebit(BranchAwareModel, NextSerial):

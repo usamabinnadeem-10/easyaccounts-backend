@@ -10,6 +10,7 @@ from .queries import (
 from .serializers import (
     CreateRawTransactionSerializer,
     FormulaSerializer,
+    ListRawTransactionSerializer,
     RawDebitSerializer,
     RawLotNumberAndIdSerializer,
     RawProductSerializer,
@@ -71,4 +72,23 @@ class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
 
 # class RawStockView(RawTransactionQuery, generics.ListAPIView):
 
-# class RawPurchaseView()
+
+class ListRawTransactions(RawTransactionQuery, generics.ListAPIView):
+
+    serializer_class = ListRawTransactionSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        "person": ["exact"],
+        "date": ["exact", "gte", "lte"],
+        "manual_invoice_serial": ["exact", "gte", "lte"],
+        "transaction_lot__lot_number": ["exact", "gte", "lte"],
+        "transaction_lot__raw_product": ["exact", "gte", "lte"],
+    }
+
+    def get_queryset(self):
+        qp = self.request.query_params
+        if "issued" in qp:
+            issued = False if qp.get("issued") == "false" else True
+            queryset = super().get_queryset()
+            return queryset.filter(transaction_lot__issued=issued)
+        return super().get_queryset()

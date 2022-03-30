@@ -373,10 +373,30 @@ class RawLotNumberAndIdSerializer(serializers.ModelSerializer):
         fields = ["id", "lot_number"]
 
 
-# class RawStockSerializer(serializers.Serializer):
+class ListRawTransactionSerializer(serializers.ModelSerializer):
+    class LotSerializer(serializers.ModelSerializer):
 
-#     warehouse = serializers.UUIDField()
-#     raw_product = serializers.UUIDField()
-#     warehouse = serializers.UUIDField()
-#     warehouse = serializers.UUIDField()
-#     warehouse = serializers.UUIDField()
+        raw_lot_detail = RawLotDetailsSerializer(many=True)
+
+        class Meta:
+            model = RawTransactionLot
+            fields = [
+                "id",
+                "raw_transaction",
+                "lot_number",
+                "issued",
+                "raw_product",
+                "raw_lot_detail",
+            ]
+
+    transaction_lot = LotSerializer(many=True)
+
+    class Meta:
+        model = RawTransaction
+        fields = fields = [
+            "id",
+            "person",
+            "manual_invoice_serial",
+            "date",
+            "transaction_lot",
+        ]
