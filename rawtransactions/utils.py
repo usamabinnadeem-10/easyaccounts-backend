@@ -69,4 +69,5 @@ def get_all_raw_stock(branch):
             balance_returns,
         )
     )
+    print(balance_lots, balance_returns)
     return [*balance_lots, *balance_returns]

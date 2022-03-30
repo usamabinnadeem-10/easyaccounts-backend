@@ -167,8 +167,8 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
             )
             ledger_string += f"Lot # {current_lot.lot_number}\n"
             if current_lot.issued:
-                dying = DyingUnit.objects.get(id=lot["dying_unit"])
                 try:
+                    dying = DyingUnit.objects.get(id=lot["dying_unit"])
                     DyingIssue.objects.create(
                         dying_unit=dying,
                         lot_number=current_lot,
@@ -176,7 +176,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                         date=transaction.date,
                         branch=branch,
                     )
-                except ValidationError:
+                except:
                     raise serializers.ValidationError(
                         "Please enter dying unit for issued lot"
                     )

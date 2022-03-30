@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     "authentication",
     "django_filters",
     "rest_framework_simplejwt",
-    "rawtransactions",
+    "rawtransactions.apps.RawtransactionsConfig",
     "dying",
 ]
 
