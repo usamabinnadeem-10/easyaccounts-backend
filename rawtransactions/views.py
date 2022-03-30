@@ -67,3 +67,8 @@ class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
             queryset = super().get_queryset()
             return queryset.filter(issued=issued)
         return super().get_queryset()
+
+
+# class RawStockView(RawTransactionQuery, generics.ListAPIView):
+
+# class RawPurchaseView()

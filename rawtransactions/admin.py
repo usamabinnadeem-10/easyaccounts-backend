@@ -5,6 +5,9 @@ from .models import (
     RawLotDetail,
     RawProduct,
     RawProductOpeningStock,
+    RawReturn,
+    RawReturnLot,
+    RawReturnLotDetail,
     RawTransaction,
     RawTransactionLot,
 )
@@ -25,3 +28,6 @@ admin.site.register(RawProductOpeningStock)
 admin.site.register(RawTransaction)
 admin.site.register(RawTransactionLot, RawTransactionLotAdmin)
 admin.site.register(RawLotDetail, RawLotDetailAdmin)
+admin.site.register(RawReturn)
+admin.site.register(RawReturnLot)
+admin.site.register(RawReturnLotDetail)

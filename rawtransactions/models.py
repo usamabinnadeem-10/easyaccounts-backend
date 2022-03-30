@@ -3,9 +3,8 @@ from datetime import date
 from authentication.models import BranchAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Max, Sum
+from django.db.models import Max
 from essentials.models import Person, Warehouse
-from transactions.choices import TransactionChoices
 
 from .choices import RawProductTypes
 
@@ -56,54 +55,60 @@ class RawTransaction(BranchAwareModel):
         return f"{self.manual_invoice_serial} - {self.person}"
 
 
-class RawTransactionLot(BranchAwareModel):
+class NextSerial:
+    @classmethod
+    def get_next_serial(cls, branch, field):
+        return (
+            cls.objects.filter(branch=branch).aggregate(max_serial=Max(field))[
+                "max_serial"
+            ]
+            or 0
+        ) + 1
+
+
+class RawTransactionLot(BranchAwareModel, NextSerial):
 
     raw_transaction = models.ForeignKey(RawTransaction, on_delete=models.CASCADE)
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT)
     lot_number = models.PositiveBigIntegerField()
     issued = models.BooleanField(default=False)
 
-    @classmethod
-    def get_next_serial(cls, branch):
-        return (
-            RawTransactionLot.objects.filter(branch=branch).aggregate(
-                max_lot=Max("lot_number")
-            )["max_lot"]
-            or 0
-        ) + 1
-
     def __str__(self):
         return f"{self.raw_transaction} - {self.lot_number}"
 
 
-class RawLotDetail(BranchAwareModel):
+class AbstractRawLotDetail(BranchAwareModel):
 
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1.0)])
     actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
     expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
     rate = models.FloatField(validators=[MinValueValidator(1.0)])
     formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)
-    nature = models.CharField(
-        max_length=1,
-        choices=TransactionChoices.choices,
-        default=TransactionChoices.CREDIT,
-    )
 
-    @classmethod
-    def get_lot_stock(cls, branch):
-        balance = (
-            RawLotDetail.objects.values(
-                "lot_number",
-                "nature",
-                "actual_gazaana",
-                "expected_gazaana",
-                "lot_number__raw_product",
-                "warehouse",
-                "formula",
-            )
-            .filter(branch=branch, lot_number__issued=False)
-            .annotate(quantity=Sum("quantity"))
-        )
-        return list(balance)
+    class Meta:
+        abstract = True
+
+
+class RawLotDetail(AbstractRawLotDetail):
+
+    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+
+
+class RawReturn(BranchAwareModel, NextSerial):
+
+    person = models.ForeignKey(Person, on_delete=models.CASCADE)
+    manual_invoice_serial = models.PositiveBigIntegerField()
+    bill_number = models.PositiveBigIntegerField()
+    date = models.DateField(default=date.today)
+
+
+class RawReturnLot(BranchAwareModel):
+
+    bill_number = models.ForeignKey(RawReturn, on_delete=models.CASCADE)
+    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+
+
+class RawReturnLotDetail(AbstractRawLotDetail):
+
+    return_lot = models.ForeignKey(RawReturnLot, on_delete=models.CASCADE)

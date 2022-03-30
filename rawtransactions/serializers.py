@@ -9,8 +9,17 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from transactions.choices import TransactionChoices
 
-from .models import Formula, RawLotDetail, RawProduct, RawTransaction, RawTransactionLot
-from .utils import calculate_amount, is_array_unique
+from .models import (
+    Formula,
+    RawLotDetail,
+    RawProduct,
+    RawReturn,
+    RawReturnLot,
+    RawReturnLotDetail,
+    RawTransaction,
+    RawTransactionLot,
+)
+from .utils import calculate_amount, get_all_raw_stock, is_array_unique
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -75,7 +84,6 @@ class RawLotDetailsSerializer(serializers.ModelSerializer):
             "expected_gazaana",
             "formula",
             "warehouse",
-            "nature",
             "rate",
         ]
         read_only_fields = ["id", "lot_number"]
@@ -122,14 +130,10 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RawTransaction
-        fields = [
+        fields = ["id", "person", "manual_invoice_serial", "date", "lots"]
+        read_only_fields = [
             "id",
-            "person",
-            "manual_invoice_serial",
-            "date",
-            "lots",
         ]
-        read_only_fields = ["id"]
 
     def validate(self, data):
         branch = self.context["request"].branch
@@ -158,7 +162,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                 issued=lot["issued"],
                 raw_product=lot["raw_product"],
                 branch=branch,
-                lot_number=RawTransactionLot.get_next_serial(branch),
+                lot_number=RawTransactionLot.get_next_serial(branch, "lot_number"),
             )
             ledger_string += f"Lot # {current_lot.lot_number}\n"
             if current_lot.issued:
@@ -223,15 +227,8 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         }
 
 
-class RawStockAwareSerializer(serializers.Serializer):
-    class Serializer(serializers.Serializer):
-
-        lot_number = serializers.UUIDField(write_only=True)
-        detail = RawLotDetailsSerializer(many=True, write_only=True)
-
-    data = Serializer(many=True, write_only=True)
-    branch = None
-    amount = 0
+class UniqueLotNumbers:
+    """This class ensures that all lot numbers in the array are unique"""
 
     # make sure lot numbers are unique
     def validate(self, data):
@@ -241,17 +238,17 @@ class RawStockAwareSerializer(serializers.Serializer):
             )
         return data
 
+
+class StockCheck:
+    """This class checks if the stock is low for any lot"""
+
+    branch = None
+
     def check_stock(self, array, check_person=False, person=None):
         self.branch = self.context["request"].branch
-        stock = RawLotDetail.get_lot_stock(self.branch)
+        stock = get_all_raw_stock(self.branch)
         for data in array:
-            try:
-                lot = RawTransactionLot.objects.get(
-                    id=data["lot_number"], branch=self.branch
-                )
-            except Exception:
-                raise ValidationError(f"Lot does not exist", status.HTTP_400_BAD_REQUEST)
-
+            lot = data["lot_number"]
             if check_person and lot.raw_transaction.person != person:
                 raise ValidationError(
                     f"Lot {lot.lot_number} does not belong to this person"
@@ -284,53 +281,75 @@ class RawStockAwareSerializer(serializers.Serializer):
                         status.HTTP_400_BAD_REQUEST,
                     )
 
-    def create_detail_entries(self, validated_data):
 
-        for data in validated_data["data"]:
-            current_details = []
-            lot = RawTransactionLot.objects.get(id=data["lot_number"])
-            for detail in data["detail"]:
-                current_details.append(
-                    RawLotDetail(
-                        lot_number=lot,
-                        **detail,
-                        nature=TransactionChoices.DEBIT,
-                        branch=self.branch,
-                    )
-                )
-            RawLotDetail.objects.bulk_create(current_details)
+class RawReturnSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
+    class Serializer(serializers.ModelSerializer):
 
-    def set_amount(self, validated_data):
-        _amount = 0
-        for data in validated_data["data"]:
-            _amount += calculate_amount(data["detail"])
-        self.amount = _amount
+        detail = RawLotDetailsSerializer(many=True)
+
+        class Meta:
+            model = RawReturnLot
+            fields = ["lot_number", "detail"]
+
+    data = Serializer(many=True)
 
     class Meta:
-        abstract = True
-
-
-class RawReturnSerializer(RawStockAwareSerializer):
-
-    person = serializers.UUIDField(write_only=True)
+        model = RawReturn
+        fields = ["id", "person", "manual_invoice_serial", "bill_number", "date", "data"]
+        read_only_fields = ["id", "bill_number"]
 
     def create(self, validated_data):
-        person = Person.objects.get(id=validated_data["person"])
-        self.check_stock(validated_data["data"], True, person)
-        self.create_detail_entries(validated_data)
-        self.set_amount(validated_data)
+        data = validated_data.pop("data")
+        self.check_stock(data)
+        return_instance = RawReturn.objects.create(
+            **validated_data,
+            branch=self.branch,
+            bill_number=RawReturn.get_next_serial(self.branch, "bill_number"),
+        )
+
+        ledger_amount = 0
+        for lot in data:
+            ledger_amount += calculate_amount(lot["detail"])
+            raw_return_lot_instance = RawReturnLot.objects.create(
+                lot_number=lot["lot_number"],
+                bill_number=return_instance,
+                branch=self.branch,
+            )
+            current_return_details = []
+            for detail in lot["detail"]:
+                current_return_details.append(
+                    RawReturnLotDetail(
+                        return_lot=raw_return_lot_instance,
+                        branch=self.branch,
+                        **detail,
+                    )
+                )
+
+            RawReturnLotDetail.objects.bulk_create(current_return_details)
+
         Ledger.objects.create(
-            detail="Kora maal wapsi",
+            raw_return=return_instance,
             nature="D",
-            person=person,
-            amount=self.amount,
+            detail="Kora maal wapsi",
+            person=return_instance.person,
+            amount=ledger_amount,
             branch=self.branch,
         )
-        return {}
+
+        validated_data["data"] = data
+        return validated_data
 
 
 class RawLotNumberAndIdSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = RawTransactionLot
-        fields = ['id', 'lot_number']
+        fields = ["id", "lot_number"]
+
+
+# class RawStockSerializer(serializers.Serializer):
+
+#     warehouse = serializers.UUIDField()
+#     raw_product = serializers.UUIDField()
+#     warehouse = serializers.UUIDField()
+#     warehouse = serializers.UUIDField()
+#     warehouse = serializers.UUIDField()

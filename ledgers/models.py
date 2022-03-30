@@ -9,7 +9,7 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 from essentials.models import AccountType, Person
-from rawtransactions.models import RawTransaction
+from rawtransactions.models import RawReturn, RawTransaction
 from transactions.models import Transaction
 
 
@@ -37,6 +37,7 @@ class Ledger(BranchAwareModel):
     raw_transaction = models.ForeignKey(
         RawTransaction, on_delete=models.CASCADE, null=True
     )
+    raw_return = models.ForeignKey(RawReturn, on_delete=models.CASCADE, null=True)
 
     class Meta:
         ordering = ["date"]
