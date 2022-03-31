@@ -102,7 +102,7 @@ class RawLotDetail(AbstractRawLotDetail):
 
 class RawDebit(BranchAwareModel, NextSerial):
 
-    person = models.ForeignKey(Person, on_delete=models.CASCADE)
+    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     manual_invoice_serial = models.PositiveBigIntegerField()
     bill_number = models.PositiveBigIntegerField()
     date = models.DateField(default=date.today)

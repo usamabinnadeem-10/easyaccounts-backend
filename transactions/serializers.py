@@ -341,7 +341,6 @@ class CancelledInvoiceSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def validate(self, data):
-        print("inside validateee")
         branch = self.context["request"].branch
         if CancelledInvoice.objects.filter(
             branch=branch,

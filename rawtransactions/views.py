@@ -7,6 +7,7 @@ from transactions.choices import TransactionChoices
 
 from .queries import (
     FormulaQuery,
+    RawDebitQuery,
     RawProductQuery,
     RawTransactionLotQuery,
     RawTransactionQuery,
@@ -18,6 +19,7 @@ from .serializers import (
     RawDebitSerializer,
     RawLotNumberAndIdSerializer,
     RawProductSerializer,
+    RawStockTransferSerializer,
     ViewAllStockSerializer,
 )
 from .utils import get_all_raw_stock
@@ -123,3 +125,8 @@ class ViewAllStock(generics.ListAPIView):
 
         stock = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
         return stock
+
+
+class TransferRawStockView(RawDebitQuery, generics.CreateAPIView):
+
+    serializer_class = RawStockTransferSerializer
