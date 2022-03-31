@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Max
 from essentials.models import Person, Warehouse
+from transactions.choices import TransactionChoices
 
 from .choices import RawDebitTypes, RawProductTypes
 
@@ -124,3 +125,6 @@ class RawDebitLot(BranchAwareModel):
 class RawDebitLotDetail(AbstractRawLotDetail):
 
     return_lot = models.ForeignKey(RawDebitLot, on_delete=models.CASCADE)
+    nature = models.CharField(
+        max_length=1, choices=TransactionChoices.choices, default=TransactionChoices.DEBIT
+    )

@@ -44,7 +44,16 @@ def get_all_raw_stock(branch):
             .annotate(quantity=Sum("quantity"))
         )
     )
-    balance_lots = list(map(lambda obj: {**obj, "nature": "C"}, balance_lots))
+    balance_lots = list(
+        map(
+            lambda obj: {
+                **obj,
+                "nature": "C",
+                "raw_product": obj["lot_number__raw_product"],
+            },
+            balance_lots,
+        )
+    )
     balance_returns = list(
         (
             RawDebitLotDetail.objects.values(
@@ -54,6 +63,7 @@ def get_all_raw_stock(branch):
                 "return_lot__lot_number__raw_product",
                 "warehouse",
                 "formula",
+                "nature",
             )
             .filter(branch=branch, return_lot__lot_number__issued=False)
             .annotate(quantity=Sum("quantity"))
@@ -63,7 +73,6 @@ def get_all_raw_stock(branch):
         map(
             lambda obj: {
                 **obj,
-                "nature": "D",
                 "lot_number": obj["return_lot__lot_number"],
                 "raw_product": obj["return_lot__lot_number__raw_product"],
             },

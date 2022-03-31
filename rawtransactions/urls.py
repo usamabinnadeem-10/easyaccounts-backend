@@ -9,6 +9,7 @@ from .views import (
     ListRawProducts,
     ListRawTransactions,
     RawDebitView,
+    ViewAllStock,
 )
 
 urlpatterns = [
@@ -23,4 +24,6 @@ urlpatterns = [
     # -----------------Raw Product--------------------- #
     path("product/list/", ListRawProducts.as_view()),
     path("product/create/", CreateRawProduct.as_view()),
+    # -----------------Raw Stock--------------------- #
+    path("stock/all/", ViewAllStock.as_view()),
 ]

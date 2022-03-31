@@ -399,3 +399,14 @@ class ListRawTransactionSerializer(serializers.ModelSerializer):
             "date",
             "transaction_lot",
         ]
+
+
+class ViewAllStockSerializer(serializers.Serializer):
+
+    quantity = serializers.FloatField()
+    actual_gazaana = serializers.FloatField()
+    expected_gazaana = serializers.FloatField()
+    raw_product = serializers.UUIDField()
+    warehouse = serializers.UUIDField()
+    formula = serializers.UUIDField()
+    # nature = serializers.CharField()
