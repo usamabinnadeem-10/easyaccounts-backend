@@ -198,12 +198,13 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         transaction_detail = validated_data.pop("transaction_detail")
-        branch_filter = {"branch": self.context["request"].branch}
+        branch = self.context["request"].branch
+        branch_filter = {"branch": branch}
         # delete all the other transaction details
         # which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(
             **branch_filter, transaction=instance
-        ).values("id", "product", "warehouse", "quantity", "yards_per_piece")
+        ).values("id", "product", "warehouse", "quantity", "yards_per_piece", "branch")
         ids_to_keep = []
 
         # make a list of transactions that should not be deleted
@@ -254,7 +255,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
 
             update_stock(
                 validated_data.get("nature"),
-                detail,
+                {**detail, "branch": branch},
                 instance.nature,
                 True,
                 old_quantity,
