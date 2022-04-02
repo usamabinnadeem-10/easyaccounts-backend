@@ -61,8 +61,7 @@ MIDDLEWARE = [
     "authentication.middlewares.request.RequestMiddleware",
 ]
 
-# ROOT_URLCONF = "easyaccounts.urls"
-ROOT_URLCONF = "django_app.urls"
+ROOT_URLCONF = "easyaccounts.urls"
 
 
 TEMPLATES = [
@@ -81,8 +80,7 @@ TEMPLATES = [
     },
 ]
 
-# WSGI_APPLICATION = "easyaccounts.wsgi.application"
-WSGI_APPLICATION = "django_app.wsgi.application"
+WSGI_APPLICATION = "easyaccounts.wsgi.application"
 
 
 # DATABASES = {
