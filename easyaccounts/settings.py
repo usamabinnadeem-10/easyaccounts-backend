@@ -3,11 +3,13 @@ import sys
 from pathlib import Path
 
 import dj_database_url
-import environ
 from django.core.management.utils import get_random_secret_key
+from dotenv import load_dotenv
 
-env = environ.Env()
-environ.Env.read_env()
+load_dotenv()
+
+# env = environ.Env()
+# environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,13 +18,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECRET_KEY = "django-insecure-eb7!+icg1r0+*z+@+6h66g-7o*(oq-@0@6r%k=oikq84w)%56-"
 # SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
-SECRET_KEY = (
-    env("DJANGO_SECRET_KEY") if env("DJANGO_SECRET_KEY") else get_random_secret_key()
-)
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
-DEBUG = env("DEBUG") == "True"
+DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -105,7 +105,7 @@ WSGI_APPLICATION = "easyaccounts.wsgi.application"
 #     }
 # }
 
-DEVELOPMENT_MODE = env("DEVELOPMENT_MODE") == "True"
+DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "False") == "True"
 
 if DEVELOPMENT_MODE is True:
     DATABASES = {
@@ -120,10 +120,10 @@ if DEVELOPMENT_MODE is True:
         }
     }
 elif len(sys.argv) > 0 and sys.argv[1] != "collectstatic":
-    if env("DATABASE_URL") is None:
+    if os.getenv("DATABASE_URL", None) is None:
         raise Exception("DATABASE_URL environment variable not defined")
     DATABASES = {
-        "default": dj_database_url.parse(env("DATABASE_URL")),
+        "default": dj_database_url.parse(os.environ.get("DATABASE_URL")),
     }
 
 AUTH_PASSWORD_VALIDATORS = [
