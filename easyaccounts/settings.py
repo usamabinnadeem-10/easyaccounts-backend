@@ -3,7 +3,11 @@ import sys
 from pathlib import Path
 
 import dj_database_url
+import environ
 from django.core.management.utils import get_random_secret_key
+
+env = environ.Env()
+environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,15 +15,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECRET_KEY = "django-insecure-eb7!+icg1r0+*z+@+6h66g-7o*(oq-@0@6r%k=oikq84w)%56-"
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
+# SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
+SECRET_KEY = (
+    env("DJANGO_SECRET_KEY") if env("DJANGO_SECRET_KEY") else get_random_secret_key()
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = env("DEBUG") == "True"
 
-# ALLOWED_HOSTS = ["127.0.0.1", "fa5e-139-135-32-7.ngrok.io"]
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
-
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "8971-39-37-209-158.ngrok.io",
+]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -52,6 +61,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -95,20 +105,25 @@ WSGI_APPLICATION = "easyaccounts.wsgi.application"
 #     }
 # }
 
-DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "False") == "True"
+DEVELOPMENT_MODE = env("DEVELOPMENT_MODE") == "True"
 
 if DEVELOPMENT_MODE is True:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "easyaccounts",
+            "USER": "usama",
+            "PASSWORD": "8080",
+            "HOST": "127.0.0.1",
+            "PORT": "5432",
+            "ATOMIC_REQUESTS": True,
         }
     }
 elif len(sys.argv) > 0 and sys.argv[1] != "collectstatic":
-    if os.getenv("DATABASE_URL", None) is None:
+    if env("DATABASE_URL") is None:
         raise Exception("DATABASE_URL environment variable not defined")
     DATABASES = {
-        "default": dj_database_url.parse(os.environ.get("DATABASE_URL")),
+        "default": dj_database_url.parse(env("DATABASE_URL")),
     }
 
 AUTH_PASSWORD_VALIDATORS = [
