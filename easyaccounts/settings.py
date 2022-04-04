@@ -24,11 +24,16 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 # DEBUG = True
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "8971-39-37-209-158.ngrok.io",
-]
+# ALLOWED_HOSTS = [
+#     "localhost",
+#     "127.0.0.1",
+#     "8971-39-37-209-158.ngrok.io",
+# ]
+
+ALLOWED_HOSTS = os.getenv(
+    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,8971-39-37-209-158.ngrok.io"
+).split(",")
+
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
