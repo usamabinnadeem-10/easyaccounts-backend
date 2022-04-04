@@ -265,6 +265,7 @@ class GetStockQuantity(StockQuery, ListAPIView):
     filter_fields = {
         "stock_quantity": ["gte", "lte"],
         "product": ["exact"],
+        "product__category": ["exact"],
         "warehouse": ["exact"],
         "yards_per_piece": ["gte", "lte", "exact"],
     }
