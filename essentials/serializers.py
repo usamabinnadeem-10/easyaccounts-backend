@@ -77,7 +77,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ["id", "name"]
+        fields = ["id", "name", "category"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):

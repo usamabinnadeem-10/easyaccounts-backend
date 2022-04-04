@@ -3,16 +3,20 @@ from uuid import uuid4
 from authentication.models import BranchAwareModel
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
-from django.utils.translation import gettext_lazy as _
 
-from .choices import *
+from .choices import PersonChoices, ProductCategoryChoices
 
 
 class Product(BranchAwareModel):
     name = models.CharField(max_length=100)
+    category = models.CharField(
+        max_length=3,
+        choices=ProductCategoryChoices.choices,
+        default=ProductCategoryChoices.AK,
+    )
 
     class Meta:
-        unique_together = ("name", "branch")
+        unique_together = ("name", "category", "branch")
 
     def __str__(self) -> str:
         return self.name

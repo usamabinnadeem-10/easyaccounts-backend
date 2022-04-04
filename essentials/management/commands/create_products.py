@@ -11,6 +11,7 @@ class Command(BaseCommand):
         parser.add_argument("color_start", type=int)
         parser.add_argument("color_end", type=int)
         parser.add_argument("branch_name", type=str)
+        parser.add_argument("category", type=str)
 
     def handle(self, *args, **options):
         records = []
@@ -22,13 +23,16 @@ class Command(BaseCommand):
         color_start = options["color_start"]
         color_end = options["color_end"]
         product = options["product_name"]
+        category = options["category"]
         for color in list(range(color_start, color_end + 1)):
             product_name = f"{product} - {color}"
-            records.append(Product(name=product_name, branch_id=branch.id))
+            records.append(
+                Product(name=product_name, branch_id=branch.id, category=category)
+            )
 
         Product.objects.bulk_create(records)
         self.stdout.write(
             self.style.SUCCESS(
-                f"{product} created with colors {color_start} - {color_end}"
+                f"{product} / {category} created with colors {color_start} - {color_end}"
             )
         )
