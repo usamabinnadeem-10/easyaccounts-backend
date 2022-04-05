@@ -1,6 +1,6 @@
 from authentication.models import Branch
 from django.core.management.base import BaseCommand, CommandError
-from essentials.models import Product
+from essentials.models import Product, ProductCategory
 
 
 class Command(BaseCommand):
@@ -15,19 +15,25 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         records = []
+        branch_name = options["branch_name"]
+        category = options["category"]
         try:
-            branch = Branch.objects.get(name=options["branch_name"])
+            branch = Branch.objects.get(name=branch_name)
         except Branch.DoesNotExist:
-            raise CommandError(f"Branch {options['branch_name']} does not exist")
+            raise CommandError(f"Branch {branch_name} does not exist")
+
+        try:
+            _category = ProductCategory.objects.get(name=category)
+        except ProductCategory.DoesNotExist:
+            raise CommandError(f"Category {category} does not exist")
 
         color_start = options["color_start"]
         color_end = options["color_end"]
         product = options["product_name"]
-        category = options["category"]
         for color in list(range(color_start, color_end + 1)):
             product_name = f"{product} - {color}"
             records.append(
-                Product(name=product_name, branch_id=branch.id, category=category)
+                Product(name=product_name, branch_id=branch.id, category=_category)
             )
 
         Product.objects.bulk_create(records)

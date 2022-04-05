@@ -32,6 +32,7 @@ from .queries import (
     AccountTypeQuery,
     AreaQuery,
     PersonQuery,
+    ProductCategoryQuery,
     ProductQuery,
     StockQuery,
     WarehouseQuery,
@@ -120,6 +121,22 @@ class ListArea(AreaQuery, ListAPIView):
     """
 
     serializer_class = AreaSerializer
+
+
+class CreateProductCategory(ProductCategoryQuery, CreateAPIView):
+    """
+    create product category
+    """
+
+    serializer_class = ProductCategorySerializer
+
+
+class ListProductCategory(ProductCategoryQuery, ListAPIView):
+    """
+    list product categories
+    """
+
+    serializer_class = ProductCategorySerializer
 
 
 class DayBook(APIView):

@@ -1,4 +1,13 @@
-from .models import AccountType, Area, LinkedAccount, Person, Product, Stock, Warehouse
+from .models import (
+    AccountType,
+    Area,
+    LinkedAccount,
+    Person,
+    Product,
+    ProductCategory,
+    Stock,
+    Warehouse,
+)
 
 
 class PersonQuery:
@@ -34,3 +43,8 @@ class StockQuery:
 class LinkedAccountQuery:
     def get_queryset(self):
         return LinkedAccount.objects.filter(branch=self.request.branch)
+
+
+class ProductCategoryQuery:
+    def get_queryset(self):
+        return ProductCategory.objects.filter(branch=self.request.branch)

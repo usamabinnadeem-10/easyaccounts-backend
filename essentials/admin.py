@@ -13,6 +13,7 @@ class AccountTypeAdmin(admin.ModelAdmin):
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ["id", "name"]
+    list_filter = ["category"]
 
 
 class WarehouseAdmin(admin.ModelAdmin):

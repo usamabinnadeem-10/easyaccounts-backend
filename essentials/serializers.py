@@ -1,7 +1,7 @@
 from datetime import date
 
 from ledgers.models import Ledger
-from rest_framework import serializers
+from rest_framework import serializers, status
 
 from .models import *
 
@@ -85,6 +85,28 @@ class ProductSerializer(serializers.ModelSerializer):
         validated_data["branch"] = self.context["request"].branch
         product = Product.objects.create(**validated_data)
         return product
+
+
+class ProductCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductCategory
+        fields = ["id", "name"]
+        read_only_fields = ["id"]
+
+    def validate(self, data):
+        if ProductCategory.objects.filter(
+            name=data["name"], branch=self.context["request"].branch
+        ).exists():
+            raise serializers.ValidationError(
+                "Category already exists", status.HTTP_400_BAD_REQUEST
+            )
+        return data
+
+    def create(self, validated_data):
+
+        validated_data["branch"] = self.context["request"].branch
+        category = ProductCategory.objects.create(**validated_data)
+        return category
 
 
 class StockSerializer(serializers.ModelSerializer):

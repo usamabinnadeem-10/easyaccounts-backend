@@ -4,15 +4,25 @@ from authentication.models import BranchAwareModel
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
-from .choices import PersonChoices, ProductCategoryChoices
+from .choices import PersonChoices
+
+
+class ProductCategory(BranchAwareModel):
+
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        verbose_name = "Product Categories"
+        unique_together = ["name", "branch"]
+
+    def __str__(self):
+        return self.name
 
 
 class Product(BranchAwareModel):
     name = models.CharField(max_length=100)
-    category = models.CharField(
-        max_length=3,
-        choices=ProductCategoryChoices.choices,
-        default=ProductCategoryChoices.AK,
+    category = models.ForeignKey(
+        ProductCategory, null=True, default=None, on_delete=models.PROTECT
     )
 
     class Meta:
