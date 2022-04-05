@@ -13,6 +13,7 @@ class ProductCategory(BranchAwareModel):
 
     class Meta:
         verbose_name = "Product Categories"
+        verbose_name_plural = "Product Categories"
         unique_together = ["name", "branch"]
 
     def __str__(self):
@@ -21,9 +22,7 @@ class ProductCategory(BranchAwareModel):
 
 class Product(BranchAwareModel):
     name = models.CharField(max_length=100)
-    category = models.ForeignKey(
-        ProductCategory, null=True, default=None, on_delete=models.PROTECT
-    )
+    category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT)
 
     class Meta:
         unique_together = ("name", "category", "branch")
