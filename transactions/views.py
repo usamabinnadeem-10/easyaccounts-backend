@@ -1,31 +1,26 @@
-from django_filters.rest_framework import DjangoFilterBackend
+from datetime import date, datetime, timedelta
+
+from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404
-
-from rest_framework import generics
-from rest_framework.views import APIView
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.status import *
-
+from django_filters.rest_framework import DjangoFilterBackend
+from essentials.models import *
+from essentials.pagination import CustomPagination
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
-from essentials.pagination import CustomPagination
-from essentials.models import *
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.status import *
+from rest_framework.views import APIView
+
 from .models import *
+from .queries import CancelledInvoiceQuery, TransactionQuery
 from .serializers import (
+    CancelledInvoiceSerializer,
     TransactionSerializer,
     UpdateTransactionSerializer,
     update_stock,
-    CancelledInvoiceSerializer,
 )
 from .utils import *
-from .queries import (
-    TransactionQuery,
-    CancelledInvoiceQuery,
-)
-
-from django.db.models import Min, Max, Avg, Sum, Count, Q
-from datetime import date, datetime, timedelta
 
 
 class GetOrCreateTransaction(generics.ListCreateAPIView):
@@ -79,12 +74,7 @@ class EditUpdateDeleteTransaction(
 
         transaction_details = TransactionDetail.objects.filter(
             branch=self.request.branch, transaction=instance
-        ).values(
-            "product",
-            "quantity",
-            "warehouse",
-            "yards_per_piece",
-        )
+        ).values("product", "quantity", "warehouse", "yards_per_piece", "branch")
 
         for transaction in transaction_details:
             update_stock("C" if instance.nature == "D" else "D", transaction)
@@ -101,14 +91,14 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
     filter_fields = {
         "date": ["gte", "lte"],
         "account_type": ["exact"],
-        "detail": ["icontains"],
+        "detail": ["contains"],
         "person": ["exact"],
         "draft": ["exact"],
         "serial": ["exact", "gte", "lte"],
         "discount": ["gte", "lte"],
         "type": ["exact"],
-        "transaction_detail__amount": ["gte", "lte"],
         "requires_action": ["exact"],
+        "transaction_detail__product": ["exact"],
     }
 
 
@@ -169,9 +159,7 @@ class BusinessPerformanceHistory(APIView):
         start_date = (
             datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None
         )
-        end_date = (
-            datetime.strptime(qp.get("end"), "%Y-%m-%d") if qp.get("end") else None
-        )
+        end_date = datetime.strptime(qp.get("end"), "%Y-%m-%d") if qp.get("end") else None
 
         if start_date:
             filters.update({"transaction_id__date__gte": start_date})

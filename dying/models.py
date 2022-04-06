@@ -54,3 +54,12 @@ class DyingIssueDetail(BranchAwareModel):
     expected_gazaana = models.FloatField()
     formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
+
+
+class WashingReturn(BranchAwareModel):
+
+    lot_number = models.ForeignKey(DyingIssue, on_delete=models.CASCADE)
+    date = models.DateField(default=date.today)
+
+
+# class WashingReturnType

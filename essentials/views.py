@@ -10,7 +10,7 @@ from cheques.serializers import (
     ShortExternalChequeHistorySerializer,
 )
 from cheques.utils import get_cheque_account
-from django.db.models import F, Sum
+from django.db.models import F, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from expenses.models import ExpenseDetail
@@ -286,6 +286,13 @@ class GetStockQuantity(StockQuery, ListAPIView):
         "warehouse": ["exact"],
         "yards_per_piece": ["gte", "lte", "exact"],
     }
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        qp = self.request.query_params
+        if qp.get("outcut") and qp.get("outcut") == "True":
+            return queryset.filter(~Q(yards_per_piece=44) & ~Q(yards_per_piece=66))
+        return queryset
 
 
 class GetAccountHistory(APIView, PaginationHandlerMixin):
