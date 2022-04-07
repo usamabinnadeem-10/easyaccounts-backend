@@ -2,7 +2,7 @@ from datetime import date
 
 from authentication.models import BranchAwareModel
 from django.db import models
-from essentials.models import Warehouse
+from essentials.models import Product, Warehouse
 from rawtransactions.models import Formula, NextSerial, RawTransactionLot
 
 
@@ -56,10 +56,16 @@ class DyingIssueDetail(BranchAwareModel):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
 
 
-class WashingReturn(BranchAwareModel):
+# class WashingReturn(BranchAwareModel):
 
-    lot_number = models.ForeignKey(DyingIssue, on_delete=models.CASCADE)
-    date = models.DateField(default=date.today)
+#     lot_number = models.ForeignKey(DyingIssue, on_delete=models.CASCADE)
+#     date = models.DateField(default=date.today)
+
+
+# class WashingReturnDetail(BranchAwareModel):
+
+#     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+#     quantity = models.FloatField()
 
 
 # class WashingReturnType

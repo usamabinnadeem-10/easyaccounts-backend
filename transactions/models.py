@@ -46,6 +46,12 @@ class TransactionDetail(BranchAwareModel):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
     amount = models.FloatField(validators=[MinValueValidator(0.0)])
 
+    @classmethod
+    def is_rate_invalid(cls, nature, product, current_rate):
+        if nature == TransactionChoices.DEBIT:
+            return product.minimum_rate > current_rate
+        return False
+
 
 class CancelledInvoice(BranchAwareModel):
     manual_invoice_serial = models.BigIntegerField()

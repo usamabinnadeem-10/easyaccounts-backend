@@ -23,6 +23,7 @@ class ProductCategory(BranchAwareModel):
 class Product(BranchAwareModel):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT)
+    minimum_rate = models.FloatField(validators=[MinValueValidator(1.0)], default=1.0)
 
     class Meta:
         unique_together = ("name", "category", "branch")

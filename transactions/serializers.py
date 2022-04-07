@@ -1,10 +1,74 @@
 from django.db.models import Max
 from ledgers.models import Ledger
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.exceptions import NotAcceptable
 
+from .choices import TransactionTypes
 from .models import CancelledInvoice, Transaction, TransactionDetail
 from .utils import create_ledger_entries, create_ledger_string, update_stock
+
+
+class ValidateTransactionSerial:
+    """Validates the serial numbers for transactions"""
+
+    last_serial_num = 0
+    cancelled = None
+
+    def validate(self, data):
+        branch = self.context["request"].branch
+        branch_filter = {"branch": branch}
+        if Transaction.objects.filter(
+            branch=branch,
+            manual_invoice_serial=data["manual_invoice_serial"],
+            manual_serial_type=data["manual_serial_type"],
+        ).exists():
+            raise serializers.ValidationError(
+                "Invoice with that book number exists.", status.HTTP_400_BAD_REQUEST
+            )
+
+        self.last_serial_num = Transaction.objects.filter(**branch_filter).aggregate(
+            Max("serial")
+        )["serial__max"]
+
+        data["manual_invoice_serial"]
+        max_from_cancelled = (
+            CancelledInvoice.objects.filter(
+                **branch_filter,
+                manual_serial_type=data["manual_serial_type"],
+            ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
+            or 0
+        )
+        max_from_transactions = (
+            Transaction.objects.filter(
+                **branch_filter,
+                manual_serial_type=data["manual_serial_type"],
+            ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
+            or 0
+        )
+        max_final = (
+            max_from_cancelled
+            if max_from_cancelled > max_from_transactions
+            else max_from_transactions
+        )
+
+        if abs(max_final - data["manual_invoice_serial"]) > 1:
+            raise NotAcceptable(f"Please use serial # {max_final + 1}")
+
+        try:
+            self.cancelled = CancelledInvoice.objects.get(
+                **branch_filter,
+                manual_invoice_serial=data["manual_invoice_serial"],
+                manual_serial_type=data["manual_serial_type"],
+            )
+        except Exception:
+            pass
+
+        if self.cancelled:
+            raise NotAcceptable(
+                f"Serial # {self.cancelled.manual_serial_type}-{self.cancelled.manual_invoice_serial} is cancelled"
+            )
+
+        return data
 
 
 class TransactionDetailSerializer(serializers.ModelSerializer):
@@ -23,7 +87,7 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "transaction"]
 
 
-class TransactionSerializer(serializers.ModelSerializer):
+class TransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializer):
 
     transaction_detail = TransactionDetailSerializer(many=True)
     paid = serializers.BooleanField(default=False)
@@ -56,74 +120,23 @@ class TransactionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
-    def validate(self, data):
-        branch = self.context["request"].branch
-        if Transaction.objects.filter(
-            branch=branch,
-            manual_invoice_serial=data["manual_invoice_serial"],
-            manual_serial_type=data["manual_serial_type"],
-        ).exists():
-            raise serializers.ValidationError(
-                "Invoice with that book number exists.", 400
-            )
-        return data
-
     def create(self, validated_data):
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
-
         branch_filter = {"branch": self.context["request"].branch}
-        last_serial_num = (
-            Transaction.objects.filter(**branch_filter).aggregate(Max("serial"))[
-                "serial__max"
-            ]
-            or 0
-        )
-        validated_data["manual_invoice_serial"]
-        max_from_cancelled = (
-            CancelledInvoice.objects.filter(
-                **branch_filter,
-                manual_serial_type=validated_data["manual_serial_type"],
-            ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
-            or 0
-        )
-        max_from_transactions = (
-            Transaction.objects.filter(
-                **branch_filter,
-                manual_serial_type=validated_data["manual_serial_type"],
-            ).aggregate(Max("manual_invoice_serial"))["manual_invoice_serial__max"]
-            or 0
-        )
-        max_final = (
-            max_from_cancelled
-            if max_from_cancelled > max_from_transactions
-            else max_from_transactions
-        )
-
-        if max_final - validated_data["manual_invoice_serial"] > 1:
-            raise NotAcceptable(f"serial number {max_final} is missing")
-
-        cancelled = None
-        try:
-            cancelled = CancelledInvoice.objects.get(
-                **branch_filter,
-                manual_invoice_serial=validated_data["manual_invoice_serial"],
-                manual_serial_type=validated_data["manual_serial_type"],
-            )
-        except Exception:
-            pass
-
-        if cancelled:
-            raise NotAcceptable(
-                f"invoice with {cancelled.manual_serial_type}-{cancelled.manual_invoice_serial} is cancelled"
-            )
-
         transaction = Transaction.objects.create(
-            **branch_filter, **validated_data, serial=last_serial_num + 1
+            **branch_filter, **validated_data, serial=self.last_serial_num + 1
         )
         details = []
         ledger_string = ""
         for detail in transaction_details:
+            if TransactionDetail.is_rate_invalid(
+                transaction.nature, detail["product"], detail["rate"]
+            ):
+                raise serializers.ValidationError(
+                    f"Rate too low for {detail['product'].name}",
+                    status.HTTP_400_BAD_REQUEST,
+                )
             details.append(
                 TransactionDetail(
                     transaction_id=transaction.id, **detail, **branch_filter
@@ -171,7 +184,7 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["transaction"]
 
 
-class UpdateTransactionSerializer(serializers.ModelSerializer):
+class UpdateTransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializer):
 
     transaction_detail = UpdateTransactionDetailSerializer(many=True)
     serial = serializers.ReadOnlyField()
@@ -200,6 +213,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         transaction_detail = validated_data.pop("transaction_detail")
         branch = self.context["request"].branch
         branch_filter = {"branch": branch}
+
         # delete all the other transaction details
         # which were not in the transaction_detail
         all_transaction_details = TransactionDetail.objects.filter(
@@ -231,6 +245,13 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         amount = 0.0
         for detail in transaction_detail:
             amount += detail["amount"]
+            if TransactionDetail.is_rate_invalid(
+                validated_data["nature"], detail["product"], detail["rate"]
+            ):
+                raise serializers.ValidationError(
+                    f"Rate too low for {detail['product'].name}",
+                    status.HTTP_400_BAD_REQUEST,
+                )
             old_quantity = 0.0
             if detail["new"]:
                 detail.pop("new")
@@ -286,8 +307,9 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             validated_data["paid_amount"] if "paid_amount" in validated_data else None
         )
 
+        PAID = TransactionTypes.PAID
         # if the transaction was unpaid before and is now paid then create a new ledger entry
-        if validated_data["type"] != instance.type and validated_data["type"] == "paid":
+        if validated_data["type"] != instance.type and validated_data["type"] == PAID:
             Ledger.objects.create(
                 **{
                     "detail": f"Paid on {account_type.name}",
@@ -303,7 +325,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             )
 
         # if transaction was paid and is now unpaid then delete the old ledger entry
-        if validated_data["type"] != "paid" and instance.type == "paid":
+        if instance.type == PAID and validated_data["type"] != PAID:
             paid_instance = Ledger.objects.get(
                 transaction=instance,
                 account_type__isnull=False,
@@ -312,7 +334,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
             paid_instance.delete()
 
         # if both types are paid then update the Ledger entry
-        if validated_data["type"] == instance.type and instance.type == "paid":
+        if instance.type == PAID and validated_data["type"] == instance.type:
             paid_instance = Ledger.objects.get(
                 transaction=instance,
                 account_type__isnull=False,
@@ -330,7 +352,7 @@ class UpdateTransactionSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-class CancelledInvoiceSerializer(serializers.ModelSerializer):
+class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSerializer):
     class Meta:
         model = CancelledInvoice
         fields = [
@@ -351,6 +373,7 @@ class CancelledInvoiceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Invoice with that book number is already cancelled.", 400
             )
+        data = super().validate(data)
         return data
 
     def create(self, validated_data):

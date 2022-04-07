@@ -2,6 +2,7 @@ from datetime import date
 
 from ledgers.models import Ledger
 from rest_framework import serializers, status
+from transactions.models import TransactionDetail
 
 from .models import *
 
@@ -77,7 +78,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ["id", "name", "category"]
+        fields = ["id", "name", "category", "minimum_rate"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
@@ -131,7 +132,15 @@ class StockSerializer(serializers.ModelSerializer):
             yards_per_piece=validated_data["yards_per_piece"],
             branch=validated_data["branch"],
         ).exists():
-            raise serializers.ValidationError("Opening stock exists for this product")
+            raise serializers.ValidationError(
+                "Opening stock exists for this product", status.HTTP_400_BAD_REQUEST
+            )
+        if TransactionDetail.is_rate_invalid(
+            "D", validated_data["product"], validated_data["opening_stock_rate"]
+        ):
+            raise serializers.ValidationError(
+                "Rate too low for this product", status.HTTP_400_BAD_REQUEST
+            )
         validated_data["stock_quantity"] = validated_data["opening_stock"]
         instance = super().create(validated_data)
         return instance
