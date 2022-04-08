@@ -1,10 +1,18 @@
 from django.db.models import Max
+from essentials.models import Stock, Warehouse
 from ledgers.models import Ledger
+from rawtransactions.utils import is_array_unique
 from rest_framework import serializers, status
 from rest_framework.exceptions import NotAcceptable
 
 from .choices import TransactionTypes
-from .models import CancelledInvoice, Transaction, TransactionDetail
+from .models import (
+    CancelledInvoice,
+    StockTransfer,
+    StockTransferDetail,
+    Transaction,
+    TransactionDetail,
+)
 from .utils import create_ledger_entries, create_ledger_string, update_stock
 
 
@@ -396,3 +404,71 @@ class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSer
                 f"{serial.manual_invoice_serial} is already used in transaction ID # {serial.serial}",
                 400,
             )
+
+
+class TransferStockDetail(serializers.ModelSerializer):
+
+    stock_id = serializers.UUIDField(required=True)
+
+    class Meta:
+        model = StockTransferDetail
+        fields = ["stock_id", "to_warehouse", "quantity"]
+
+
+class TransferStockSerializer(serializers.ModelSerializer):
+
+    transfer_detail = TransferStockDetail(many=True, required=True, write_only=True)
+
+    class Meta:
+        model = StockTransfer
+        fields = ["id", "date", "serial", "transfer_detail"]
+        read_only_fields = ["id", "serial"]
+
+    def validate(self, data):
+        if not is_array_unique(data["transfer_detail"], "stock_id"):
+            raise serializers.ValidationError(
+                "Transfer detail is not unique", status.HTTP_400_BAD_REQUEST
+            )
+        return data
+
+    def create(self, validated_data):
+        branch = self.context["request"].branch
+        transfer_detail = validated_data.pop("transfer_detail")
+        transfer_instance = StockTransfer.objects.create(
+            **validated_data,
+            serial=StockTransfer.get_next_serial(branch, "serial"),
+            branch=branch,
+        )
+        detail_entries = []
+        for detail in transfer_detail:
+            stock = Stock.objects.get(id=detail["stock_id"])
+            if stock.warehouse.id == detail["to_warehouse"].id:
+                raise serializers.ValidationError(
+                    "You are trying to transfer to the same warehouse",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+            data = {
+                "product": stock.product,
+                "warehouse": stock.warehouse,
+                "yards_per_piece": stock.yards_per_piece,
+                "quantity": detail["quantity"],
+                "branch": branch,
+            }
+            update_stock("D", data)
+            data.update({"warehouse": detail["to_warehouse"]})
+            update_stock("C", data)
+
+            detail_entries.append(
+                StockTransferDetail(
+                    branch=branch,
+                    transfer=transfer_instance,
+                    product=stock.product,
+                    yards_per_piece=stock.yards_per_piece,
+                    from_warehouse=stock.warehouse,
+                    to_warehouse=detail["to_warehouse"],
+                    quantity=detail["quantity"],
+                )
+            )
+        StockTransferDetail.objects.bulk_create(detail_entries)
+
+        return validated_data

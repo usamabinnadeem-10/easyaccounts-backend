@@ -1,11 +1,6 @@
 from django.contrib import admin
 
-from .models import (
-    CancelledInvoice,
-    Transaction,
-    TransactionDetail,
-    TransferEntry,
-)
+from .models import CancelledInvoice, StockTransfer, StockTransferDetail, Transaction
 
 
 class TransactionAdmin(admin.ModelAdmin):
@@ -15,6 +10,6 @@ class TransactionAdmin(admin.ModelAdmin):
 
 # Register your models here.
 admin.site.register(Transaction, TransactionAdmin)
-admin.site.register(TransactionDetail)
 admin.site.register(CancelledInvoice)
-admin.site.register(TransferEntry)
+admin.site.register(StockTransfer)
+admin.site.register(StockTransferDetail)

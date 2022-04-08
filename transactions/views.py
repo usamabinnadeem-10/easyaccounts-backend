@@ -17,6 +17,7 @@ from .queries import CancelledInvoiceQuery, TransactionQuery
 from .serializers import (
     CancelledInvoiceSerializer,
     TransactionSerializer,
+    TransferStockSerializer,
     UpdateTransactionSerializer,
     update_stock,
 )
@@ -262,41 +263,43 @@ class BusinessPerformanceHistory(APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class TransferStock(APIView):
+class TransferStock(generics.CreateAPIView):
     """Transfer stock from one warehouse to another"""
 
-    def post(self, request):
-        body = request.data
-        branch = request.branch
-        stock = Stock.objects.get(id=body["id"], branch=branch)
-        product = stock.product
-        warehouse = stock.warehouse
-        if body["to_warehouse"] and body["transfer_quantity"]:
-            data = {
-                "product": product,
-                "warehouse": warehouse,
-                "yards_per_piece": stock.yards_per_piece,
-                "quantity": body["transfer_quantity"],
-                "branch": branch,
-            }
-            update_stock("D", data)
-            to_warehouse = Warehouse.objects.get(id=body["to_warehouse"], branch=branch)
-            data.update({"warehouse": to_warehouse})
-            update_stock("C", data)
+    serializer_class = TransferStockSerializer
 
-            TransferEntry.objects.create(
-                branch=branch,
-                product=product,
-                yards_per_piece=stock.yards_per_piece,
-                from_warehouse=warehouse,
-                to_warehouse=to_warehouse,
-                quantity=body["transfer_quantity"],
-            )
-            return Response({}, status=status.HTTP_201_CREATED)
-        return Response(
-            {"error": "Please provide warehouse and quantity to transfer"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    # def post(self, request):
+    #     body = request.data
+    #     branch = request.branch
+    #     stock = Stock.objects.get(id=body["id"], branch=branch)
+    #     product = stock.product
+    #     warehouse = stock.warehouse
+    #     if body["to_warehouse"] and body["transfer_quantity"]:
+    #         data = {
+    #             "product": product,
+    #             "warehouse": warehouse,
+    #             "yards_per_piece": stock.yards_per_piece,
+    #             "quantity": body["transfer_quantity"],
+    #             "branch": branch,
+    #         }
+    #         update_stock("D", data)
+    #         to_warehouse = Warehouse.objects.get(id=body["to_warehouse"], branch=branch)
+    #         data.update({"warehouse": to_warehouse})
+    #         update_stock("C", data)
+
+    #         TransferEntry.objects.create(
+    #             branch=branch,
+    #             product=product,
+    #             yards_per_piece=stock.yards_per_piece,
+    #             from_warehouse=warehouse,
+    #             to_warehouse=to_warehouse,
+    #             quantity=body["transfer_quantity"],
+    #         )
+    #         return Response({}, status=status.HTTP_201_CREATED)
+    #     return Response(
+    #         {"error": "Please provide warehouse and quantity to transfer"},
+    #         status=status.HTTP_400_BAD_REQUEST,
+    #     )
 
 
 class CancelInvoice(CancelledInvoiceQuery, generics.ListCreateAPIView):
@@ -345,11 +348,11 @@ class DetailedStockView(APIView):
             filters.update({"warehouse": qp.get("warehouse")})
 
         if qp.get("warehouse") and qp.get("start"):
-            old_transfer_quantity = TransferEntry.calculateTransferredAmount(
+            old_transfer_quantity = StockTransferDetail.calculateTransferredAmount(
                 qp.get("warehouse"),
                 qp.get("product"),
                 {
-                    "date__lte": startDateMinusOne,
+                    "transfer__date__lte": startDateMinusOne,
                     "branch": branch,
                 },
             )
@@ -373,14 +376,26 @@ class DetailedStockView(APIView):
             .order_by("transaction__date")
         )
 
+        transfer_values = [
+            "transfer__date",
+            "from_warehouse",
+            "to_warehouse",
+            "quantity",
+            "id",
+            "yards_per_piece",
+        ]
         if qp.get("warehouse"):
-            transfers = TransferEntry.objects.filter(
+            transfers = StockTransferDetail.objects.filter(
                 Q(from_warehouse=qp.get("warehouse"))
                 | Q(to_warehouse=qp.get("warehouse")),
                 **filters_transfers,
-            ).values()
+            ).values(*transfer_values)
         else:
-            transfers = TransferEntry.objects.filter(**filters_transfers).values()
+            transfers = StockTransferDetail.objects.filter(**filters_transfers).values(
+                *transfer_values
+            )
+
+        transfers = map(lambda x: {**x, "date": x["transfer__date"]}, transfers)
 
         return Response(
             {
