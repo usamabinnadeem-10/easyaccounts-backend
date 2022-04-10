@@ -13,12 +13,13 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 
 from .models import *
-from .queries import CancelledInvoiceQuery, TransactionQuery
+from .queries import CancelledInvoiceQuery, TransactionQuery, TransferQuery
 from .serializers import (
     CancelledInvoiceSerializer,
     TransactionSerializer,
     TransferStockSerializer,
     UpdateTransactionSerializer,
+    ViewTransfersSerializer,
     update_stock,
 )
 from .utils import *
@@ -268,38 +269,20 @@ class TransferStock(generics.CreateAPIView):
 
     serializer_class = TransferStockSerializer
 
-    # def post(self, request):
-    #     body = request.data
-    #     branch = request.branch
-    #     stock = Stock.objects.get(id=body["id"], branch=branch)
-    #     product = stock.product
-    #     warehouse = stock.warehouse
-    #     if body["to_warehouse"] and body["transfer_quantity"]:
-    #         data = {
-    #             "product": product,
-    #             "warehouse": warehouse,
-    #             "yards_per_piece": stock.yards_per_piece,
-    #             "quantity": body["transfer_quantity"],
-    #             "branch": branch,
-    #         }
-    #         update_stock("D", data)
-    #         to_warehouse = Warehouse.objects.get(id=body["to_warehouse"], branch=branch)
-    #         data.update({"warehouse": to_warehouse})
-    #         update_stock("C", data)
 
-    #         TransferEntry.objects.create(
-    #             branch=branch,
-    #             product=product,
-    #             yards_per_piece=stock.yards_per_piece,
-    #             from_warehouse=warehouse,
-    #             to_warehouse=to_warehouse,
-    #             quantity=body["transfer_quantity"],
-    #         )
-    #         return Response({}, status=status.HTTP_201_CREATED)
-    #     return Response(
-    #         {"error": "Please provide warehouse and quantity to transfer"},
-    #         status=status.HTTP_400_BAD_REQUEST,
-    #     )
+class ViewTransfers(TransferQuery, generics.ListAPIView):
+    """View for listing transfers"""
+
+    serializer_class = ViewTransfersSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        "date": ["gte", "lte"],
+        "transfer_detail__product": ["exact"],
+        "transfer_detail__yards_per_piece": ["exact", "gte", "lte"],
+        "transfer_detail__from_warehouse": ["exact"],
+        "transfer_detail__to_warehouse": ["exact"],
+        "transfer_detail__quantity": ["exact", "gte", "lte"],
+    }
 
 
 class CancelInvoice(CancelledInvoiceQuery, generics.ListCreateAPIView):

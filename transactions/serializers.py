@@ -472,3 +472,16 @@ class TransferStockSerializer(serializers.ModelSerializer):
         StockTransferDetail.objects.bulk_create(detail_entries)
 
         return validated_data
+
+
+class ViewTransfersSerializer(serializers.ModelSerializer):
+    class Serializer(serializers.ModelSerializer):
+        class Meta:
+            model = StockTransferDetail
+            fields = "__all__"
+
+    transfer_detail = Serializer(many=True)
+
+    class Meta:
+        model = StockTransfer
+        fields = ["id", "date", "serial", "transfer_detail"]

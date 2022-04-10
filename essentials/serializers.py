@@ -81,6 +81,16 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "category", "minimum_rate"]
         read_only_fields = ["id"]
 
+    def validate(self, data):
+        branch = self.context["request"].branch
+        if Product.objects.filter(
+            branch=branch, name=data["name"], category=data["category"]
+        ).exists():
+            raise serializers.ValidationError(
+                "Product exists", status.HTTP_400_BAD_REQUEST
+            )
+        return data
+
     def create(self, validated_data):
 
         validated_data["branch"] = self.context["request"].branch

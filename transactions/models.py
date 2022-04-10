@@ -70,61 +70,16 @@ class CancelledInvoice(BranchAwareModel):
 class StockTransfer(BranchAwareModel, NextSerial):
     date = models.DateField(default=date.today)
     serial = models.PositiveBigIntegerField()
-    # product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    # yards_per_piece = models.FloatField(validators=[MinValueValidator(0.0)])
-    # from_warehouse = models.ForeignKey(
-    #     Warehouse, on_delete=models.CASCADE, related_name="from_warehouse"
-    # )
-    # to_warehouse = models.ForeignKey(
-    #     Warehouse, on_delete=models.CASCADE, related_name="to_warehouse"
-    # )
-    # quantity = models.FloatField(validators=[MinValueValidator(0.0)])
 
     class Meta:
         verbose_name_plural = "Stock transfers"
 
-    # @classmethod
-    # def calculateTransferredAmount(cls, warehouse, product, filters):
-    #     """return transferred amount to this warehouse"""
-    #     custom_filters = {
-    #         **filters,
-    #         "product": product,
-    #     }
-    #     values = ["product", "from_warehouse", "to_warehouse"]
-    #     quantity = 0.0
-    #     transfers_in = (
-    #         TransferEntry.objects.values(*values)
-    #         .annotate(quantity=Sum("quantity"))
-    #         .filter(
-    #             **{
-    #                 **custom_filters,
-    #                 "to_warehouse": warehouse,
-    #             }
-    #         )
-    #     )
-    #     for t in transfers_in:
-    #         quantity += t["quantity"]
-
-    #     transfers_out = (
-    #         TransferEntry.objects.values(*values)
-    #         .annotate(quantity=Sum("quantity"))
-    #         .filter(
-    #             **{
-    #                 **custom_filters,
-    #                 "from_warehouse": warehouse,
-    #             }
-    #         )
-    #     )
-
-    #     for t in transfers_out:
-    #         quantity -= t["quantity"]
-
-    #     return quantity
-
 
 class StockTransferDetail(BranchAwareModel):
 
-    transfer = models.ForeignKey(StockTransfer, on_delete=models.CASCADE)
+    transfer = models.ForeignKey(
+        StockTransfer, on_delete=models.CASCADE, related_name="transfer_detail"
+    )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     yards_per_piece = models.FloatField(validators=[MinValueValidator(0.0)])
     from_warehouse = models.ForeignKey(
