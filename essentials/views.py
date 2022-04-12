@@ -18,7 +18,7 @@ from expenses.serializers import ExpenseDetailSerializer
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
 from rest_framework import status
-from rest_framework.generics import CreateAPIView, ListAPIView, ListCreateAPIView
+from rest_framework.generics import CreateAPIView, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from transactions.models import Transaction

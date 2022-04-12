@@ -1,5 +1,13 @@
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsBranchMember, IsAdmin, IsLoggedIn, IsPurchaser, IsSaleman
+
+from .permissions import (
+    IsAccountant,
+    IsAdmin,
+    IsBranchMember,
+    IsLoggedIn,
+    IsPurchaser,
+    IsSaleman,
+)
 
 
 class IsAuthenticatedPermissionMixin:
@@ -36,3 +44,15 @@ class IsSalemanPermissionMixin:
     """To check if the user is authenticated and a saleman"""
 
     permission_classes = [IsAuthenticated, IsLoggedIn, IsSaleman]
+
+
+class IsAccountantPermissionMixin:
+    """To check if the user is an accountant"""
+
+    permission_classes = [IsAuthenticated, IsLoggedIn, IsAccountant]
+
+
+class IsAdminOrAccountantMixin:
+    """To check if user is admin or accountant"""
+
+    permission_classes = [IsAdmin | IsAccountant, IsLoggedIn, IsAccountant]

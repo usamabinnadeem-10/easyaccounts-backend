@@ -68,9 +68,6 @@ class Person(BranchAwareModel):
     area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True)
     opening_balance = models.FloatField(default=0.0)
 
-    class Meta:
-        unique_together = ("name", "branch")
-
     def __str__(self) -> str:
         return self.name + ": " + self.person_type
 

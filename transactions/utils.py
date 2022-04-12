@@ -8,7 +8,7 @@ def is_low_quantity(stock_to_update, value):
     stock_in_hand = stock_to_update.stock_quantity - value
     if stock_in_hand < 0 or (stock_to_update.stock_quantity == 0):
         raise NotAcceptable(
-            f"""{stock_to_update.product.name} low in stock. Stock = {stock_to_update.stock_quantity}""",
+            f"""{stock_to_update.product.name}, {stock_to_update.yards_per_piece} gaz low in stock. Stock = {stock_to_update.stock_quantity}""",
             400,
         )
 

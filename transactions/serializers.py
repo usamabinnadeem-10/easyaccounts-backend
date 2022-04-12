@@ -407,17 +407,20 @@ class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSer
 
 
 class TransferStockDetail(serializers.ModelSerializer):
-
-    stock_id = serializers.UUIDField(required=True)
-
     class Meta:
         model = StockTransferDetail
-        fields = ["stock_id", "to_warehouse", "quantity"]
+        fields = [
+            "product",
+            "yards_per_piece",
+            "from_warehouse",
+            "to_warehouse",
+            "quantity",
+        ]
 
 
 class TransferStockSerializer(serializers.ModelSerializer):
 
-    transfer_detail = TransferStockDetail(many=True, required=True, write_only=True)
+    transfer_detail = TransferStockDetail(many=True, required=True)
 
     class Meta:
         model = StockTransfer
@@ -425,10 +428,16 @@ class TransferStockSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial"]
 
     def validate(self, data):
-        if not is_array_unique(data["transfer_detail"], "stock_id"):
-            raise serializers.ValidationError(
-                "Transfer detail is not unique", status.HTTP_400_BAD_REQUEST
-            )
+        # if not is_array_unique(data["transfer_detail"], "stock_id"):
+        #     raise serializers.ValidationError(
+        #         "Transfer detail is not unique", status.HTTP_400_BAD_REQUEST
+        #     )
+        for row in data["transfer_detail"]:
+            if row["from_warehouse"] == row["to_warehouse"]:
+                raise serializers.ValidationError(
+                    "You are trying to transfer to same warehouse product is in",
+                    status.HTTP_400_BAD_REQUEST,
+                )
         return data
 
     def create(self, validated_data):
@@ -441,16 +450,16 @@ class TransferStockSerializer(serializers.ModelSerializer):
         )
         detail_entries = []
         for detail in transfer_detail:
-            stock = Stock.objects.get(id=detail["stock_id"])
-            if stock.warehouse.id == detail["to_warehouse"].id:
-                raise serializers.ValidationError(
-                    "You are trying to transfer to the same warehouse",
-                    status.HTTP_400_BAD_REQUEST,
-                )
+            # stock = Stock.objects.get(id=detail["stock_id"])
+            # if stock.warehouse.id == detail["to_warehouse"].id:
+            #     raise serializers.ValidationError(
+            #         "You are trying to transfer to the same warehouse",
+            #         status.HTTP_400_BAD_REQUEST,
+            #     )
             data = {
-                "product": stock.product,
-                "warehouse": stock.warehouse,
-                "yards_per_piece": stock.yards_per_piece,
+                "product": detail["product"],
+                "warehouse": detail["from_warehouse"],
+                "yards_per_piece": detail["yards_per_piece"],
                 "quantity": detail["quantity"],
                 "branch": branch,
             }
@@ -462,15 +471,17 @@ class TransferStockSerializer(serializers.ModelSerializer):
                 StockTransferDetail(
                     branch=branch,
                     transfer=transfer_instance,
-                    product=stock.product,
-                    yards_per_piece=stock.yards_per_piece,
-                    from_warehouse=stock.warehouse,
-                    to_warehouse=detail["to_warehouse"],
-                    quantity=detail["quantity"],
+                    **detail,
+                    # product=detail['product'],
+                    # yards_per_piece=detail['yards_per_piece'],
+                    # from_warehouse=detail['from_warehouse'],
+                    # to_warehouse=detail["to_warehouse"],
+                    # quantity=detail["quantity"],
                 )
             )
         StockTransferDetail.objects.bulk_create(detail_entries)
 
+        validated_data["transfer_detail"] = transfer_detail
         return validated_data
 
 

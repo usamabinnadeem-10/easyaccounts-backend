@@ -1,7 +1,7 @@
 from rest_framework import permissions
 
-from .models import UserBranchRelation
 from .choices import RoleChoices
+from .models import UserBranchRelation
 
 
 class IsLoggedIn(permissions.BasePermission):
@@ -45,3 +45,10 @@ class IsSaleman(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.role == RoleChoices.SALEMAN
+
+
+class IsAccountant(permissions.BasePermission):
+    """Permission class to check whether user is a saleman"""
+
+    def has_permission(self, request, view):
+        return request.role == RoleChoices.ACCOUNTANT
