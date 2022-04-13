@@ -7,7 +7,7 @@ from django.db.models import Sum
 from essentials.models import AccountType, Person, Product, Warehouse
 from rawtransactions.models import NextSerial
 
-from .choices import TransactionChoices, TransactionTypes
+from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
 
 
 class Transaction(BranchAwareModel):
@@ -22,7 +22,9 @@ class Transaction(BranchAwareModel):
     account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
     paid_amount = models.FloatField(default=0.0)
     manual_invoice_serial = models.BigIntegerField()
-    manual_serial_type = models.CharField(max_length=3)
+    manual_serial_type = models.CharField(
+        max_length=3, choices=TransactionSerialTypes.choices
+    )
     requires_action = models.BooleanField(default=False)
 
     class Meta:

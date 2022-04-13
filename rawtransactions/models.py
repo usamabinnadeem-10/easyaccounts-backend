@@ -11,6 +11,7 @@ from .choices import RawDebitTypes, RawProductTypes
 
 
 class Formula(BranchAwareModel):
+    """Raw product formulas"""
 
     numerator = models.FloatField()
     denominator = models.FloatField()
@@ -19,7 +20,21 @@ class Formula(BranchAwareModel):
         return f"{self.numerator}/{self.denominator}"
 
 
+class AbstractRawLotDetail(BranchAwareModel):
+
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1.0)])
+    actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
+    expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
+    rate = models.FloatField(validators=[MinValueValidator(1.0)])
+    formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)
+
+    class Meta:
+        abstract = True
+
+
 class RawProduct(BranchAwareModel):
+    """Raw product"""
 
     name = models.CharField(max_length=100)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
@@ -44,6 +59,7 @@ class RawProductOpeningStock(BranchAwareModel):
 
 
 class RawTransaction(BranchAwareModel):
+    """Raw transaction"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     date = models.DateField(default=date.today)
@@ -68,6 +84,7 @@ class NextSerial:
 
 
 class RawTransactionLot(BranchAwareModel, NextSerial):
+    """Lot for raw transaction"""
 
     raw_transaction = models.ForeignKey(
         RawTransaction, on_delete=models.CASCADE, related_name="transaction_lot"
@@ -80,20 +97,8 @@ class RawTransactionLot(BranchAwareModel, NextSerial):
         return f"{self.raw_transaction} - {self.lot_number}"
 
 
-class AbstractRawLotDetail(BranchAwareModel):
-
-    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1.0)])
-    actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
-    expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
-    rate = models.FloatField(validators=[MinValueValidator(1.0)])
-    formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)
-
-    class Meta:
-        abstract = True
-
-
 class RawLotDetail(AbstractRawLotDetail):
+    """Detail for raw transaction lot"""
 
     lot_number = models.ForeignKey(
         RawTransactionLot, on_delete=models.CASCADE, related_name="raw_lot_detail"
@@ -101,6 +106,7 @@ class RawLotDetail(AbstractRawLotDetail):
 
 
 class RawDebit(BranchAwareModel, NextSerial):
+    """Raw return or sale"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     manual_invoice_serial = models.PositiveBigIntegerField()
@@ -117,12 +123,14 @@ class RawDebit(BranchAwareModel, NextSerial):
 
 
 class RawDebitLot(BranchAwareModel):
+    """Raw debit and lot relation"""
 
     bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)
     lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
 
 
 class RawDebitLotDetail(AbstractRawLotDetail):
+    """Raw debit detail for each lot"""
 
     return_lot = models.ForeignKey(RawDebitLot, on_delete=models.CASCADE)
     nature = models.CharField(

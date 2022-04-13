@@ -3,7 +3,12 @@ from datetime import date
 from authentication.models import BranchAwareModel
 from django.db import models
 from essentials.models import Product, Warehouse
-from rawtransactions.models import Formula, NextSerial, RawTransactionLot
+from rawtransactions.models import (
+    AbstractRawLotDetail,
+    Formula,
+    NextSerial,
+    RawTransactionLot,
+)
 
 
 class DyingUnit(BranchAwareModel):
@@ -62,7 +67,7 @@ class DyingIssueDetail(BranchAwareModel):
 #     date = models.DateField(default=date.today)
 
 
-# class WashingReturnDetail(BranchAwareModel):
+# class WashingReturnDetail(AbstractRawLotDetail):
 
 #     product = models.ForeignKey(Product, on_delete=models.CASCADE)
 #     quantity = models.FloatField()

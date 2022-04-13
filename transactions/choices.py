@@ -11,3 +11,10 @@ class TransactionTypes(models.TextChoices):
     PAID = "paid", "Paid"
     PURCHASE = "purchase", "Purchase"
     CREDIT = "credit", "Credit"
+
+
+class TransactionSerialTypes(models.TextChoices):
+    INV = "INV", "Sale Invoice"
+    SUP = "SUP", "Purchase"
+    MWS = "MWS", "Maal Wapsi Supplier"
+    MWC = "MWC", "Maal Wapsi Customer"
