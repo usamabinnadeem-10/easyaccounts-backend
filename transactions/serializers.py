@@ -34,9 +34,12 @@ class ValidateTransactionSerial:
                 "Invoice with that book number exists.", status.HTTP_400_BAD_REQUEST
             )
 
-        self.last_serial_num = Transaction.objects.filter(**branch_filter).aggregate(
-            Max("serial")
-        )["serial__max"]
+        self.last_serial_num = (
+            Transaction.objects.filter(**branch_filter).aggregate(Max("serial"))[
+                "serial__max"
+            ]
+            or 0
+        )
 
         data["manual_invoice_serial"]
         max_from_cancelled = (
@@ -450,12 +453,6 @@ class TransferStockSerializer(serializers.ModelSerializer):
         )
         detail_entries = []
         for detail in transfer_detail:
-            # stock = Stock.objects.get(id=detail["stock_id"])
-            # if stock.warehouse.id == detail["to_warehouse"].id:
-            #     raise serializers.ValidationError(
-            #         "You are trying to transfer to the same warehouse",
-            #         status.HTTP_400_BAD_REQUEST,
-            #     )
             data = {
                 "product": detail["product"],
                 "warehouse": detail["from_warehouse"],
@@ -472,11 +469,6 @@ class TransferStockSerializer(serializers.ModelSerializer):
                     branch=branch,
                     transfer=transfer_instance,
                     **detail,
-                    # product=detail['product'],
-                    # yards_per_piece=detail['yards_per_piece'],
-                    # from_warehouse=detail['from_warehouse'],
-                    # to_warehouse=detail["to_warehouse"],
-                    # quantity=detail["quantity"],
                 )
             )
         StockTransferDetail.objects.bulk_create(detail_entries)

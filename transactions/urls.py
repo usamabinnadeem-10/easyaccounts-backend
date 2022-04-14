@@ -8,8 +8,9 @@ urlpatterns = [
     path("search/", FilterTransactions.as_view()),
     path("product-performance-history/", ProductPerformanceHistory.as_view()),
     path("business-performance-history/", BusinessPerformanceHistory.as_view()),
-    path("transfer-stock/", TransferStock.as_view()),
     path("cancel-invoice/", CancelInvoice.as_view()),
     path("detailed-stock/", DetailedStockView.as_view()),
+    path("transfer-stock/", TransferStock.as_view()),
+    path("transfer-stock/delete/<uuid:pk>/", DeleteTransferStock.as_view()),
     path("view-transfers/", ViewTransfers.as_view()),
 ]
