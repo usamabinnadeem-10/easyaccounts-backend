@@ -102,6 +102,10 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         "transaction_detail__product": ["exact"],
     }
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return queryset.order_by("-date")
+
 
 class ProductPerformanceHistory(APIView):
     """
@@ -277,7 +281,7 @@ class DeleteTransferStock(TransferQuery, generics.DestroyAPIView):
         for detail in transfer_detail:
             data = {
                 "product": detail.product,
-                "warehouse": detail.from_warehouse,
+                "warehouse": instance.from_warehouse,
                 "yards_per_piece": detail.yards_per_piece,
                 "quantity": detail.quantity,
                 "branch": self.request.branch,
@@ -297,7 +301,9 @@ class ViewTransfers(TransferQuery, generics.ListAPIView):
         "date": ["gte", "lte"],
         "transfer_detail__product": ["exact"],
         "transfer_detail__yards_per_piece": ["exact", "gte", "lte"],
-        "transfer_detail__from_warehouse": ["exact"],
+        "from_warehouse": ["exact"],
+        "serial": ["gte", "lte", "exact"],
+        "manual_invoice_serial": ["exact", "gte", "lte"],
         "transfer_detail__to_warehouse": ["exact"],
         "transfer_detail__quantity": ["exact", "gte", "lte"],
     }

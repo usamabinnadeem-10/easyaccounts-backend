@@ -1,18 +1,16 @@
 from datetime import date
 from uuid import uuid4
 
-from authentication.models import BranchAwareModel
+from authentication.models import BranchAwareModel, UserAwareModel
 from django.db import models
 from essentials.models import AccountType
 
 
-class ExpenseAccount(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class ExpenseAccount(BranchAwareModel, UserAwareModel):
     name = models.CharField(max_length=100)
 
 
 class ExpenseDetail(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     date = models.DateField(default=date.today)
     expense = models.ForeignKey(ExpenseAccount, on_delete=models.CASCADE)
     detail = models.TextField(max_length=1000)

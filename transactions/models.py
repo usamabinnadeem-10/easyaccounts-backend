@@ -1,6 +1,6 @@
 from datetime import date
 
-from authentication.models import ID, BranchAwareModel
+from authentication.models import BranchAwareModel, UserAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
@@ -10,7 +10,7 @@ from rawtransactions.models import NextSerial
 from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
 
 
-class Transaction(BranchAwareModel):
+class Transaction(BranchAwareModel, UserAwareModel):
     date = models.DateField(default=date.today)
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
@@ -58,7 +58,9 @@ class TransactionDetail(BranchAwareModel):
 
 class CancelledInvoice(BranchAwareModel):
     manual_invoice_serial = models.BigIntegerField()
-    manual_serial_type = models.CharField(max_length=3)
+    manual_serial_type = models.CharField(
+        max_length=3, choices=TransactionSerialTypes.choices
+    )
     comment = models.CharField(max_length=500)
 
     class Meta:
@@ -69,9 +71,16 @@ class CancelledInvoice(BranchAwareModel):
         )
 
 
-class StockTransfer(BranchAwareModel, NextSerial):
+class StockTransfer(BranchAwareModel, UserAwareModel, NextSerial):
     date = models.DateField(default=date.today)
     serial = models.PositiveBigIntegerField()
+    manual_invoice_serial = models.PositiveBigIntegerField()
+    from_warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.CASCADE, related_name="from_warehouse", default=None
+    )
+
+    class Meta:
+        unique_together = ["serial", "manual_invoice_serial", "from_warehouse"]
 
     class Meta:
         verbose_name_plural = "Stock transfers"
@@ -84,9 +93,6 @@ class StockTransferDetail(BranchAwareModel):
     )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     yards_per_piece = models.FloatField(validators=[MinValueValidator(0.0)])
-    from_warehouse = models.ForeignKey(
-        Warehouse, on_delete=models.CASCADE, related_name="from_warehouse"
-    )
     to_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name="to_warehouse"
     )
@@ -114,13 +120,14 @@ class StockTransferDetail(BranchAwareModel):
         for t in transfers_in:
             quantity += t["quantity"]
 
+        values[1] = "transfer__from_warehouse"
         transfers_out = (
             StockTransferDetail.objects.values(*values)
             .annotate(quantity=Sum("quantity"))
             .filter(
                 **{
                     **custom_filters,
-                    "from_warehouse": warehouse,
+                    "transfer__from_warehouse": warehouse,
                 }
             )
         )

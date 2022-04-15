@@ -112,9 +112,11 @@ class IssueForDyingSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSer
     def create(self, validated_data):
         self.check_stock(validated_data["data"])
         data = validated_data.pop("data")
+        user = self.context["request"].user
         dying_issue_instance = DyingIssue.objects.create(
             **validated_data,
             branch=self.branch,
+            user=user,
             dying_lot_number=DyingIssue.get_next_serial(self.branch, "dying_lot_number")
         )
         for lot in data:

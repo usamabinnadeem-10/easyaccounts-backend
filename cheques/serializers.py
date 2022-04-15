@@ -94,6 +94,7 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        user = self.context["request"].user
         cheque_account = get_cheque_account(branch)
         parent_cheque = get_parent_cheque(
             {
@@ -103,7 +104,12 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
             }
         )
         external_cheque = ExternalChequeHistory.objects.create(
-            **{**validated_data, "parent_cheque": parent_cheque, "branch": branch}
+            **{
+                **validated_data,
+                "parent_cheque": parent_cheque,
+                "branch": branch,
+                "user": user,
+            }
         )
         return external_cheque
 
@@ -129,10 +135,12 @@ class CreateExternalChequeEntrySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        user = self.context["request"].user
         data_for_cheque = {
             **validated_data,
             "serial": ExternalCheque.get_next_serial(branch),
             "branch": branch,
+            "user": user,
         }
         cheque_obj = ExternalCheque.objects.create(**data_for_cheque)
         create_ledger_entry_for_cheque(cheque_obj)
@@ -164,6 +172,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        user = self.context["request"].user
         branch_filter = {"branch": branch}
         data_for_cheque = validated_data.pop("cheque_data")
         cheque_obj = ExternalCheque.objects.create(
@@ -178,6 +187,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
         data_for_cheque_history = {
             **validated_data,
             **branch_filter,
+            "user": user,
             "amount": cheque_obj.amount,
             "account_type": cheque_account.account,
             "return_cheque": cheque_obj,
@@ -221,6 +231,7 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        user = self.context["request"].user
         cheque = validated_data["cheque"]
         # cheque with hisotry can not be transferred
         if has_history(cheque, branch):
@@ -240,7 +251,9 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
                 "Cleared cheque can not be transferred", 400
             )
 
-        transfer = ExternalChequeTransfer.objects.create(**validated_data, branch=branch)
+        transfer = ExternalChequeTransfer.objects.create(
+            **validated_data, branch=branch, user=user
+        )
         create_ledger_entry_for_cheque(
             transfer.cheque, "D", True, validated_data["person"]
         )
@@ -288,11 +301,13 @@ class IssuePersonalChequeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        user = self.context["request"].user
         is_not_cheque_account(validated_data["account_type"], branch)
         data_for_cheque = {
             **validated_data,
             "serial": PersonalCheque.get_next_serial(branch),
             "branch": branch,
+            "user": user,
         }
         personal_cheque = PersonalCheque.objects.create(**data_for_cheque)
         create_ledger_entry_for_cheque(

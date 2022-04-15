@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import uuid4
 
-from authentication.models import BranchAwareModel
+from authentication.models import BranchAwareModel, UserAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Count, Max, Sum
@@ -12,8 +12,7 @@ from .choices import *
 from .constants import CHEQUE_ACCOUNT
 
 
-class AbstractCheque(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class AbstractCheque(BranchAwareModel, UserAwareModel):
     serial = models.PositiveBigIntegerField()
     cheque_number = models.CharField(max_length=20)
     bank = models.CharField(max_length=20, choices=BankChoices.choices)
@@ -30,8 +29,7 @@ class AbstractCheque(BranchAwareModel):
     @classmethod
     def get_next_serial(cls, branch):
         return (
-            cls.objects.filter(branch=branch).aggregate(Max("serial"))["serial__max"]
-            or 0
+            cls.objects.filter(branch=branch).aggregate(Max("serial"))["serial__max"] or 0
         ) + 1
 
 
@@ -50,9 +48,7 @@ class ExternalCheque(AbstractCheque):
                 name=CHEQUE_ACCOUNT, branch=branch
             ).account
         except:
-            raise serializers.ValidationError(
-                "Please create a cheque account first", 400
-            )
+            raise serializers.ValidationError("Please create a cheque account first", 400)
 
         external_recovered = (
             ExternalChequeHistory.objects.filter(
@@ -116,7 +112,7 @@ class PersonalCheque(AbstractCheque):
         return 0
 
 
-class ExternalChequeHistory(BranchAwareModel):
+class ExternalChequeHistory(BranchAwareModel, UserAwareModel):
     # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     parent_cheque = models.ForeignKey(
         ExternalCheque,
@@ -164,7 +160,7 @@ class ExternalChequeHistory(BranchAwareModel):
         return amount
 
 
-class ExternalChequeTransfer(BranchAwareModel):
+class ExternalChequeTransfer(BranchAwareModel, UserAwareModel):
     # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     cheque = models.OneToOneField(
         ExternalCheque,

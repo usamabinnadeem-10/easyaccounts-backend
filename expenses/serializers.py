@@ -11,6 +11,7 @@ class ExpenseAccountSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["branch"] = self.context["request"].branch
+        validated_data["user"] = self.context["request"].user
         instance = super().create(validated_data)
         return instance
 

@@ -7,7 +7,6 @@ from .models import (
     RawDebitLotDetail,
     RawLotDetail,
     RawProduct,
-    RawProductOpeningStock,
     RawTransaction,
     RawTransactionLot,
 )
@@ -24,7 +23,6 @@ class RawLotDetailAdmin(admin.ModelAdmin):
 # Register your models here.
 admin.site.register(Formula)
 admin.site.register(RawProduct)
-admin.site.register(RawProductOpeningStock)
 admin.site.register(RawTransaction)
 admin.site.register(RawTransactionLot, RawTransactionLotAdmin)
 admin.site.register(RawLotDetail, RawLotDetailAdmin)

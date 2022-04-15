@@ -22,17 +22,18 @@ class ValidateTransactionSerial:
     last_serial_num = 0
     cancelled = None
 
-    def validate(self, data):
+    def validate(self, data, edit=False):
         branch = self.context["request"].branch
         branch_filter = {"branch": branch}
-        if Transaction.objects.filter(
-            branch=branch,
-            manual_invoice_serial=data["manual_invoice_serial"],
-            manual_serial_type=data["manual_serial_type"],
-        ).exists():
-            raise serializers.ValidationError(
-                "Invoice with that book number exists.", status.HTTP_400_BAD_REQUEST
-            )
+        if not edit:
+            if Transaction.objects.filter(
+                branch=branch,
+                manual_invoice_serial=data["manual_invoice_serial"],
+                manual_serial_type=data["manual_serial_type"],
+            ).exists():
+                raise serializers.ValidationError(
+                    "Invoice with that book number exists.", status.HTTP_400_BAD_REQUEST
+                )
 
         self.last_serial_num = (
             Transaction.objects.filter(**branch_filter).aggregate(Max("serial"))[
@@ -79,6 +80,12 @@ class ValidateTransactionSerial:
                 f"Serial # {self.cancelled.manual_serial_type}-{self.cancelled.manual_invoice_serial} is cancelled"
             )
 
+        return data
+
+
+class ValidateTransactionSerialOnEdit(ValidateTransactionSerial):
+    def validate(self, data):
+        data = super().validate(data, True)
         return data
 
 
@@ -135,8 +142,9 @@ class TransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializ
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
         branch_filter = {"branch": self.context["request"].branch}
+        user = self.context["request"].user
         transaction = Transaction.objects.create(
-            **branch_filter, **validated_data, serial=self.last_serial_num + 1
+            user=user, **branch_filter, **validated_data, serial=self.last_serial_num + 1
         )
         details = []
         ledger_string = ""
@@ -195,7 +203,9 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["transaction"]
 
 
-class UpdateTransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializer):
+class UpdateTransactionSerializer(
+    ValidateTransactionSerialOnEdit, serializers.ModelSerializer
+):
 
     transaction_detail = UpdateTransactionDetailSerializer(many=True)
     serial = serializers.ReadOnlyField()
@@ -224,6 +234,13 @@ class UpdateTransactionSerializer(ValidateTransactionSerial, serializers.ModelSe
         transaction_detail = validated_data.pop("transaction_detail")
         branch = self.context["request"].branch
         branch_filter = {"branch": branch}
+
+        # check if user changed the book number
+        if instance.manual_invoice_serial != validated_data["manual_invoice_serial"]:
+            raise serializers.ValidationError(
+                "You can not change book number while editing",
+                status.HTTP_400_BAD_REQUEST,
+            )
 
         # delete all the other transaction details
         # which were not in the transaction_detail
@@ -415,7 +432,6 @@ class TransferStockDetail(serializers.ModelSerializer):
         fields = [
             "product",
             "yards_per_piece",
-            "from_warehouse",
             "to_warehouse",
             "quantity",
         ]
@@ -427,7 +443,14 @@ class TransferStockSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StockTransfer
-        fields = ["id", "date", "serial", "transfer_detail"]
+        fields = [
+            "id",
+            "date",
+            "serial",
+            "transfer_detail",
+            "from_warehouse",
+            "manual_invoice_serial",
+        ]
         read_only_fields = ["id", "serial"]
 
     def validate(self, data):
@@ -435,27 +458,39 @@ class TransferStockSerializer(serializers.ModelSerializer):
         #     raise serializers.ValidationError(
         #         "Transfer detail is not unique", status.HTTP_400_BAD_REQUEST
         #     )
+        branch = self.context["request"].branch
+        from_warehouse = data["from_warehouse"]
         for row in data["transfer_detail"]:
-            if row["from_warehouse"] == row["to_warehouse"]:
+            if from_warehouse == row["to_warehouse"]:
                 raise serializers.ValidationError(
                     "You are trying to transfer to same warehouse product is in",
                     status.HTTP_400_BAD_REQUEST,
                 )
+        next_manual = StockTransfer.get_next_serial(
+            branch, "manual_invoice_serial", from_warehouse=data["from_warehouse"]
+        )
+        if data["manual_invoice_serial"] != next_manual:
+            raise serializers.ValidationError(f"Please use receipt # {next_manual}")
         return data
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        user = self.context["request"].user
         transfer_detail = validated_data.pop("transfer_detail")
+        from_warehouse = validated_data["from_warehouse"]
         transfer_instance = StockTransfer.objects.create(
             **validated_data,
-            serial=StockTransfer.get_next_serial(branch, "serial"),
+            user=user,
+            serial=StockTransfer.get_next_serial(
+                branch, "serial", from_warehouse=from_warehouse
+            ),
             branch=branch,
         )
         detail_entries = []
         for detail in transfer_detail:
             data = {
                 "product": detail["product"],
-                "warehouse": detail["from_warehouse"],
+                "warehouse": from_warehouse,
                 "yards_per_piece": detail["yards_per_piece"],
                 "quantity": detail["quantity"],
                 "branch": branch,
@@ -487,4 +522,11 @@ class ViewTransfersSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StockTransfer
-        fields = ["id", "date", "serial", "transfer_detail"]
+        fields = [
+            "id",
+            "date",
+            "serial",
+            "manual_invoice_serial",
+            "from_warehouse",
+            "transfer_detail",
+        ]

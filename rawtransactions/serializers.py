@@ -149,9 +149,11 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         lots = validated_data.pop("lots")
         branch = self.context["request"].branch
+        user = self.context["request"].user
         transaction = RawTransaction.objects.create(
             **validated_data,
             branch=branch,
+            user=user,
         )
 
         ledger_string = "Kora wasooli\n"
@@ -319,6 +321,7 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
 
     def create(self, validated_data):
         data = validated_data.pop("data")
+        user = self.context["request"].user
         check_person = (
             True if validated_data["debit_type"] == RawDebitTypes.RETURN else False
         )
@@ -327,6 +330,7 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
         debit_instance = RawDebit.objects.create(
             **validated_data,
             branch=self.branch,
+            user=user,
             bill_number=RawDebit.get_next_serial(
                 self.branch, "bill_number", debit_type=validated_data["debit_type"]
             ),

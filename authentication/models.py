@@ -49,6 +49,15 @@ class BranchAwareModel(models.Model):
         abstract = True
 
 
+class UserAwareModel(models.Model):
+    user = models.ForeignKey(
+        User, related_name="%(class)s", on_delete=models.PROTECT, null=True, default=None
+    )
+
+    class Meta:
+        abstract = True
+
+
 class ID(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
 

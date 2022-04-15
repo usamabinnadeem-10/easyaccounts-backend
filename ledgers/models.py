@@ -1,7 +1,7 @@
 from datetime import date
 from functools import reduce
 
-from authentication.models import BranchAwareModel
+from authentication.models import BranchAwareModel, UserAwareModel
 from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, PersonalCheque
 from django.core.validators import MinValueValidator
@@ -18,8 +18,7 @@ class TransactionChoices(models.TextChoices):
     DEBIT = "D", _("Debit")
 
 
-class Ledger(BranchAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class Ledger(BranchAwareModel, UserAwareModel):
     date = models.DateField(default=date.today)
     detail = models.TextField(max_length=1000, null=True, blank=True)
     amount = models.FloatField(validators=[MinValueValidator(0.0)])

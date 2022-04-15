@@ -1,6 +1,6 @@
 from datetime import date
 
-from authentication.models import BranchAwareModel
+from authentication.models import BranchAwareModel, UserAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Max
@@ -47,18 +47,7 @@ class RawProduct(BranchAwareModel):
         return f"{self.name} - {self.person} - {self.type}"
 
 
-class RawProductOpeningStock(BranchAwareModel):
-
-    product = models.ForeignKey(RawProduct, on_delete=models.CASCADE)
-    opening_stock = models.FloatField(default=0.0)
-    opening_stock_rate = models.FloatField()
-    gazaana = models.FloatField()
-
-    class Meta:
-        unique_together = ("product", "gazaana", "branch")
-
-
-class RawTransaction(BranchAwareModel):
+class RawTransaction(BranchAwareModel, UserAwareModel):
     """Raw transaction"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
@@ -105,7 +94,7 @@ class RawLotDetail(AbstractRawLotDetail):
     )
 
 
-class RawDebit(BranchAwareModel, NextSerial):
+class RawDebit(BranchAwareModel, UserAwareModel, NextSerial):
     """Raw return or sale"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)

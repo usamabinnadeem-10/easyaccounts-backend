@@ -1,6 +1,6 @@
 from datetime import date
 
-from authentication.models import BranchAwareModel
+from authentication.models import BranchAwareModel, UserAwareModel
 from django.db import models
 from essentials.models import Product, Warehouse
 from rawtransactions.models import (
@@ -22,7 +22,7 @@ class DyingUnit(BranchAwareModel):
         return self.name
 
 
-class DyingIssue(BranchAwareModel, NextSerial):
+class DyingIssue(BranchAwareModel, UserAwareModel, NextSerial):
 
     dying_unit = models.ForeignKey(DyingUnit, on_delete=models.CASCADE)
     dying_lot_number = models.PositiveBigIntegerField()
