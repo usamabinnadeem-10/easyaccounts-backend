@@ -96,10 +96,13 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         "person": ["exact"],
         "draft": ["exact"],
         "serial": ["exact", "gte", "lte"],
+        "manual_invoice_serial": ["exact", "gte", "lte"],
+        "manual_serial_type": ["exact"],
         "discount": ["gte", "lte"],
         "type": ["exact"],
         "requires_action": ["exact"],
         "transaction_detail__product": ["exact"],
+        "transaction_detail__warehouse": ["exact"],
     }
 
     def get_queryset(self):

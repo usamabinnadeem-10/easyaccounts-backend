@@ -24,6 +24,7 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
                 "detail": ledger_string,
                 "amount": amount,
                 "transaction": transaction,
+                "user": transaction.user,
                 "nature": transaction.nature,
                 "person": transaction.person,
                 "date": transaction.date,

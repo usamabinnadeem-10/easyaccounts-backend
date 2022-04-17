@@ -10,14 +10,14 @@ from rawtransactions.models import NextSerial
 from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
 
 
-class Transaction(BranchAwareModel, UserAwareModel):
+class Transaction(BranchAwareModel, UserAwareModel, NextSerial):
     date = models.DateField(default=date.today)
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     draft = models.BooleanField(default=False)
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
-    serial = models.BigIntegerField()
+    serial = models.PositiveBigIntegerField()
     detail = models.CharField(max_length=1000, null=True)
     account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
     paid_amount = models.FloatField(default=0.0)
@@ -56,7 +56,7 @@ class TransactionDetail(BranchAwareModel):
         return False
 
 
-class CancelledInvoice(BranchAwareModel):
+class CancelledInvoice(BranchAwareModel, NextSerial):
     manual_invoice_serial = models.BigIntegerField()
     manual_serial_type = models.CharField(
         max_length=3, choices=TransactionSerialTypes.choices
@@ -69,6 +69,11 @@ class CancelledInvoice(BranchAwareModel):
             "manual_serial_type",
             "branch",
         )
+
+
+class CancelStockTransfer(BranchAwareModel):
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
+    manual_invoice_serial = models.PositiveBigIntegerField()
 
 
 class StockTransfer(BranchAwareModel, UserAwareModel, NextSerial):

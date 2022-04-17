@@ -116,7 +116,7 @@ if DEVELOPMENT_MODE is True:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": "easyaccounts",
+            "NAME": "easyaccount",
             "USER": "usama",
             "PASSWORD": "8080",
             "HOST": "127.0.0.1",
