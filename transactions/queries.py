@@ -1,4 +1,4 @@
-from .models import CancelledInvoice, StockTransfer, Transaction
+from .models import CancelledInvoice, CancelStockTransfer, StockTransfer, Transaction
 
 
 class TransactionQuery:
@@ -14,3 +14,8 @@ class CancelledInvoiceQuery:
 class TransferQuery:
     def get_queryset(self):
         return StockTransfer.objects.filter(branch=self.request.branch)
+
+
+class CancelStockTransferQuery:
+    def get_queryset(self):
+        return CancelStockTransfer.objects.filter(branch=self.request.branch)

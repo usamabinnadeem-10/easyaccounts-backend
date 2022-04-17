@@ -10,7 +10,9 @@ urlpatterns = [
     path("business-performance-history/", BusinessPerformanceHistory.as_view()),
     path("cancel-invoice/", CancelInvoice.as_view()),
     path("detailed-stock/", DetailedStockView.as_view()),
+    # // ---------Stock transfer----------  //
     path("transfer-stock/", TransferStock.as_view()),
     path("transfer-stock/delete/<uuid:pk>/", DeleteTransferStock.as_view()),
     path("view-transfers/", ViewTransfers.as_view()),
+    path("transfer-stock/cancel/", CancelStockTransferView.as_view()),
 ]

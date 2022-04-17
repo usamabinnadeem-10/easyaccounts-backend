@@ -8,6 +8,7 @@ from rest_framework.exceptions import NotAcceptable
 from .choices import TransactionTypes
 from .models import (
     CancelledInvoice,
+    CancelStockTransfer,
     StockTransfer,
     StockTransferDetail,
     Transaction,
@@ -463,8 +464,12 @@ class TransferStockSerializer(serializers.ModelSerializer):
         next_manual = StockTransfer.get_next_serial(
             branch, "manual_invoice_serial", from_warehouse=data["from_warehouse"]
         )
-        if data["manual_invoice_serial"] != next_manual:
-            raise serializers.ValidationError(f"Please use receipt # {next_manual}")
+        next_cancel = CancelStockTransfer.get_next_serial(
+            branch, "manual_invoice_serial", warehouse=data["from_warehouse"]
+        )
+        final_serial = max(next_manual, next_cancel)
+        if data["manual_invoice_serial"] != final_serial:
+            raise serializers.ValidationError(f"Please use receipt # {final_serial}")
         return data
 
     def create(self, validated_data):
@@ -524,3 +529,51 @@ class ViewTransfersSerializer(serializers.ModelSerializer):
             "from_warehouse",
             "transfer_detail",
         ]
+
+
+class CancelStockTransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CancelStockTransfer
+        fields = ["id", "warehouse", "manual_invoice_serial"]
+        read_only_fields = ["id"]
+
+    def validate(self, data):
+        branch = self.context["request"].branch
+        from_warehouse = data["warehouse"]
+        serial = data["manual_invoice_serial"]
+        if StockTransfer.objects.filter(
+            branch=branch,
+            from_warehouse=from_warehouse,
+            manual_invoice_serial=serial,
+        ).exists():
+            raise serializers.ValidationError(
+                "This serial is already in use", status.HTTP_400_BAD_REQUEST
+            )
+
+        if CancelStockTransfer.objects.filter(
+            branch=branch,
+            warehouse=from_warehouse,
+            manual_invoice_serial=serial,
+        ).exists():
+            raise serializers.ValidationError(
+                "This serial is already cancelled", status.HTTP_400_BAD_REQUEST
+            )
+
+        next_serial = StockTransfer.get_next_serial(
+            branch, "manual_invoice_serial", from_warehouse=from_warehouse
+        )
+        next_cancel = CancelStockTransfer.get_next_serial(
+            branch, "manual_invoice_serial", warehouse=from_warehouse
+        )
+        final_serial = max(next_serial, next_cancel)
+        if serial > final_serial:
+            raise serializers.ValidationError(
+                "You can not cancel future serial", status.HTTP_400_BAD_REQUEST
+            )
+
+        return data
+
+    def create(self, validated_data):
+        validated_data["branch"] = self.context["request"].branch
+        instance = super().create(validated_data)
+        return instance

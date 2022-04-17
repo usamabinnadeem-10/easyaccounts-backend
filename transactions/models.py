@@ -71,7 +71,7 @@ class CancelledInvoice(BranchAwareModel, NextSerial):
         )
 
 
-class CancelStockTransfer(BranchAwareModel):
+class CancelStockTransfer(BranchAwareModel, NextSerial):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
     manual_invoice_serial = models.PositiveBigIntegerField()
 

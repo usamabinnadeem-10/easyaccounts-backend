@@ -13,9 +13,15 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 
 from .models import *
-from .queries import CancelledInvoiceQuery, TransactionQuery, TransferQuery
+from .queries import (
+    CancelledInvoiceQuery,
+    CancelStockTransferQuery,
+    TransactionQuery,
+    TransferQuery,
+)
 from .serializers import (
     CancelledInvoiceSerializer,
+    CancelStockTransferSerializer,
     TransactionSerializer,
     TransferStockSerializer,
     UpdateTransactionSerializer,
@@ -415,3 +421,8 @@ class DetailedStockView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class CancelStockTransferView(CancelStockTransferQuery, generics.CreateAPIView):
+
+    serializer_class = CancelStockTransferSerializer
