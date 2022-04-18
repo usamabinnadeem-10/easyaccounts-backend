@@ -1,3 +1,5 @@
+from functools import reduce
+
 from django.db.models import Max
 from essentials.models import Stock, Warehouse
 from ledgers.models import Ledger
@@ -23,20 +25,20 @@ class ValidateTransactionSerial:
     last_serial_num = 0
     cancelled = None
 
-    def validate(self, data, edit=False):
+    def validate(self, data):
         branch = self.context["request"].branch
         branch_filter = {"branch": branch}
         manual_serial_type = data["manual_serial_type"]
         manual_invoice_serial = data["manual_invoice_serial"]
-        if not edit:
-            if Transaction.objects.filter(
-                branch=branch,
-                manual_invoice_serial=manual_invoice_serial,
-                manual_serial_type=manual_serial_type,
-            ).exists():
-                raise serializers.ValidationError(
-                    "Invoice with that book number exists.", status.HTTP_400_BAD_REQUEST
-                )
+
+        if Transaction.objects.filter(
+            branch=branch,
+            manual_invoice_serial=manual_invoice_serial,
+            manual_serial_type=manual_serial_type,
+        ).exists():
+            raise serializers.ValidationError(
+                "Invoice with that book number exists.", status.HTTP_400_BAD_REQUEST
+            )
 
         self.last_serial_num = Transaction.get_next_serial(
             branch, "serial", manual_serial_type=manual_serial_type
@@ -78,11 +80,30 @@ class ValidateTransactionSerial:
         return data
 
 
-class ValidateTransactionSerialOnEdit(ValidateTransactionSerial):
-    """Serializer to validate transaction serial while editing"""
+class ValidateTotal:
+    """Validates total for transaction"""
+
+    def validate_total(self, data):
+        total = reduce(
+            lambda prev, curr: prev
+            + (curr["rate"] * curr["quantity"] * curr["yards_per_piece"]),
+            data["transaction_detail"],
+            0,
+        )
+        total -= data["discount"]
+        if total <= 0:
+            raise serializers.ValidationError(
+                "Total is too low", status.HTTP_400_BAD_REQUEST
+            )
+        return data
+
+
+class ValidateTotalAndSerial(ValidateTransactionSerial, ValidateTotal):
+    """Validates transaction serial while editing"""
 
     def validate(self, data):
-        data = super().validate(data, True)
+        data = self.validate_total(data)
+        data = super().validate(data)
         return data
 
 
@@ -97,12 +118,11 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "yards_per_piece",
             "quantity",
             "warehouse",
-            "amount",
         ]
         read_only_fields = ["id", "transaction"]
 
 
-class TransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializer):
+class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer):
     """Transaction serializer for creating and viewing transactions"""
 
     transaction_detail = TransactionDetailSerializer(many=True)
@@ -124,7 +144,6 @@ class TransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializ
             "type",
             "discount",
             "person",
-            "draft",
             "paid",
             "account_type",
             "paid_amount",
@@ -133,6 +152,7 @@ class TransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializ
             "person_type",
             "manual_serial_type",
             "requires_action",
+            "builty",
         ]
         read_only_fields = ["id"]
 
@@ -159,20 +179,18 @@ class TransactionSerializer(ValidateTransactionSerial, serializers.ModelSerializ
                     transaction_id=transaction.id, **detail, **branch_filter
                 )
             )
-            if not transaction.draft:
-                ledger_string += create_ledger_string(detail)
-                update_stock(transaction.nature, {**detail, **branch_filter})
+            ledger_string += create_ledger_string(detail)
+            update_stock(transaction.nature, {**detail, **branch_filter})
 
         transactions = TransactionDetail.objects.bulk_create(details)
-        if not transaction.draft:
-            ledger_data = create_ledger_entries(
-                transaction,
-                transaction_details,
-                paid,
-                ledger_string
-                + f'{validated_data["detail"] if validated_data["detail"] else ""}',
-            )
-            Ledger.objects.bulk_create(ledger_data)
+        ledger_data = create_ledger_entries(
+            transaction,
+            transaction_details,
+            paid,
+            ledger_string
+            + f'{validated_data["detail"] if validated_data["detail"] else ""}',
+        )
+        Ledger.objects.bulk_create(ledger_data)
         validated_data["transaction_detail"] = transactions
         validated_data["id"] = transaction.id
         validated_data["serial"] = transaction.serial
@@ -195,15 +213,12 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
             "yards_per_piece",
             "quantity",
             "warehouse",
-            "amount",
             "new",
         ]
         read_only_fields = ["transaction"]
 
 
-class UpdateTransactionSerializer(
-    ValidateTransactionSerialOnEdit, serializers.ModelSerializer
-):
+class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
     """Serializer for updating transaction"""
 
     transaction_detail = UpdateTransactionDetailSerializer(many=True)
@@ -220,14 +235,18 @@ class UpdateTransactionSerializer(
             "nature",
             "discount",
             "person",
-            "draft",
             "account_type",
             "paid_amount",
             "detail",
             "manual_invoice_serial",
             "manual_serial_type",
             "requires_action",
+            "builty",
         ]
+
+    def validate(self, data):
+        data = self.validate_total(data)
+        return data
 
     def update(self, instance, validated_data):
         transaction_detail = validated_data.pop("transaction_detail")
@@ -271,7 +290,7 @@ class UpdateTransactionSerializer(
         # for all the details, if it is new then create it otherwise edit the previous
         amount = 0.0
         for detail in transaction_detail:
-            amount += detail["amount"]
+            amount += detail["rate"] * detail["quantity"] * detail["yards_per_piece"]
             if TransactionDetail.is_rate_invalid(
                 validated_data["nature"], detail["product"], detail["rate"]
             ):
@@ -297,7 +316,6 @@ class UpdateTransactionSerializer(
                 detail_instance.rate = detail["rate"]
                 detail_instance.quantity = detail["quantity"]
                 detail_instance.warehouse = detail["warehouse"]
-                detail_instance.amount = detail["amount"]
                 detail_instance.yards_per_piece = detail["yards_per_piece"]
                 detail_instance.save()
 
@@ -319,11 +337,10 @@ class UpdateTransactionSerializer(
             transaction=instance, account_type__isnull=True, **branch_filter
         )
         ledger_instance.detail = ledger_string + f'{validated_data["detail"]}\n'
-        ledger_instance.draft = validated_data["draft"]
         ledger_instance.nature = validated_data["nature"]
         ledger_instance.amount = amount
         ledger_instance.person = validated_data["person"]
-        if validated_data["date"]:
+        if validated_data.get("date", None):
             ledger_instance.date = validated_data["date"]
         ledger_instance.save()
 
@@ -346,7 +363,6 @@ class UpdateTransactionSerializer(
                     "account_type": account_type,
                     "person": instance.person,
                     "date": instance.date,
-                    "draft": instance.draft,
                     "branch": instance.branch,
                 }
             )
@@ -370,7 +386,6 @@ class UpdateTransactionSerializer(
             paid_instance.amount = validated_data["paid_amount"]
             paid_instance.account_type = validated_data["account_type"]
             paid_instance.detail = f'Paid on {validated_data["account_type"].name}'
-            paid_instance.draft = validated_data["draft"]
             paid_instance.person = validated_data["person"]
             if validated_data["date"]:
                 paid_instance.date = validated_data["date"]

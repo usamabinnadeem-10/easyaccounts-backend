@@ -38,7 +38,6 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
                 branch=self.request.branch,
                 person=person,
                 date__lte=endDate,
-                draft=False,
             )
 
     def list(self, request, *args, **kwargs):
@@ -73,7 +72,7 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
             + cleared_cheques
             + cleared_transferred_cheques
         )
-        NUM_OF_PENDING = ExternalCheque.get_number_of_pending_cheques(branch)
+        NUM_OF_PENDING = ExternalCheque.get_number_of_pending_cheques(person, branch)
 
         persons_transferred_cheques = ExternalCheque.get_sum_of_transferred_cheques(
             person, branch
@@ -105,7 +104,7 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
         ledger_data = LedgerSerializer(
             self.paginate_queryset(
                 queryset.filter(date__gte=startDate).order_by(
-                    F("date"), F("transaction__serial").desc(nulls_last=False)
+                    F("date"), F("transaction__serial").asc(nulls_last=False)
                 )
             ),
             many=True,

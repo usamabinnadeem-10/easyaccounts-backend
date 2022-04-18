@@ -26,7 +26,6 @@ class LedgerSerializer(serializers.ModelSerializer):
             "nature",
             "account_type",
             "transaction",
-            "draft",
             "transaction_serial",
             "manual_invoice_serial",
             "manual_serial_type",

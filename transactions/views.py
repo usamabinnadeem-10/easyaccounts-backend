@@ -59,7 +59,6 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
         filters = {
             "date__gte": startDate,
             "date__lte": endDate,
-            "draft": qp.get("draft") or False,
         }
         if person:
             filters.update({"person": person})
@@ -100,7 +99,6 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         "account_type": ["exact"],
         "detail": ["contains"],
         "person": ["exact"],
-        "draft": ["exact"],
         "serial": ["exact", "gte", "lte"],
         "manual_invoice_serial": ["exact", "gte", "lte"],
         "manual_serial_type": ["exact"],
@@ -168,7 +166,7 @@ class BusinessPerformanceHistory(APIView):
         qp = request.query_params
         branch = self.context["request"].branch
         branch_filter = {"branch": branch}
-        filters = {"transaction__draft": False}
+        filters = {}
 
         start_date = (
             datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None
@@ -200,7 +198,6 @@ class BusinessPerformanceHistory(APIView):
         opening_quantity = opening_stock.get("total_quantity", 0)
         opening_quantity = opening_quantity if opening_quantity else 0
 
-        del filters["transaction__draft"]
         expense_filters = {"branch": branch}
         if start_date:
             expense_filters.update({"date__gte": start_date})

@@ -73,9 +73,9 @@ class ExternalCheque(AbstractCheque):
         return 0
 
     @classmethod
-    def get_number_of_pending_cheques(cls, branch):
+    def get_number_of_pending_cheques(cls, person ,branch):
         pending_count = ExternalCheque.objects.filter(
-            branch=branch, status=ChequeStatusChoices.PENDING
+            branch=branch, person=person, status=ChequeStatusChoices.PENDING
         ).aggregate(count=Count("id"))
         pending_count = pending_count.get("count", 0)
         if pending_count is not None:

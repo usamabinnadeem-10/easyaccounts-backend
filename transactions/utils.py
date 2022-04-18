@@ -5,8 +5,9 @@ from rest_framework.exceptions import NotAcceptable
 
 
 def is_low_quantity(stock_to_update, value):
+    print(stock_to_update.stock_quantity, value)
     stock_in_hand = stock_to_update.stock_quantity - value
-    if stock_in_hand < 0 or (stock_to_update.stock_quantity == 0):
+    if stock_in_hand < 0 or (stock_to_update.stock_quantity == 0 and value > 0):
         raise NotAcceptable(
             f"""{stock_to_update.product.name}, {stock_to_update.yards_per_piece} gaz low in stock. Stock = {stock_to_update.stock_quantity}""",
             400,
@@ -16,7 +17,7 @@ def is_low_quantity(stock_to_update, value):
 def create_ledger_entries(transaction, transaction_details, paid, ledger_string):
     amount = 0.0
     for t in transaction_details:
-        amount += t["amount"]
+        amount += t["yards_per_piece"] * t["quantity"] * t["rate"]
     amount -= transaction.discount
     ledger_data = [
         Ledger(
@@ -28,7 +29,6 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
                 "nature": transaction.nature,
                 "person": transaction.person,
                 "date": transaction.date,
-                "draft": transaction.draft,
                 "branch": transaction.branch,
             }
         )
@@ -44,7 +44,7 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
                     "account_type": transaction.account_type,
                     "person": transaction.person,
                     "date": transaction.date,
-                    "draft": transaction.draft,
+                    "branch": transaction.branch,
                 }
             )
         )

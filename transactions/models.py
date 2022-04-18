@@ -15,7 +15,6 @@ class Transaction(BranchAwareModel, UserAwareModel, NextSerial):
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
-    draft = models.BooleanField(default=False)
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
     serial = models.PositiveBigIntegerField()
     detail = models.CharField(max_length=1000, null=True)
@@ -26,6 +25,7 @@ class Transaction(BranchAwareModel, UserAwareModel, NextSerial):
         max_length=3, choices=TransactionSerialTypes.choices
     )
     requires_action = models.BooleanField(default=False)
+    builty = models.CharField(max_length=100, null=True, default=None)
 
     class Meta:
         ordering = ["serial"]
@@ -44,10 +44,9 @@ class TransactionDetail(BranchAwareModel):
         Product, on_delete=models.PROTECT, null=True, name="product"
     )
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
-    yards_per_piece = models.FloatField(validators=[MinValueValidator(1.0)])
-    quantity = models.FloatField(validators=[MinValueValidator(1.0)])
+    yards_per_piece = models.FloatField(validators=[MinValueValidator(0.01)])
+    quantity = models.FloatField(validators=[MinValueValidator(0.0001)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
-    amount = models.FloatField(validators=[MinValueValidator(0.0)])
 
     @classmethod
     def is_rate_invalid(cls, nature, product, current_rate):
