@@ -1,3 +1,5 @@
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import serializers
 
 from .models import *
@@ -39,7 +41,14 @@ class LedgerSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+        request = self.context["request"]
         validated_data["branch"] = self.context["request"].branch
         validated_data["user"] = self.context["request"].user
         instance = super().create(validated_data)
+        Log.create_log(
+            ActivityTypes.CREATED,
+            ActivityCategory.LEDGER_ENTRY,
+            f"{instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/=",
+            request,
+        )
         return instance

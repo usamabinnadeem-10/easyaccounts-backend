@@ -6,6 +6,8 @@ from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalChequ
 from django.db.models import F, Min, Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from essentials.pagination import CustomPagination
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -126,6 +128,25 @@ class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.RetrieveUpdateDestroyAP
     """
 
     serializer_class = LedgerSerializer
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        Log.create_log(
+            ActivityTypes.DELETED,
+            ActivityCategory.LEDGER_ENTRY,
+            f"{instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/=",
+            self.request,
+        )
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        super().perform_update(serializer)
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.LEDGER_ENTRY,
+            f"{instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/=",
+            self.request,
+        )
 
 
 class GetAllBalances(APIView):

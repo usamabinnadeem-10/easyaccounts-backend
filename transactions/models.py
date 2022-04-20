@@ -35,6 +35,10 @@ class Transaction(BranchAwareModel, UserAwareModel, NextSerial):
             "branch",
         )
 
+    # returns serial like SUP-123, INV-1453 ...
+    def get_manual_serial(self):
+        return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
+
 
 class TransactionDetail(BranchAwareModel):
     transaction = models.ForeignKey(
@@ -55,7 +59,7 @@ class TransactionDetail(BranchAwareModel):
         return False
 
 
-class CancelledInvoice(BranchAwareModel, NextSerial):
+class CancelledInvoice(BranchAwareModel, UserAwareModel, NextSerial):
     manual_invoice_serial = models.BigIntegerField()
     manual_serial_type = models.CharField(
         max_length=3, choices=TransactionSerialTypes.choices
@@ -69,8 +73,12 @@ class CancelledInvoice(BranchAwareModel, NextSerial):
             "branch",
         )
 
+    # returns serial like SUP-123, INV-1453 ...
+    def get_manual_serial(self):
+        return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
 
-class CancelStockTransfer(BranchAwareModel, NextSerial):
+
+class CancelStockTransfer(BranchAwareModel, UserAwareModel, NextSerial):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
     manual_invoice_serial = models.PositiveBigIntegerField()
 

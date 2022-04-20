@@ -7,6 +7,8 @@ from essentials.models import *
 from essentials.pagination import CustomPagination
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.status import *
@@ -86,6 +88,12 @@ class EditUpdateDeleteTransaction(
             update_stock("C" if instance.nature == "D" else "D", transaction)
 
         self.perform_destroy(instance)
+        Log.create_log(
+            ActivityTypes.DELETED,
+            ActivityCategory.TRANSACTION,
+            f"{instance.get_manual_serial()} for {instance.person.name}",
+            self.request,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -296,6 +304,12 @@ class DeleteTransferStock(TransferQuery, generics.DestroyAPIView):
             data["warehouse"] = detail.to_warehouse
             update_stock("D", data)
         super().perform_destroy(instance)
+        Log.create_log(
+            ActivityTypes.DELETED,
+            ActivityCategory.STOCK_TRANSFER,
+            f"serial # {instance.manual_invoice_serial} of {instance.from_warehouse.name}",
+            self.request,
+        )
 
 
 class ViewTransfers(TransferQuery, generics.ListAPIView):

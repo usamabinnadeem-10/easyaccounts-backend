@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rawtransactions.apps.RawtransactionsConfig",
     "dying",
+    "logs",
 ]
 
 MIDDLEWARE = [

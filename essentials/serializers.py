@@ -1,13 +1,27 @@
 from datetime import date
 
 from ledgers.models import Ledger
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import serializers, status
 from transactions.models import TransactionDetail
 
 from .models import *
 
 
-class PersonSerializer(serializers.ModelSerializer):
+class CreateLogEntry:
+    def create_log(self, category, detail, request):
+        Log.create_log(
+            ActivityTypes.CREATED,
+            category,
+            detail,
+            request,
+        )
+
+
+class PersonSerializer(CreateLogEntry, serializers.ModelSerializer):
+
+    category = ActivityCategory.PERSON
 
     opening_balance_date = serializers.DateField(default=date.today, write_only=True)
     nature = serializers.CharField(write_only=True)
@@ -30,6 +44,7 @@ class PersonSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
+        request = self.context["request"]
         opening_balance_date = validated_data.pop("opening_balance_date")
         nature = validated_data.pop("nature")
         data_for_person = validated_data
@@ -38,51 +53,76 @@ class PersonSerializer(serializers.ModelSerializer):
             if nature == "C"
             else -abs(data_for_person["opening_balance"])
         )
-        data_for_person["branch"] = self.context["request"].branch
+        data_for_person["branch"] = request.branch
         person = Person.objects.create(**data_for_person)
-        Ledger.objects.create(
-            person=person,
-            nature=nature,
-            date=opening_balance_date,
-            detail="Opening Balance",
-            amount=abs(person.opening_balance),
-            branch=person.branch,
-        )
+        # self.create_log(
+        #     self.category,
+        #     f'{person.get_person_type_display()} "{person.name}" with opening balance {person.opening_balance}',
+        #     request,
+        # )
+        if person.opening_balance != 0:
+            Ledger.objects.create(
+                person=person,
+                nature=nature,
+                date=opening_balance_date,
+                detail="Opening Balance",
+                amount=abs(person.opening_balance),
+                branch=person.branch,
+            )
         return person
 
 
-class AccountTypeSerializer(serializers.ModelSerializer):
+class AccountTypeSerializer(CreateLogEntry, serializers.ModelSerializer):
+
+    category = ActivityCategory.ACCOUNT_TYPE
+
     class Meta:
         model = AccountType
         fields = ["id", "name", "opening_balance"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        validated_data["branch"] = self.context["request"].branch
+        request = self.context["request"]
+        validated_data["branch"] = request.branch
         instance = super().create(validated_data)
+        # self.create_log(
+        #     self.category,
+        #     f"{instance.name} with opening balance {instance.opening_balance}",
+        #     request,
+        # )
         return instance
 
 
-class WarehouseSerializer(serializers.ModelSerializer):
+class WarehouseSerializer(CreateLogEntry, serializers.ModelSerializer):
+
+    category = ActivityCategory.WAREHOUSE
+
     class Meta:
         model = Warehouse
         fields = ["id", "name", "address"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        validated_data["branch"] = self.context["request"].branch
+        request = self.context["request"]
+        validated_data["branch"] = request.branch
         instance = instance = super().create(validated_data)
+        # self.create_log(
+        #     self.category,
+        #     f"{instance.name} with opening balance {instance.opening_balance}",
+        #     request,
+        # )
         return instance
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(CreateLogEntry, serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ["id", "name", "category", "minimum_rate"]
         read_only_fields = ["id"]
 
     def validate(self, data):
-        branch = self.context["request"].branch
+        request = self.context["request"]
+        branch = request.branch
         if Product.objects.filter(
             branch=branch, name=data["name"], category=data["category"]
         ).exists():
@@ -92,13 +132,12 @@ class ProductSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-
         validated_data["branch"] = self.context["request"].branch
         product = Product.objects.create(**validated_data)
         return product
 
 
-class ProductCategorySerializer(serializers.ModelSerializer):
+class ProductCategorySerializer(CreateLogEntry, serializers.ModelSerializer):
     class Meta:
         model = ProductCategory
         fields = ["id", "name"]
@@ -114,8 +153,8 @@ class ProductCategorySerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-
-        validated_data["branch"] = self.context["request"].branch
+        request = self.context["request"]
+        validated_data["branch"] = request.branch
         category = ProductCategory.objects.create(**validated_data)
         return category
 
@@ -156,7 +195,7 @@ class StockSerializer(serializers.ModelSerializer):
         return instance
 
 
-class AreaSerializer(serializers.ModelSerializer):
+class AreaSerializer(CreateLogEntry, serializers.ModelSerializer):
     class Meta:
         model = Area
         fields = ["id", "name", "city"]

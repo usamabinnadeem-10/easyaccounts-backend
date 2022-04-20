@@ -1,9 +1,8 @@
 from functools import reduce
 
-from django.db.models import Max
-from essentials.models import Stock, Warehouse
 from ledgers.models import Ledger
-from rawtransactions.utils import is_array_unique
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import serializers, status
 from rest_framework.exceptions import NotAcceptable
 
@@ -125,6 +124,9 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
 class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer):
     """Transaction serializer for creating and viewing transactions"""
 
+    category = ActivityCategory.TRANSACTION
+    type = ActivityTypes.CREATED
+
     transaction_detail = TransactionDetailSerializer(many=True)
     paid = serializers.BooleanField(default=False)
 
@@ -157,10 +159,11 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
         read_only_fields = ["id"]
 
     def create(self, validated_data):
+        request = self.context["request"]
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
-        branch_filter = {"branch": self.context["request"].branch}
-        user = self.context["request"].user
+        branch_filter = {"branch": request.branch}
+        user = request.user
         transaction = Transaction.objects.create(
             user=user, **branch_filter, **validated_data, serial=self.last_serial_num
         )
@@ -195,6 +198,14 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
         validated_data["id"] = transaction.id
         validated_data["serial"] = transaction.serial
         validated_data["date"] = transaction.date
+
+        Log.create_log(
+            self.type,
+            self.category,
+            f"{transaction.get_manual_serial()} ({transaction.get_type_display()}) for {transaction.person.name}",
+            request,
+        )
+
         return validated_data
 
 
@@ -220,6 +231,9 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
 
 class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
     """Serializer for updating transaction"""
+
+    category = ActivityCategory.TRANSACTION
+    type = ActivityTypes.EDITED
 
     transaction_detail = UpdateTransactionDetailSerializer(many=True)
     serial = serializers.ReadOnlyField()
@@ -249,8 +263,9 @@ class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
+        request = self.context["request"]
         transaction_detail = validated_data.pop("transaction_detail")
-        branch = self.context["request"].branch
+        branch = request.branch
         branch_filter = {"branch": branch}
 
         # check if user changed the book number
@@ -391,10 +406,22 @@ class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
                 paid_instance.date = validated_data["date"]
             paid_instance.save()
 
+        Log.create_log(
+            self.type,
+            self.category,
+            f"{instance.manual_serial_type}-{instance.manual_invoice_serial} ({instance.get_type_display()}) for {instance.person.name}",
+            request,
+        )
+
         return super().update(instance, validated_data)
 
 
 class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSerializer):
+
+    request = None
+    type = ActivityTypes.CREATED
+    category = ActivityCategory.CANCELLED_TRANSACTION
+
     class Meta:
         model = CancelledInvoice
         fields = [
@@ -406,9 +433,9 @@ class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSer
         read_only_fields = ["id"]
 
     def validate(self, data):
-        branch = self.context["request"].branch
+        self.request = self.context["request"]
         if CancelledInvoice.objects.filter(
-            branch=branch,
+            branch=self.request.branch,
             manual_invoice_serial=data["manual_invoice_serial"],
             manual_serial_type=data["manual_serial_type"],
         ).exists():
@@ -420,7 +447,8 @@ class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSer
 
     def create(self, validated_data):
         serial = None
-        branch = self.context["request"].branch
+        branch = self.request.branch
+        user = self.request.user
         try:
             serial = Transaction.objects.get(
                 branch=branch,
@@ -432,7 +460,15 @@ class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSer
 
         if not serial:
             validated_data["branch"] = branch
-            return super().create(validated_data)
+            validated_data["user"] = user
+            instance = super().create(validated_data)
+            Log.create_log(
+                self.type,
+                self.category,
+                f"{instance.get_manual_serial()}",
+                self.request,
+            )
+            return instance
         else:
             raise NotAcceptable(
                 f"{serial.manual_invoice_serial} is already used in transaction ID # {serial.serial}",
@@ -453,6 +489,9 @@ class TransferStockDetail(serializers.ModelSerializer):
 
 class TransferStockSerializer(serializers.ModelSerializer):
 
+    request = None
+    type = ActivityTypes.CREATED
+    category = ActivityCategory.STOCK_TRANSFER
     transfer_detail = TransferStockDetail(many=True, required=True)
 
     class Meta:
@@ -468,7 +507,8 @@ class TransferStockSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial"]
 
     def validate(self, data):
-        branch = self.context["request"].branch
+        self.request = self.context["request"]
+        branch = self.request.branch
         from_warehouse = data["from_warehouse"]
         for row in data["transfer_detail"]:
             if from_warehouse == row["to_warehouse"]:
@@ -488,8 +528,8 @@ class TransferStockSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        branch = self.context["request"].branch
-        user = self.context["request"].user
+        branch = self.request.branch
+        user = self.request.user
         transfer_detail = validated_data.pop("transfer_detail")
         from_warehouse = validated_data["from_warehouse"]
         transfer_instance = StockTransfer.objects.create(
@@ -501,7 +541,9 @@ class TransferStockSerializer(serializers.ModelSerializer):
             branch=branch,
         )
         detail_entries = []
+        total_quantity = 0
         for detail in transfer_detail:
+            total_quantity += detail["quantity"]
             data = {
                 "product": detail["product"],
                 "warehouse": from_warehouse,
@@ -521,6 +563,13 @@ class TransferStockSerializer(serializers.ModelSerializer):
                 )
             )
         StockTransferDetail.objects.bulk_create(detail_entries)
+
+        Log.create_log(
+            self.type,
+            self.category,
+            f"{total_quantity} thaan from {transfer_instance.from_warehouse.name}, serial # {transfer_instance.manual_invoice_serial}",
+            self.request,
+        )
 
         validated_data["transfer_detail"] = transfer_detail
         return validated_data
@@ -547,13 +596,19 @@ class ViewTransfersSerializer(serializers.ModelSerializer):
 
 
 class CancelStockTransferSerializer(serializers.ModelSerializer):
+
+    request = None
+    type = ActivityTypes.CREATED
+    category = ActivityCategory.CANCELLED_STOCK_TRANSFER
+
     class Meta:
         model = CancelStockTransfer
         fields = ["id", "warehouse", "manual_invoice_serial"]
         read_only_fields = ["id"]
 
     def validate(self, data):
-        branch = self.context["request"].branch
+        self.request = self.context["request"]
+        branch = self.request.branch
         from_warehouse = data["warehouse"]
         serial = data["manual_invoice_serial"]
         if StockTransfer.objects.filter(
@@ -589,6 +644,14 @@ class CancelStockTransferSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data["branch"] = self.context["request"].branch
+        validated_data["branch"] = self.request.branch
         instance = super().create(validated_data)
+
+        Log.create_log(
+            self.type,
+            self.category,
+            f"serial # {instance.manual_invoice_serial} of {instance.warehouse.name}",
+            self.request,
+        )
+
         return instance
