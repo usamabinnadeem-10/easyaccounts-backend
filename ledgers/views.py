@@ -134,17 +134,18 @@ class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.RetrieveUpdateDestroyAP
         Log.create_log(
             ActivityTypes.DELETED,
             ActivityCategory.LEDGER_ENTRY,
-            f"{instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/=",
+            f"{instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/= from {instance.date}",
             self.request,
         )
 
     def perform_update(self, serializer):
         instance = self.get_object()
         super().perform_update(serializer)
+        updated = self.get_object()
         Log.create_log(
             ActivityTypes.EDITED,
             ActivityCategory.LEDGER_ENTRY,
-            f"{instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/=",
+            f"{instance.date} of type {instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/= to --> {updated.date} of type {updated.get_nature_display()} for {updated.person.name} for amount {updated.amount}",
             self.request,
         )
 
