@@ -92,7 +92,7 @@ class RawLotDetailsSerializer(serializers.ModelSerializer):
 class RawTransactionLotSerializer(serializers.ModelSerializer):
 
     lot_detail = RawLotDetailsSerializer(many=True)
-    dying_unit = serializers.UUIDField(required=False, write_only=True, allow_null=True)
+    dying_unit = serializers.UUIDField(required=False, allow_null=True)
 
     class Meta:
         model = RawTransactionLot
@@ -142,6 +142,11 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         ).exists():
             raise serializers.ValidationError(
                 "This book number exists", status.HTTP_400_BAD_REQUEST
+            )
+        next_serial = RawTransaction.get_next_serial(branch, "manual_invoice_serial")
+        if data["manual_invoice_serial"] != next_serial:
+            raise serializers.ValidationError(
+                f"Please use book number {next_serial}", status.HTTP_400_BAD_REQUEST
             )
 
         return data

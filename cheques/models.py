@@ -54,7 +54,10 @@ class ExternalCheque(AbstractCheque):
             ExternalChequeHistory.objects.filter(
                 parent_cheque__person=person, branch=branch
             )
-            .exclude(account_type=cheque_account)
+            .exclude(
+                account_type=cheque_account,
+            )
+            .exclude(parent_cheque__status=ChequeStatusChoices.CLEARED)
             .aggregate(sum_history_credits=Sum("amount"))
         )
         recovered = external_recovered.get("sum_history_credits", 0)
@@ -73,7 +76,7 @@ class ExternalCheque(AbstractCheque):
         return 0
 
     @classmethod
-    def get_number_of_pending_cheques(cls, person ,branch):
+    def get_number_of_pending_cheques(cls, person, branch):
         pending_count = ExternalCheque.objects.filter(
             branch=branch, person=person, status=ChequeStatusChoices.PENDING
         ).aggregate(count=Count("id"))

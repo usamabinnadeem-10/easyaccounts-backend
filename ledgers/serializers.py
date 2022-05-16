@@ -33,6 +33,8 @@ class LedgerSerializer(serializers.ModelSerializer):
             "manual_serial_type",
             "external_cheque",
             "personal_cheque",
+            "raw_transaction",
+            "raw_debit",
         ]
         read_only_fields = ["id"]
         extra_kwargs = {

@@ -18,7 +18,9 @@ class FormulaQuery:
 
 class RawTransactionLotQuery:
     def get_queryset(self):
-        return RawTransactionLot.objects.filter(branch=self.request.branch)
+        return RawTransactionLot.objects.filter(branch=self.request.branch).order_by(
+            "-lot_number"
+        )
 
 
 class RawDebitQuery:

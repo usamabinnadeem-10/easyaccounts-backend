@@ -10,6 +10,17 @@ from transactions.choices import TransactionChoices
 from .choices import RawDebitTypes, RawProductTypes
 
 
+class NextSerial:
+    @classmethod
+    def get_next_serial(cls, branch, field, **kwargs):
+        return (
+            cls.objects.filter(branch=branch, **kwargs).aggregate(max_serial=Max(field))[
+                "max_serial"
+            ]
+            or 0
+        ) + 1
+
+
 class Formula(BranchAwareModel):
     """Raw product formulas"""
 
@@ -47,7 +58,7 @@ class RawProduct(BranchAwareModel):
         return f"{self.name} - {self.person} - {self.type}"
 
 
-class RawTransaction(BranchAwareModel, UserAwareModel):
+class RawTransaction(BranchAwareModel, UserAwareModel, NextSerial):
     """Raw transaction"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
@@ -59,17 +70,6 @@ class RawTransaction(BranchAwareModel, UserAwareModel):
 
     def __str__(self):
         return f"{self.manual_invoice_serial} - {self.person}"
-
-
-class NextSerial:
-    @classmethod
-    def get_next_serial(cls, branch, field, **kwargs):
-        return (
-            cls.objects.filter(branch=branch, **kwargs).aggregate(max_serial=Max(field))[
-                "max_serial"
-            ]
-            or 0
-        ) + 1
 
 
 class RawTransactionLot(BranchAwareModel, NextSerial):
