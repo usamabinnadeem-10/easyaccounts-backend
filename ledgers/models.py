@@ -4,6 +4,8 @@ from functools import reduce
 from authentication.models import BranchAwareModel, UserAwareModel
 from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, PersonalCheque
+from core.constants import MIN_POSITIVE_VAL_SMALL
+from core.models import DateTimeAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
@@ -18,10 +20,9 @@ class TransactionChoices(models.TextChoices):
     DEBIT = "D", _("Debit")
 
 
-class Ledger(BranchAwareModel, UserAwareModel):
-    date = models.DateField(default=date.today)
+class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
     detail = models.TextField(max_length=1000, null=True, blank=True)
-    amount = models.FloatField(validators=[MinValueValidator(0.0)])
+    amount = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)

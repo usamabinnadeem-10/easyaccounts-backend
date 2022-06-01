@@ -39,7 +39,6 @@ class ExpenseDetailSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         self.request = self.context["request"]
-        validated_data["branch"] = self.request.branch
         validated_data["user"] = self.request.user
         instance = super().create(validated_data)
         Log.create_log(

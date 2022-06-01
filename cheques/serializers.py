@@ -107,7 +107,6 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
             **{
                 **validated_data,
                 "parent_cheque": parent_cheque,
-                "branch": branch,
                 "user": user,
             }
         )
@@ -186,7 +185,6 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
         cheque_account = get_cheque_account(branch)
         data_for_cheque_history = {
             **validated_data,
-            **branch_filter,
             "user": user,
             "amount": cheque_obj.amount,
             "account_type": cheque_account.account,
@@ -251,9 +249,7 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
                 "Cleared cheque can not be transferred", 400
             )
 
-        transfer = ExternalChequeTransfer.objects.create(
-            **validated_data, branch=branch, user=user
-        )
+        transfer = ExternalChequeTransfer.objects.create(**validated_data, user=user)
         create_ledger_entry_for_cheque(
             transfer.cheque, "D", True, validated_data["person"]
         )

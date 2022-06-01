@@ -162,49 +162,55 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
         request = self.context["request"]
         transaction_details = validated_data.pop("transaction_detail")
         paid = validated_data.pop("paid")
-        branch_filter = {"branch": request.branch}
-        user = request.user
-        transaction = Transaction.objects.create(
-            user=user, **branch_filter, **validated_data, serial=self.last_serial_num
-        )
-        details = []
-        ledger_string = ""
-        for detail in transaction_details:
-            if TransactionDetail.is_rate_invalid(
-                transaction.nature, detail["product"], detail["rate"]
-            ):
-                raise serializers.ValidationError(
-                    f"Rate too low for {detail['product'].name}",
-                    status.HTTP_400_BAD_REQUEST,
-                )
-            details.append(
-                TransactionDetail(
-                    transaction_id=transaction.id, **detail, **branch_filter
-                )
+        transaction = None
+        try:
+            transaction = Transaction.make_transaction(
+                {**validated_data, "transaction_detail": transaction_details},
+                request.user,
+                request.branch,
             )
-            ledger_string += create_ledger_string(detail)
-            update_stock(transaction.nature, {**detail, **branch_filter})
+        except Exception as e:
+            print(e)
+            # raise serializers.ValidationError(e.messages[0], 400)
+        # branch_filter = {"branch": request.branch}
+        # user = request.user
+        # transaction = Transaction.objects.create(
+        #     user=user, **branch_filter, **validated_data, serial=self.last_serial_num
+        # )
+        # details = []
+        # ledger_string = ""
+        # for detail in transaction_details:
+        #     if TransactionDetail.is_rate_invalid(
+        #         transaction.nature, detail["product"], detail["rate"]
+        #     ):
+        #         raise serializers.ValidationError(
+        #             f"Rate too low for {detail['product'].name}",
+        #             status.HTTP_400_BAD_REQUEST,
+        #         )
+        #     details.append(TransactionDetail(transaction_id=transaction.id, **detail))
+        #     ledger_string += create_ledger_string(detail)
+        #     update_stock(transaction.nature, {**detail, **branch_filter})
 
-        transactions = TransactionDetail.objects.bulk_create(details)
-        ledger_data = create_ledger_entries(
-            transaction,
-            transaction_details,
-            paid,
-            ledger_string
-            + f'{validated_data["detail"] if validated_data["detail"] else ""}',
-        )
-        Ledger.objects.bulk_create(ledger_data)
-        validated_data["transaction_detail"] = transactions
-        validated_data["id"] = transaction.id
-        validated_data["serial"] = transaction.serial
-        validated_data["date"] = transaction.date
+        # transactions = TransactionDetail.objects.bulk_create(details)
+        # ledger_data = create_ledger_entries(
+        #     transaction,
+        #     transaction_details,
+        #     paid,
+        #     ledger_string
+        #     + f'{validated_data["detail"] if validated_data["detail"] else ""}',
+        # )
+        # Ledger.objects.bulk_create(ledger_data)
+        validated_data["transaction_detail"] = transaction.detail
+        validated_data["id"] = transaction.transaction.id
+        validated_data["serial"] = transaction.transaction.serial
+        validated_data["date"] = transaction.transaction.date
 
-        Log.create_log(
-            self.type,
-            self.category,
-            f"{transaction.get_manual_serial()} ({transaction.get_type_display()}) for {transaction.person.name}",
-            request,
-        )
+        # Log.create_log(
+        #     self.type,
+        #     self.category,
+        #     f"{transaction.get_manual_serial()} ({transaction.get_type_display()}) for {transaction.person.name}",
+        #     request,
+        # )
 
         return validated_data
 

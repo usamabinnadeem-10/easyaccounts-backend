@@ -1,11 +1,13 @@
 from django.db.models import Sum
+from essentials.choices import LinkedAccountChoices
 from essentials.models import LinkedAccount
 from ledgers.models import Ledger
 from rest_framework import serializers
 
 from .choices import ChequeStatusChoices
-from .constants import CHEQUE_ACCOUNT
 from .models import ExternalChequeHistory
+
+CHEQUE_ACCOUNT = LinkedAccountChoices.CHEQUE_ACCOUNT
 
 
 def get_cheque_account():
@@ -66,7 +68,7 @@ def is_transferred(cheque):
 def get_cheque_account(branch):
     """get cheque account"""
     try:
-        return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT, branch=branch)
+        return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT, account__branch=branch)
     except:
         raise serializers.ValidationError("Please create a cheque account first", 400)
 

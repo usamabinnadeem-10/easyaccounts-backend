@@ -2,21 +2,21 @@ from datetime import date
 from uuid import uuid4
 
 from authentication.models import BranchAwareModel, UserAwareModel
+from core.models import ID, DateTimeAwareModel, NextSerial
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Count, Max, Sum
+from essentials.choices import LinkedAccountChoices
 from essentials.models import AccountType, LinkedAccount, Person
 from rest_framework import serializers
 
 from .choices import *
-from .constants import CHEQUE_ACCOUNT
 
 
-class AbstractCheque(BranchAwareModel, UserAwareModel):
+class AbstractCheque(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial = models.PositiveBigIntegerField()
     cheque_number = models.CharField(max_length=20)
     bank = models.CharField(max_length=20, choices=BankChoices.choices)
-    date = models.DateField(default=date.today)
     due_date = models.DateField()
     amount = models.FloatField(validators=[MinValueValidator(1.0)])
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
@@ -25,12 +25,6 @@ class AbstractCheque(BranchAwareModel, UserAwareModel):
         abstract = True
         unique_together = ("bank", "cheque_number")
         ordering = ["serial", "due_date"]
-
-    @classmethod
-    def get_next_serial(cls, branch):
-        return (
-            cls.objects.filter(branch=branch).aggregate(Max("serial"))["serial__max"] or 0
-        ) + 1
 
 
 class ExternalCheque(AbstractCheque):
@@ -45,7 +39,7 @@ class ExternalCheque(AbstractCheque):
     def get_amount_recovered(cls, person, branch):
         try:
             cheque_account = LinkedAccount.objects.get(
-                name=CHEQUE_ACCOUNT, branch=branch
+                name=LinkedAccountChoices.CHEQUE_ACCOUNT, account__branch=branch
             ).account
         except:
             raise serializers.ValidationError("Please create a cheque account first", 400)
@@ -115,8 +109,7 @@ class PersonalCheque(AbstractCheque):
         return 0
 
 
-class ExternalChequeHistory(BranchAwareModel, UserAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class ExternalChequeHistory(ID, UserAwareModel):
     parent_cheque = models.ForeignKey(
         ExternalCheque,
         on_delete=models.CASCADE,
@@ -145,7 +138,7 @@ class ExternalChequeHistory(BranchAwareModel, UserAwareModel):
     def get_remaining_amount(cls, parent_cheque, cheque_account, branch):
         recovered_amount = (
             ExternalChequeHistory.objects.values("parent_cheque__id")
-            .filter(parent_cheque=parent_cheque, branch=branch)
+            .filter(parent_cheque=parent_cheque, parent_cheque__branch=branch)
             .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
@@ -156,15 +149,14 @@ class ExternalChequeHistory(BranchAwareModel, UserAwareModel):
     @classmethod
     def get_amount_received(cls, parent_cheque, branch):
         amount = ExternalChequeHistory.objects.filter(
-            parent_cheque=parent_cheque, branch=branch
+            parent_cheque=parent_cheque, parent_cheque__branch=branch
         ).aggregate(total=Sum("amount"))
         amount = amount.get("total", 0)
         amount = amount if amount else 0
         return amount
 
 
-class ExternalChequeTransfer(BranchAwareModel, UserAwareModel):
-    # id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+class ExternalChequeTransfer(ID, UserAwareModel):
     cheque = models.OneToOneField(
         ExternalCheque,
         on_delete=models.CASCADE,
@@ -174,7 +166,9 @@ class ExternalChequeTransfer(BranchAwareModel, UserAwareModel):
     @classmethod
     def sum_of_transferred(cls, person, branch):
         transferred = ExternalChequeTransfer.objects.filter(
-            person=person, cheque__status=ChequeStatusChoices.TRANSFERRED
+            person=person,
+            cheque__status=ChequeStatusChoices.TRANSFERRED,
+            cheque__branch=branch,
         ).aggregate(total=Sum("cheque__amount"))
         transferred = transferred.get("total", 0)
         if transferred is not None:

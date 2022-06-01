@@ -5,7 +5,6 @@ from rest_framework.exceptions import NotAcceptable
 
 
 def is_low_quantity(stock_to_update, value):
-    print(stock_to_update.stock_quantity, value)
     stock_in_hand = stock_to_update.stock_quantity - value
     if stock_in_hand < 0 or (stock_to_update.stock_quantity == 0 and value > 0):
         raise NotAcceptable(

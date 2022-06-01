@@ -1,10 +1,12 @@
 from uuid import uuid4
 
 from authentication.models import BranchAwareModel
+from core.constants import MIN_POSITIVE_VAL_SMALL
+from core.models import ID
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
-from .choices import PersonChoices
+from .choices import LinkedAccountChoices, PersonChoices
 
 
 class ProductCategory(BranchAwareModel):
@@ -88,7 +90,9 @@ class Stock(BranchAwareModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=False)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=False)
     stock_quantity = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
-    yards_per_piece = models.FloatField(validators=[MinValueValidator(0.01)])
+    yards_per_piece = models.FloatField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
     opening_stock = models.FloatField(default=0.0)
     opening_stock_rate = models.FloatField(default=0.0)
 
@@ -96,6 +100,6 @@ class Stock(BranchAwareModel):
         unique_together = ("product", "warehouse", "yards_per_piece", "branch")
 
 
-class LinkedAccount(BranchAwareModel):
-    name = models.CharField(max_length=100)
+class LinkedAccount(ID):
+    name = models.CharField(max_length=15, choices=LinkedAccountChoices.choices)
     account = models.ForeignKey(AccountType, on_delete=models.CASCADE)

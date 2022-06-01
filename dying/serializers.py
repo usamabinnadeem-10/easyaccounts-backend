@@ -115,24 +115,18 @@ class IssueForDyingSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSer
         user = self.context["request"].user
         dying_issue_instance = DyingIssue.objects.create(
             **validated_data,
-            branch=self.branch,
             user=user,
             dying_lot_number=DyingIssue.get_next_serial(self.branch, "dying_lot_number")
         )
         for lot in data:
             dying_issue_lot_instance = DyingIssueLot.objects.create(
-                branch=self.branch,
                 dying_lot=dying_issue_instance,
                 lot_number=lot["lot_number"],
             )
             current_details = []
             for detail in lot["detail"]:
                 current_details.append(
-                    DyingIssueDetail(
-                        branch=self.branch,
-                        dying_lot_number=dying_issue_lot_instance,
-                        **detail
-                    )
+                    DyingIssueDetail(dying_lot_number=dying_issue_lot_instance, **detail)
                 )
             DyingIssueDetail.objects.bulk_create(current_details)
         validated_data["data"] = data

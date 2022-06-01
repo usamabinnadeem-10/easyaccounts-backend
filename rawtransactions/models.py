@@ -1,6 +1,8 @@
 from datetime import date
 
 from authentication.models import BranchAwareModel, UserAwareModel
+from core.constants import MIN_POSITIVE_VAL_SMALL
+from core.models import ID, NextSerial
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Max
@@ -8,17 +10,6 @@ from essentials.models import Person, Warehouse
 from transactions.choices import TransactionChoices
 
 from .choices import RawDebitTypes, RawProductTypes
-
-
-class NextSerial:
-    @classmethod
-    def get_next_serial(cls, branch, field, **kwargs):
-        return (
-            cls.objects.filter(branch=branch, **kwargs).aggregate(max_serial=Max(field))[
-                "max_serial"
-            ]
-            or 0
-        ) + 1
 
 
 class Formula(BranchAwareModel):
@@ -31,9 +22,11 @@ class Formula(BranchAwareModel):
         return f"{self.numerator}/{self.denominator}"
 
 
-class AbstractRawLotDetail(BranchAwareModel):
+class AbstractRawLotDetail(ID):
 
-    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1.0)])
+    quantity = models.PositiveIntegerField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
     actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
     expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
     rate = models.FloatField(validators=[MinValueValidator(1.0)])
@@ -72,7 +65,7 @@ class RawTransaction(BranchAwareModel, UserAwareModel, NextSerial):
         return f"{self.manual_invoice_serial} - {self.person}"
 
 
-class RawTransactionLot(BranchAwareModel, NextSerial):
+class RawTransactionLot(ID, NextSerial):
     """Lot for raw transaction"""
 
     raw_transaction = models.ForeignKey(
@@ -111,7 +104,7 @@ class RawDebit(BranchAwareModel, UserAwareModel, NextSerial):
         unique_together = ("manual_invoice_serial", "branch", "debit_type")
 
 
-class RawDebitLot(BranchAwareModel):
+class RawDebitLot(ID):
     """Raw debit and lot relation"""
 
     bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)

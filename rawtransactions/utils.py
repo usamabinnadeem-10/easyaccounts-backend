@@ -40,7 +40,7 @@ def get_all_raw_stock(branch):
                 "warehouse",
                 "formula",
             )
-            .filter(branch=branch, lot_number__issued=False)
+            .filter(lot_number__raw_transaction__branch=branch, lot_number__issued=False)
             .annotate(quantity=Sum("quantity"))
         )
     )
@@ -65,7 +65,10 @@ def get_all_raw_stock(branch):
                 "formula",
                 "nature",
             )
-            .filter(branch=branch, return_lot__lot_number__issued=False)
+            .filter(
+                return_lot__bill_number__branch=branch,
+                return_lot__lot_number__issued=False,
+            )
             .annotate(quantity=Sum("quantity"))
         )
     )
@@ -89,7 +92,10 @@ def get_all_raw_stock(branch):
                 "formula",
                 "warehouse",
             )
-            .filter(branch=branch, dying_lot_number__lot_number__issued=False)
+            .filter(
+                dying_lot_number__dying_lot__dying_unit__branch=branch,
+                dying_lot_number__lot_number__issued=False,
+            )
             .annotate(quantity=Sum("quantity"))
         )
     )

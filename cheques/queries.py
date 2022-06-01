@@ -13,12 +13,14 @@ class ExternalChequeQuery:
 
 class ExternalChequeHistoryQuery:
     def get_queryset(self):
-        return ExternalChequeHistory.objects.filter(branch=self.request.branch)
+        return ExternalChequeHistory.objects.filter(
+            parent_cheque__branch=self.request.branch
+        )
 
 
 class ExternalChequeTransferQuery:
     def get_queryset(self):
-        return ExternalChequeTransfer.objects.filter(branch=self.request.branch)
+        return ExternalChequeTransfer.objects.filter(cheque__branch=self.request.branch)
 
 
 class PersonalChequeQuery:

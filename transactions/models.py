@@ -1,17 +1,19 @@
-from datetime import date
+from datetime import datetime
+from functools import reduce
 
 from authentication.models import BranchAwareModel, UserAwareModel
+from core.constants import MIN_POSITIVE_VAL_SMALL
+from core.models import ID, DateTimeAwareModel, NextSerial
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
 from essentials.models import AccountType, Person, Product, Warehouse
-from rawtransactions.models import NextSerial
 
 from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
 
 
-class Transaction(BranchAwareModel, UserAwareModel, NextSerial):
-    date = models.DateField(default=date.today)
+class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     discount = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
@@ -39,8 +41,102 @@ class Transaction(BranchAwareModel, UserAwareModel, NextSerial):
     def get_manual_serial(self):
         return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
 
+    @classmethod
+    def get_all_stock(cls, branch, date, old, **kwargs):
+        date = date if date else date.today()
+        stock = (
+            TransactionDetail.objects.values(
+                "product", "warehouse", "yards_per_piece", "transaction__nature"
+            )
+            .filter(transaction__branch_id=branch, transaction__date__lte=date, **kwargs)
+            .annotate(quantity=Sum("quantity"))
+        )
+        # if the transaction is being edited
+        if old is not None:
+            new_nature = (
+                TransactionChoices.CREDIT
+                if old.nature == TransactionChoices.DEBIT
+                else TransactionChoices.DEBIT
+            )
+            old_details = TransactionDetail.objects.filter(transaction=old.id)
+            for detail in old_details:
+                stock.append(
+                    {
+                        "product": detail.product,
+                        "warehouse": detail.warehouse,
+                        "yards_per_piece": detail.yards_per_piece,
+                        "transaction__nature": new_nature,
+                        "quantity": detail.quantity,
+                    }
+                )
 
-class TransactionDetail(BranchAwareModel):
+    @classmethod
+    def check_stock(cls, branch, date, transaction_detail, old):
+        stock = Transaction.get_all_stock(branch, date, old)
+        for detail in transaction_detail:
+            filtered = list(
+                filter(
+                    lambda x: x["product"] == detail["product"].id
+                    and x["warehouse"] == detail["warehouse"].id
+                    and x["yards_per_piece"] == detail["yards_per_piece"],
+                    stock,
+                )
+            )
+            curr_stock = reduce(
+                lambda prev, curr: prev
+                + (
+                    curr["quantity"]
+                    if curr["transaction__nature"] == "C"
+                    else -curr["quantity"]
+                ),
+                filtered,
+                0,
+            )
+            if curr_stock - detail["quantity"] < 0:
+                raise ValidationError(
+                    f"{detail['product'].name} low in stock. Stock = {curr_stock}", 400
+                )
+
+    @classmethod
+    def make_transaction(cls, data, user=None, branch=None, old=None):
+        if user and branch:
+            transaction_details = data.pop("transaction_detail")
+            if data["nature"] == TransactionChoices.DEBIT or old is not None:
+                Transaction.check_stock(branch, data["date"], transaction_details, old)
+            transaction = Transaction.objects.create(
+                user=user,
+                branch=branch,
+                **data,
+                serial=Transaction.get_next_serial(
+                    branch,
+                    "serial",
+                    manual_serial_type=data["manual_serial_type"],
+                ),
+            )
+            details = []
+            for detail in transaction_details:
+                if TransactionDetail.is_rate_invalid(
+                    transaction.nature, detail["product"], detail["rate"]
+                ):
+                    raise ValidationError(
+                        f"Rate too low for {detail['product'].name}",
+                        400,
+                    )
+                details.append(
+                    TransactionDetail(
+                        transaction_id=transaction.id,
+                        **detail,
+                    )
+                )
+            transactions = TransactionDetail.objects.bulk_create(details)
+            return {"transaction": transaction, "detail": transactions}
+        raise ValidationError(
+            "No user / branch found",
+            400,
+        )
+
+
+class TransactionDetail(ID):
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, related_name="transaction_detail"
     )
@@ -48,8 +144,10 @@ class TransactionDetail(BranchAwareModel):
         Product, on_delete=models.PROTECT, null=True, name="product"
     )
     rate = models.FloatField(validators=[MinValueValidator(0.0)])
-    yards_per_piece = models.FloatField(validators=[MinValueValidator(0.01)])
-    quantity = models.FloatField(validators=[MinValueValidator(0.0001)])
+    yards_per_piece = models.FloatField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
+    quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
 
     @classmethod
@@ -83,8 +181,7 @@ class CancelStockTransfer(BranchAwareModel, UserAwareModel, NextSerial):
     manual_invoice_serial = models.PositiveBigIntegerField()
 
 
-class StockTransfer(BranchAwareModel, UserAwareModel, NextSerial):
-    date = models.DateField(default=date.today)
+class StockTransfer(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial = models.PositiveBigIntegerField()
     manual_invoice_serial = models.PositiveBigIntegerField()
     from_warehouse = models.ForeignKey(
@@ -98,17 +195,18 @@ class StockTransfer(BranchAwareModel, UserAwareModel, NextSerial):
         verbose_name_plural = "Stock transfers"
 
 
-class StockTransferDetail(BranchAwareModel):
-
+class StockTransferDetail(ID):
     transfer = models.ForeignKey(
         StockTransfer, on_delete=models.CASCADE, related_name="transfer_detail"
     )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    yards_per_piece = models.FloatField(validators=[MinValueValidator(0.0)])
+    yards_per_piece = models.FloatField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
     to_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name="to_warehouse"
     )
-    quantity = models.FloatField(validators=[MinValueValidator(0.0)])
+    quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
 
     @classmethod
     def calculateTransferredAmount(cls, warehouse, product, filters):

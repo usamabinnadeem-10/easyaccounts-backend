@@ -1,14 +1,10 @@
 from datetime import date
 
 from authentication.models import BranchAwareModel, UserAwareModel
+from core.models import ID, DateTimeAwareModel, NextSerial
 from django.db import models
 from essentials.models import Product, Warehouse
-from rawtransactions.models import (
-    AbstractRawLotDetail,
-    Formula,
-    NextSerial,
-    RawTransactionLot,
-)
+from rawtransactions.models import AbstractRawLotDetail, Formula, RawTransactionLot
 
 
 class DyingUnit(BranchAwareModel):
@@ -22,26 +18,22 @@ class DyingUnit(BranchAwareModel):
         return self.name
 
 
-class DyingIssue(BranchAwareModel, UserAwareModel, NextSerial):
+class DyingIssue(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
 
     dying_unit = models.ForeignKey(DyingUnit, on_delete=models.CASCADE)
     dying_lot_number = models.PositiveBigIntegerField()
-    date = models.DateField(default=date.today)
 
     @classmethod
     def create_auto_issued_lot(cls, branch, dying_unit, lot_number, **kwargs):
         instance = DyingIssue.objects.create(
-            branch=branch,
             dying_unit=DyingUnit.objects.get(id=dying_unit),
             dying_lot_number=DyingIssue.get_next_serial(branch, "dying_lot_number"),
             **kwargs
         )
-        DyingIssueLot.objects.create(
-            dying_lot=instance, lot_number=lot_number, branch=branch
-        )
+        DyingIssueLot.objects.create(dying_lot=instance, lot_number=lot_number)
 
 
-class DyingIssueLot(BranchAwareModel):
+class DyingIssueLot(ID):
 
     dying_lot = models.ForeignKey(
         DyingIssue, on_delete=models.CASCADE, related_name="dying_issue_lot"
@@ -49,7 +41,7 @@ class DyingIssueLot(BranchAwareModel):
     lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
 
 
-class DyingIssueDetail(BranchAwareModel):
+class DyingIssueDetail(ID):
 
     dying_lot_number = models.ForeignKey(
         DyingIssueLot, on_delete=models.CASCADE, related_name="dying_issue_lot_number"

@@ -8,6 +8,6 @@ class DyingUnitQuery:
 
 class DyingIssueQuery:
     def get_queryset(self):
-        return DyingIssue.objects.filter(branch=self.request.branch).prefetch_related(
-            "dying_issue_lot"
-        )
+        return DyingIssue.objects.filter(
+            dying_unit__branch=self.request.branch
+        ).prefetch_related("dying_issue_lot")
