@@ -166,7 +166,6 @@ class StockSerializer(serializers.ModelSerializer):
             "id",
             "product",
             "warehouse",
-            "stock_quantity",
             "yards_per_piece",
             "opening_stock",
             "opening_stock_rate",
@@ -174,12 +173,10 @@ class StockSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        validated_data["branch"] = self.context["request"].branch
         if Stock.objects.filter(
             product=validated_data["product"],
             warehouse=validated_data["warehouse"],
             yards_per_piece=validated_data["yards_per_piece"],
-            branch=validated_data["branch"],
         ).exists():
             raise serializers.ValidationError(
                 "Opening stock exists for this product", status.HTTP_400_BAD_REQUEST
@@ -190,7 +187,6 @@ class StockSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Rate too low for this product", status.HTTP_400_BAD_REQUEST
             )
-        validated_data["stock_quantity"] = validated_data["opening_stock"]
         instance = super().create(validated_data)
         return instance
 

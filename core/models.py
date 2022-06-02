@@ -16,6 +16,7 @@ class DateTimeAwareModel(models.Model):
     """Provides date and time"""
 
     date = models.DateTimeField(default=datetime.now)
+    time_stamp = models.DateTimeField(default=datetime.now)
 
     class Meta:
         abstract = True

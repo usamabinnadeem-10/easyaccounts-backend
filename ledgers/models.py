@@ -46,7 +46,7 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
         all_external_cheques = (
             Ledger.objects.values("nature")
             .filter(
-                branch=branch,
+                person__branch=branch,
                 external_cheque__isnull=False,
                 person=person,
                 external_cheque__person=person,
@@ -65,7 +65,7 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
     @classmethod
     def get_passed_cheque_amount(cls, person, branch):
         total = Ledger.objects.filter(
-            branch=branch,
+            person__branch=branch,
             external_cheque__isnull=False,
             person=person,
             external_cheque__is_passed_with_history=False,

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from django.db.models import Avg, Count, Max, Min, Q, Sum
@@ -24,6 +25,7 @@ from .queries import (
 from .serializers import (
     CancelledInvoiceSerializer,
     CancelStockTransferSerializer,
+    GetAllStockSerializer,
     TransactionSerializer,
     TransferStockSerializer,
     UpdateTransactionSerializer,
@@ -437,3 +439,14 @@ class DetailedStockView(APIView):
 class CancelStockTransferView(CancelStockTransferQuery, generics.CreateAPIView):
 
     serializer_class = CancelStockTransferSerializer
+
+
+class ViewAllStock(TransactionQuery, generics.ListAPIView):
+
+    serializer_class = GetAllStockSerializer
+
+    def list(self, request, *args, **kwargs):
+        qp = request.query_params
+        stock = Transaction.get_all_stock(request.branch, qp.get("date"), None)
+        serializer = self.get_serializer(stock, many=True)
+        return Response(serializer.data)

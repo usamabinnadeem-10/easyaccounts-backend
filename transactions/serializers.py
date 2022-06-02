@@ -1,3 +1,5 @@
+from collections import defaultdict
+from datetime import datetime
 from functools import reduce
 
 from ledgers.models import Ledger
@@ -6,7 +8,7 @@ from logs.models import Log
 from rest_framework import serializers, status
 from rest_framework.exceptions import NotAcceptable
 
-from .choices import TransactionTypes
+from .choices import TransactionChoices, TransactionTypes
 from .models import (
     CancelledInvoice,
     CancelStockTransfer,
@@ -170,8 +172,8 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
                 request.branch,
             )
         except Exception as e:
-            print(e)
-            # raise serializers.ValidationError(e.messages[0], 400)
+            # print(e)
+            raise serializers.ValidationError(e.messages[0], 400)
         # branch_filter = {"branch": request.branch}
         # user = request.user
         # transaction = Transaction.objects.create(
@@ -200,10 +202,10 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
         #     + f'{validated_data["detail"] if validated_data["detail"] else ""}',
         # )
         # Ledger.objects.bulk_create(ledger_data)
-        validated_data["transaction_detail"] = transaction.detail
-        validated_data["id"] = transaction.transaction.id
-        validated_data["serial"] = transaction.transaction.serial
-        validated_data["date"] = transaction.transaction.date
+        validated_data["transaction_detail"] = transaction["detail"]
+        validated_data["id"] = transaction["transaction"].id
+        validated_data["serial"] = transaction["transaction"].serial
+        validated_data["date"] = transaction["transaction"].date
 
         # Log.create_log(
         #     self.type,
@@ -661,3 +663,12 @@ class CancelStockTransferSerializer(serializers.ModelSerializer):
         )
 
         return instance
+
+
+class GetAllStockSerializer(serializers.Serializer):
+
+    product = serializers.UUIDField(read_only=True)
+    warehouse = serializers.UUIDField(read_only=True)
+    yards_per_piece = serializers.FloatField(read_only=True)
+    quantity = serializers.FloatField(read_only=True)
+    date = serializers.DateTimeField(write_only=True, default=datetime.now())

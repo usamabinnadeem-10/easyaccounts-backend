@@ -46,7 +46,7 @@ class ExternalCheque(AbstractCheque):
 
         external_recovered = (
             ExternalChequeHistory.objects.filter(
-                parent_cheque__person=person, branch=branch
+                parent_cheque__person=person, parent_cheque__branch=branch
             )
             .exclude(
                 account_type=cheque_account,

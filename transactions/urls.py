@@ -15,4 +15,6 @@ urlpatterns = [
     path("transfer-stock/delete/<uuid:pk>/", DeleteTransferStock.as_view()),
     path("view-transfers/", ViewTransfers.as_view()),
     path("transfer-stock/cancel/", CancelStockTransferView.as_view()),
+    # // ---------Stock------------------- //
+    path("all-stock/", ViewAllStock.as_view()),
 ]

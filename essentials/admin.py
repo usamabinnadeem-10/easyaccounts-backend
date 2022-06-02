@@ -21,7 +21,7 @@ class WarehouseAdmin(admin.ModelAdmin):
 
 
 class StockAdmin(admin.ModelAdmin):
-    list_display = ["id", "product", "warehouse", "stock_quantity"]
+    list_display = ["id", "product", "warehouse"]
 
 
 class ProductCategoryAdmin(admin.ModelAdmin):

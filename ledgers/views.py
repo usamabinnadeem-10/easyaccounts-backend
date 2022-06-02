@@ -61,9 +61,11 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
         branch = request.branch
 
         balance_external_cheques = Ledger.get_external_cheque_balance(person, branch)
+
         recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(
             person, branch
         )
+        print("\nHELEOEOOE\n")
         cleared_cheques = Ledger.get_passed_cheque_amount(person, branch)
         cleared_transferred_cheques = (
             ExternalCheque.get_sum_of_cleared_transferred_cheques(person, branch)

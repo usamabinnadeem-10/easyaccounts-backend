@@ -84,12 +84,11 @@ class AccountType(BranchAwareModel):
         return f"{self.name} {self.branch.name}"
 
 
-class Stock(BranchAwareModel):
+class Stock(ID):
     """Product stock quantity"""
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=False)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=False)
-    stock_quantity = models.FloatField(validators=[MinValueValidator(0.0)], default=0.0)
     yards_per_piece = models.FloatField(
         validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
     )
@@ -97,7 +96,7 @@ class Stock(BranchAwareModel):
     opening_stock_rate = models.FloatField(default=0.0)
 
     class Meta:
-        unique_together = ("product", "warehouse", "yards_per_piece", "branch")
+        unique_together = ("product", "warehouse", "yards_per_piece")
 
 
 class LinkedAccount(ID):

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime
 from functools import reduce
 
@@ -8,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
-from essentials.models import AccountType, Person, Product, Warehouse
+from essentials.models import AccountType, Person, Product, Stock, Warehouse
 
 from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
 
@@ -43,14 +44,29 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
 
     @classmethod
     def get_all_stock(cls, branch, date, old, **kwargs):
-        date = date if date else date.today()
-        stock = (
+        """complete current stock"""
+        date = date if date else datetime.now()
+        opening = Stock.objects.values(
+            "product", "warehouse", "yards_per_piece", "opening_stock"
+        ).filter(product__branch=branch)
+        opening = list(
+            map(
+                lambda x: {
+                    **x,
+                    "quantity": x["opening_stock"],
+                    "transaction__nature": "C",
+                },
+                opening,
+            )
+        )
+        stock_raw = (
             TransactionDetail.objects.values(
                 "product", "warehouse", "yards_per_piece", "transaction__nature"
             )
-            .filter(transaction__branch_id=branch, transaction__date__lte=date, **kwargs)
+            .filter(transaction__branch=branch, transaction__date__lte=date, **kwargs)
             .annotate(quantity=Sum("quantity"))
         )
+        stock_raw = [*stock_raw, *opening]
         # if the transaction is being edited
         if old is not None:
             new_nature = (
@@ -60,7 +76,7 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
             )
             old_details = TransactionDetail.objects.filter(transaction=old.id)
             for detail in old_details:
-                stock.append(
+                stock_raw.append(
                     {
                         "product": detail.product,
                         "warehouse": detail.warehouse,
@@ -70,8 +86,29 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
                     }
                 )
 
+        stock = defaultdict(int)
+        for s in stock_raw:
+            key = f"{s['product']}|{s['warehouse']}|{s['yards_per_piece']}"
+            if s["transaction__nature"] == TransactionChoices.CREDIT:
+                stock[key] += s["quantity"]
+            else:
+                stock[key] -= s["quantity"]
+        final = []
+        for key, value in stock.items():
+            items = key.split("|")
+            final.append(
+                {
+                    "quantity": value,
+                    "product": items[0],
+                    "warehouse": items[1],
+                    "yards_per_piece": items[2],
+                }
+            )
+        return final
+
     @classmethod
     def check_stock(cls, branch, date, transaction_detail, old):
+        """checks if the stock is valid"""
         stock = Transaction.get_all_stock(branch, date, old)
         for detail in transaction_detail:
             filtered = list(
@@ -82,16 +119,7 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
                     stock,
                 )
             )
-            curr_stock = reduce(
-                lambda prev, curr: prev
-                + (
-                    curr["quantity"]
-                    if curr["transaction__nature"] == "C"
-                    else -curr["quantity"]
-                ),
-                filtered,
-                0,
-            )
+            curr_stock = 0 if len(filtered) == 0 else filtered[0]["quantity"]
             if curr_stock - detail["quantity"] < 0:
                 raise ValidationError(
                     f"{detail['product'].name} low in stock. Stock = {curr_stock}", 400
@@ -103,6 +131,8 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
             transaction_details = data.pop("transaction_detail")
             if data["nature"] == TransactionChoices.DEBIT or old is not None:
                 Transaction.check_stock(branch, data["date"], transaction_details, old)
+            if old:
+                old.delete()
             transaction = Transaction.objects.create(
                 user=user,
                 branch=branch,
