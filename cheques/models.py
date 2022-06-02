@@ -1,7 +1,7 @@
 from datetime import date
 
 from authentication.models import UserAwareModel
-from core.models import ID, DateTimeAwareModel, NextSerial
+from core.models import ID, DateTimeAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Count, Max, Sum
@@ -12,13 +12,22 @@ from rest_framework import serializers
 from .choices import *
 
 
-class AbstractCheque(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
+class AbstractCheque(ID, UserAwareModel, DateTimeAwareModel):
     serial = models.PositiveBigIntegerField()
     cheque_number = models.CharField(max_length=20)
     bank = models.CharField(max_length=20, choices=BankChoices.choices)
     due_date = models.DateField()
     amount = models.FloatField(validators=[MinValueValidator(1.0)])
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
+
+    @classmethod
+    def get_next_serial(cls, branch, field, **kwargs):
+        return (
+            cls.objects.filter(person__branch=branch, **kwargs).aggregate(
+                max_serial=Max(field)
+            )["max_serial"]
+            or 0
+        ) + 1
 
     class Meta:
         abstract = True

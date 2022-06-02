@@ -44,7 +44,8 @@ def is_valid_history_entry(data, parent_cheque):
 
 def get_parent_cheque(validated_data):
     previous_history = ExternalChequeHistory.objects.filter(
-        return_cheque=validated_data["cheque"], branch=validated_data["branch"]
+        return_cheque=validated_data["cheque"],
+        parent_cheque__person__branch=validated_data["branch"],
     )
     parent = None
     if previous_history.exists():
@@ -57,7 +58,9 @@ def get_parent_cheque(validated_data):
 
 def has_history(cheque, branch):
     """check if this cheque has a history"""
-    return ExternalChequeHistory.objects.filter(cheque=cheque, branch=branch).exists()
+    return ExternalChequeHistory.objects.filter(
+        cheque=cheque, parent_cheque__person__branch=branch
+    ).exists()
 
 
 def is_transferred(cheque):
@@ -90,7 +93,7 @@ def create_ledger_entry_for_cheque(
         message = "Cheque transfer -- "
     cheque_linked_account = get_cheque_account(cheque_obj.branch)
     data_for_ledger = {
-        "branch": cheque_obj.branch,
+        "branch": cheque_obj.person.branch,
         "date": cheque_obj.date,
         "amount": cheque_obj.amount,
         "nature": nature,

@@ -138,7 +138,6 @@ class CreateExternalChequeEntrySerializer(serializers.ModelSerializer):
         data_for_cheque = {
             **validated_data,
             "serial": ExternalCheque.get_next_serial(branch),
-            "branch": branch,
             "user": user,
         }
         cheque_obj = ExternalCheque.objects.create(**data_for_cheque)
@@ -177,7 +176,6 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
         cheque_obj = ExternalCheque.objects.create(
             **{
                 **data_for_cheque,
-                **branch_filter,
                 "serial": ExternalCheque.get_next_serial(branch),
                 "person": validated_data["cheque"].person,
             }
@@ -302,7 +300,6 @@ class IssuePersonalChequeSerializer(serializers.ModelSerializer):
         data_for_cheque = {
             **validated_data,
             "serial": PersonalCheque.get_next_serial(branch),
-            "branch": branch,
             "user": user,
         }
         personal_cheque = PersonalCheque.objects.create(**data_for_cheque)
@@ -345,7 +342,7 @@ class ReIssuePersonalChequeFromReturnedSerializer(serializers.Serializer):
             PersonalCheque,
             id=validated_data["cheque"],
             status=PersonalChequeStatusChoices.RETURNED,
-            branch=branch,
+            person__branch=branch,
         )
         person = get_object_or_404(Person, id=validated_data["person"], branch=branch)
         cheque.person = person
