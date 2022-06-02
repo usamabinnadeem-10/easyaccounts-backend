@@ -1,7 +1,6 @@
 from datetime import date
-from uuid import uuid4
 
-from authentication.models import BranchAwareModel, UserAwareModel
+from authentication.models import UserAwareModel
 from core.models import ID, DateTimeAwareModel, NextSerial
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -13,7 +12,7 @@ from rest_framework import serializers
 from .choices import *
 
 
-class AbstractCheque(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):
+class AbstractCheque(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial = models.PositiveBigIntegerField()
     cheque_number = models.CharField(max_length=20)
     bank = models.CharField(max_length=20, choices=BankChoices.choices)
@@ -46,7 +45,7 @@ class ExternalCheque(AbstractCheque):
 
         external_recovered = (
             ExternalChequeHistory.objects.filter(
-                parent_cheque__person=person, parent_cheque__branch=branch
+                parent_cheque__person=person, parent_cheque__person__branch=branch
             )
             .exclude(
                 account_type=cheque_account,
@@ -62,7 +61,7 @@ class ExternalCheque(AbstractCheque):
     @classmethod
     def get_sum_of_transferred_cheques(cls, person, branch):
         amount = ExternalCheque.objects.filter(
-            branch=branch, person=person, status=ChequeStatusChoices.TRANSFERRED
+            person__branch=branch, person=person, status=ChequeStatusChoices.TRANSFERRED
         ).aggregate(amount=Sum("amount"))
         amount = amount.get("amount", 0)
         if amount is not None:
@@ -72,7 +71,7 @@ class ExternalCheque(AbstractCheque):
     @classmethod
     def get_number_of_pending_cheques(cls, person, branch):
         pending_count = ExternalCheque.objects.filter(
-            branch=branch, person=person, status=ChequeStatusChoices.PENDING
+            person__branch=branch, person=person, status=ChequeStatusChoices.PENDING
         ).aggregate(count=Count("id"))
         pending_count = pending_count.get("count", 0)
         if pending_count is not None:
@@ -82,7 +81,9 @@ class ExternalCheque(AbstractCheque):
     @classmethod
     def get_sum_of_cleared_transferred_cheques(cls, person, branch):
         cleared = ExternalCheque.objects.filter(
-            branch=branch, person=person, status=ChequeStatusChoices.COMPLETED_TRANSFER
+            person__branch=branch,
+            person=person,
+            status=ChequeStatusChoices.COMPLETED_TRANSFER,
         ).aggregate(total=Sum("amount"))
         cleared = cleared.get("total", 0)
         if cleared is not None:
@@ -101,7 +102,9 @@ class PersonalCheque(AbstractCheque):
     @classmethod
     def get_pending_cheques(cls, person, branch):
         amount = PersonalCheque.objects.filter(
-            branch=branch, person=person, status=PersonalChequeStatusChoices.PENDING
+            person__branch=branch,
+            person=person,
+            status=PersonalChequeStatusChoices.PENDING,
         ).aggregate(amount=Sum("amount"))
         amount = amount.get("amount", 0)
         if amount is not None:
@@ -138,7 +141,7 @@ class ExternalChequeHistory(ID, UserAwareModel):
     def get_remaining_amount(cls, parent_cheque, cheque_account, branch):
         recovered_amount = (
             ExternalChequeHistory.objects.values("parent_cheque__id")
-            .filter(parent_cheque=parent_cheque, parent_cheque__branch=branch)
+            .filter(parent_cheque=parent_cheque, parent_cheque__person__branch=branch)
             .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
@@ -149,7 +152,7 @@ class ExternalChequeHistory(ID, UserAwareModel):
     @classmethod
     def get_amount_received(cls, parent_cheque, branch):
         amount = ExternalChequeHistory.objects.filter(
-            parent_cheque=parent_cheque, parent_cheque__branch=branch
+            parent_cheque=parent_cheque, parent_cheque__person__branch=branch
         ).aggregate(total=Sum("amount"))
         amount = amount.get("total", 0)
         amount = amount if amount else 0
@@ -168,7 +171,7 @@ class ExternalChequeTransfer(ID, UserAwareModel):
         transferred = ExternalChequeTransfer.objects.filter(
             person=person,
             cheque__status=ChequeStatusChoices.TRANSFERRED,
-            cheque__branch=branch,
+            cheque__person__branch=branch,
         ).aggregate(total=Sum("cheque__amount"))
         transferred = transferred.get("total", 0)
         if transferred is not None:

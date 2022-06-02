@@ -8,21 +8,23 @@ from .models import (
 
 class ExternalChequeQuery:
     def get_queryset(self):
-        return ExternalCheque.objects.filter(branch=self.request.branch)
+        return ExternalCheque.objects.filter(person__branch=self.request.branch)
 
 
 class ExternalChequeHistoryQuery:
     def get_queryset(self):
         return ExternalChequeHistory.objects.filter(
-            parent_cheque__branch=self.request.branch
+            parent_cheque__person__branch=self.request.branch
         )
 
 
 class ExternalChequeTransferQuery:
     def get_queryset(self):
-        return ExternalChequeTransfer.objects.filter(cheque__branch=self.request.branch)
+        return ExternalChequeTransfer.objects.filter(
+            cheque__person__branch=self.request.branch
+        )
 
 
 class PersonalChequeQuery:
     def get_queryset(self):
-        return PersonalCheque.objects.filter(branch=self.request.branch)
+        return PersonalCheque.objects.filter(person__branch=self.request.branch)
