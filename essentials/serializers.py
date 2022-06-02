@@ -32,9 +32,7 @@ class PersonSerializer(CreateLogEntry, serializers.ModelSerializer):
             "id",
             "name",
             "person_type",
-            "business_name",
             "address",
-            "city",
             "phone_number",
             "area",
             "opening_balance",
@@ -99,7 +97,7 @@ class WarehouseSerializer(CreateLogEntry, serializers.ModelSerializer):
 
     class Meta:
         model = Warehouse
-        fields = ["id", "name", "address"]
+        fields = ["id", "name"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
@@ -124,7 +122,7 @@ class ProductSerializer(CreateLogEntry, serializers.ModelSerializer):
         request = self.context["request"]
         branch = request.branch
         if Product.objects.filter(
-            branch=branch, name=data["name"], category=data["category"]
+            category__branch=branch, name=data["name"], category=data["category"]
         ).exists():
             raise serializers.ValidationError(
                 "Product exists", status.HTTP_400_BAD_REQUEST
@@ -132,7 +130,6 @@ class ProductSerializer(CreateLogEntry, serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data["branch"] = self.context["request"].branch
         product = Product.objects.create(**validated_data)
         return product
 
@@ -194,7 +191,7 @@ class StockSerializer(serializers.ModelSerializer):
 class AreaSerializer(CreateLogEntry, serializers.ModelSerializer):
     class Meta:
         model = Area
-        fields = ["id", "name", "city"]
+        fields = ["id", "name"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):

@@ -32,17 +32,17 @@ class AccountTypeQuery:
 
 class ProductQuery:
     def get_queryset(self):
-        return Product.objects.filter(branch=self.request.branch)
+        return Product.objects.filter(category__branch=self.request.branch)
 
 
 class StockQuery:
     def get_queryset(self):
-        return Stock.objects.filter(branch=self.request.branch)
+        return Stock.objects.filter(product__branch=self.request.branch)
 
 
 class LinkedAccountQuery:
     def get_queryset(self):
-        return LinkedAccount.objects.filter(branch=self.request.branch)
+        return LinkedAccount.objects.filter(account__branch=self.request.branch)
 
 
 class ProductCategoryQuery:

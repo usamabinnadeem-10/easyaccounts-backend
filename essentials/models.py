@@ -22,13 +22,13 @@ class ProductCategory(BranchAwareModel):
         return self.name
 
 
-class Product(BranchAwareModel):
+class Product(ID):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT)
     minimum_rate = models.FloatField(validators=[MinValueValidator(1.0)], default=1.0)
 
     class Meta:
-        unique_together = ("name", "category", "branch")
+        unique_together = ("name", "category")
 
     def __str__(self) -> str:
         return self.name
@@ -36,12 +36,12 @@ class Product(BranchAwareModel):
 
 class Area(BranchAwareModel):
     name = models.CharField(max_length=100)
-    city = models.IntegerField()
+    # city = models.IntegerField()
 
 
 class Warehouse(BranchAwareModel):
     name = models.CharField(max_length=50)
-    address = models.CharField(max_length=50, null=True)
+    # address = models.CharField(max_length=50, null=True)
 
     def __str__(self) -> str:
         return self.name
@@ -52,7 +52,7 @@ class Person(BranchAwareModel):
 
     name = models.CharField(max_length=100)
     person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
-    business_name = models.CharField(max_length=100, null=True)
+    # business_name = models.CharField(max_length=100, null=True)
     address = models.CharField(max_length=300, null=True)
     phone_number = models.CharField(
         max_length=13,
@@ -66,7 +66,7 @@ class Person(BranchAwareModel):
         unique=True,
         null=True,
     )
-    city = models.IntegerField(null=True)
+    # city = models.IntegerField(null=True)
     area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True)
     opening_balance = models.FloatField(default=0.0)
 

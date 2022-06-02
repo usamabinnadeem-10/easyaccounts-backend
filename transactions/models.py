@@ -48,7 +48,7 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
         date = date if date else datetime.now()
         opening = Stock.objects.values(
             "product", "warehouse", "yards_per_piece", "opening_stock"
-        ).filter(product__branch=branch)
+        ).filter(product__category__branch=branch)
         opening = list(
             map(
                 lambda x: {
