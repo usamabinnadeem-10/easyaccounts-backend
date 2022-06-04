@@ -3,6 +3,7 @@ from functools import reduce
 
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
+from core.utils import convert_date_to_datetime
 from django.db.models import F, Min, Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from essentials.pagination import CustomPagination
@@ -33,11 +34,11 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
         elif self.request.method == "GET":
             qp = self.request.query_params
             person = qp.get("person")
-            endDate = qp.get("end") or date.today()
+            endDate = convert_date_to_datetime(qp.get("end"))
             return Ledger.objects.select_related(
                 "person", "account_type", "transaction"
             ).filter(
-                branch=self.request.branch,
+                person__branch=self.request.branch,
                 person=person,
                 date__lte=endDate,
             )
@@ -46,10 +47,9 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
         qp = self.request.query_params
         person = qp.get("person")
         queryset = self.filter_queryset()
-
-        startDate = (
-            datetime.strptime(qp.get("start"), "%Y-%m-%d") if qp.get("start") else None
-        ) or (queryset.aggregate(Min("date"))["date__min"] or date.today())
+        startDate = convert_date_to_datetime(qp.get("start"), True) or (
+            queryset.aggregate(Min("date"))["date__min"] or datetime.now()
+        )
         startDateMinusOne = startDate - timedelta(days=1)
         balance = (
             queryset.values("nature")
@@ -65,7 +65,6 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
         recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(
             person, branch
         )
-        print("\nHELEOEOOE\n")
         cleared_cheques = Ledger.get_passed_cheque_amount(person, branch)
         cleared_transferred_cheques = (
             ExternalCheque.get_sum_of_cleared_transferred_cheques(person, branch)

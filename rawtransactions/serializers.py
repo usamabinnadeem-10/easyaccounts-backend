@@ -59,7 +59,7 @@ class RawProductSerializer(serializers.ModelSerializer):
             name=data["name"],
             person=data["person"],
             type=data["type"],
-            branch=branch,
+            person__branch=branch,
         ).exists():
             raise serializers.ValidationError(
                 "This product already exists",
@@ -68,8 +68,6 @@ class RawProductSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-
-        validated_data["branch"] = self.context["request"].branch
         return super().create(validated_data)
 
 
@@ -138,7 +136,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
     def validate(self, data):
         branch = self.context["request"].branch
         if RawTransaction.objects.filter(
-            branch=branch, manual_invoice_serial=data["manual_invoice_serial"]
+            person__branch=branch, manual_invoice_serial=data["manual_invoice_serial"]
         ).exists():
             raise serializers.ValidationError(
                 "This book number exists", status.HTTP_400_BAD_REQUEST
@@ -157,7 +155,6 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         transaction = RawTransaction.objects.create(
             **validated_data,
-            branch=branch,
             user=user,
         )
 
@@ -168,7 +165,6 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                 raw_transaction=transaction,
                 issued=lot["issued"],
                 raw_product=lot["raw_product"],
-                branch=branch,
                 lot_number=RawTransactionLot.get_next_serial(branch, "lot_number"),
             )
             ledger_string += f"Lot # {current_lot.lot_number}\n"

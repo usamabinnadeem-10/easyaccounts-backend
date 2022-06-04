@@ -3,12 +3,12 @@ from .models import Formula, RawDebit, RawProduct, RawTransaction, RawTransactio
 
 class RawProductQuery:
     def get_queryset(self):
-        return RawProduct.objects.filter(branch=self.request.branch)
+        return RawProduct.objects.filter(person__branch=self.request.branch)
 
 
 class RawTransactionQuery:
     def get_queryset(self):
-        return RawTransaction.objects.filter(branch=self.request.branch)
+        return RawTransaction.objects.filter(person__branch=self.request.branch)
 
 
 class FormulaQuery:
@@ -18,11 +18,11 @@ class FormulaQuery:
 
 class RawTransactionLotQuery:
     def get_queryset(self):
-        return RawTransactionLot.objects.filter(branch=self.request.branch).order_by(
-            "-lot_number"
-        )
+        return RawTransactionLot.objects.filter(
+            raw_transaction__person__branch=self.request.branch
+        ).order_by("-lot_number")
 
 
 class RawDebitQuery:
     def get_queryset(self):
-        return RawDebit.objects.filter(branch=self.request.branch)
+        return RawDebit.objects.filter(person__branch=self.request.branch)

@@ -37,7 +37,7 @@ class AbstractRawLotDetail(ID):
         abstract = True
 
 
-class RawProduct(BranchAwareModel):
+class RawProduct(ID):
     """Raw product"""
 
     name = models.CharField(max_length=100)
@@ -45,24 +45,30 @@ class RawProduct(BranchAwareModel):
     type = models.CharField(max_length=10, choices=RawProductTypes.choices)
 
     class Meta:
-        unique_together = ("person", "name", "branch", "type")
+        unique_together = ("person", "name", "type")
 
     def __str__(self):
         return f"{self.name} - {self.person} - {self.type}"
 
 
-class RawTransaction(BranchAwareModel, UserAwareModel, NextSerial):
+class RawTransaction(ID, UserAwareModel, NextSerial):
     """Raw transaction"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     date = models.DateField(default=date.today)
     manual_invoice_serial = models.PositiveBigIntegerField()
 
-    class Meta:
-        unique_together = ("manual_invoice_serial", "branch")
-
     def __str__(self):
         return f"{self.manual_invoice_serial} - {self.person}"
+
+    @classmethod
+    def get_next_serial(cls, branch, field, **kwargs):
+        return (
+            cls.objects.filter(person__branch=branch, **kwargs).aggregate(
+                max_serial=Max(field)
+            )["max_serial"]
+            or 0
+        ) + 1
 
 
 class RawTransactionLot(ID, NextSerial):
@@ -87,7 +93,7 @@ class RawLotDetail(AbstractRawLotDetail):
     )
 
 
-class RawDebit(BranchAwareModel, UserAwareModel, NextSerial):
+class RawDebit(ID, UserAwareModel, NextSerial):
     """Raw return or sale"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
@@ -101,7 +107,7 @@ class RawDebit(BranchAwareModel, UserAwareModel, NextSerial):
         return not RawDebit.objects.filter(**kwargs).exists()
 
     class Meta:
-        unique_together = ("manual_invoice_serial", "branch", "debit_type")
+        unique_together = ("manual_invoice_serial", "debit_type")
 
 
 class RawDebitLot(ID):

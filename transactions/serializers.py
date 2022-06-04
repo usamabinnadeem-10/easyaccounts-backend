@@ -162,18 +162,18 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
 
     def create(self, validated_data):
         request = self.context["request"]
-        transaction_details = validated_data.pop("transaction_detail")
-        paid = validated_data.pop("paid")
+        # transaction_details = validated_data.pop("transaction_detail")
+        # paid = validated_data.pop("paid")
         transaction = None
         try:
             transaction = Transaction.make_transaction(
-                {**validated_data, "transaction_detail": transaction_details},
+                validated_data,
                 request.user,
                 request.branch,
             )
         except Exception as e:
-            # print(e)
             raise serializers.ValidationError(e.messages[0], 400)
+
         # branch_filter = {"branch": request.branch}
         # user = request.user
         # transaction = Transaction.objects.create(

@@ -8,8 +8,9 @@ from core.models import ID, DateTimeAwareModel, NextSerial
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Sum
+from django.db.models import Avg, Sum
 from essentials.models import AccountType, Person, Product, Stock, Warehouse
+from ledgers.models import Ledger
 
 from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
 
@@ -41,6 +42,24 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
     # returns serial like SUP-123, INV-1453 ...
     def get_manual_serial(self):
         return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
+
+    @classmethod
+    def check_average_selling_rates(cls, date, t_detail):
+        """check if selling rate is more than buying"""
+        date = date if date else datetime.now()
+        averages = (
+            TransactionDetail.objects.values("product")
+            .filter(
+                transaction__date__lte=date, transaction__nature=TransactionChoices.CREDIT
+            )
+            .annotate(avg_buying=Avg("rate"))
+        )
+        for d in t_detail:
+            curr_avg = list(
+                filter(lambda x: x["product"] == t_detail["product"], averages)
+            )
+            if d["rate"] <= curr_avg["avg_buying"]:
+                raise ValidationError(f"Rate too low for {d['product']}", 400)
 
     @classmethod
     def get_all_stock(cls, branch, date, old, **kwargs):
@@ -101,7 +120,7 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
                     "quantity": value,
                     "product": items[0],
                     "warehouse": items[1],
-                    "yards_per_piece": items[2],
+                    "yards_per_piece": float(items[2]),
                 }
             )
         return final
@@ -111,10 +130,14 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
         """checks if the stock is valid"""
         stock = Transaction.get_all_stock(branch, date, old)
         for detail in transaction_detail:
+
+            print(type(stock[0]["product"]))
+            print(type(str(detail["product"].id)))
+            print(stock[0]["product"] == detail["product"].id)
             filtered = list(
                 filter(
-                    lambda x: x["product"] == detail["product"].id
-                    and x["warehouse"] == detail["warehouse"].id
+                    lambda x: x["product"] == str(detail["product"].id)
+                    and x["warehouse"] == str(detail["warehouse"].id)
                     and x["yards_per_piece"] == detail["yards_per_piece"],
                     stock,
                 )
@@ -129,10 +152,21 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
     def make_transaction(cls, data, user=None, branch=None, old=None):
         if user and branch:
             transaction_details = data.pop("transaction_detail")
+            paid = data.pop("paid")
+            if paid and data["paid_amount"] <= 0.0:
+                raise ValidationError(
+                    "Please enter a valid paid amount",
+                    400,
+                )
             if data["nature"] == TransactionChoices.DEBIT or old is not None:
                 Transaction.check_stock(branch, data["date"], transaction_details, old)
+                if data["type"] != TransactionTypes.PAID:
+                    Transaction.check_average_selling_rates(
+                        data["date"], transaction_details
+                    )
             if old:
                 old.delete()
+
             transaction = Transaction.objects.create(
                 user=user,
                 branch=branch,
@@ -159,6 +193,9 @@ class Transaction(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSeri
                     )
                 )
             transactions = TransactionDetail.objects.bulk_create(details)
+            Ledger.create_ledger_entry_for_transasction(
+                {"transaction": transaction, "detail": transaction_details, "paid": paid}
+            )
             return {"transaction": transaction, "detail": transactions}
         raise ValidationError(
             "No user / branch found",

@@ -12,7 +12,6 @@ from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 from essentials.models import AccountType, Person
 from rawtransactions.models import RawDebit, RawTransaction
-from transactions.models import Transaction
 
 
 class TransactionChoices(models.TextChoices):
@@ -26,7 +25,9 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
-    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, null=True)
+    transaction = models.ForeignKey(
+        "transactions.Transaction", on_delete=models.CASCADE, null=True
+    )
     external_cheque = models.ForeignKey(
         ExternalCheque, on_delete=models.CASCADE, null=True
     )
@@ -76,3 +77,59 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
         if total is not None:
             return total
         return 0
+
+    @classmethod
+    def create_ledger_string(cls, detail):
+        """creates ledger string for the transaction details"""
+        string = ""
+        for d in list(detail):
+            string += (
+                f"{float(d['quantity'])} thaan "
+                f"{d['product'].name} ({d['yards_per_piece']} Yards) "
+                f"@ PKR {str(d['rate'])} per yard\n"
+            )
+        return string
+
+    @classmethod
+    def create_ledger_entry_for_transasction(cls, t_data):
+        """creates ledger entries for transaction"""
+        transaction = t_data["transaction"]
+        t_detail = t_data["detail"]
+        amount = reduce(
+            lambda prev, curr: prev
+            + (curr["yards_per_piece"] * curr["quantity"] * curr["rate"]),
+            list(t_detail),
+            0,
+        )
+        amount -= transaction.discount
+        ledger_string = Ledger.create_ledger_string(t_detail)
+        ledger_data = [
+            Ledger(
+                **{
+                    "detail": ledger_string,
+                    "amount": amount,
+                    "transaction": transaction,
+                    "user": transaction.user,
+                    "nature": transaction.nature,
+                    "person": transaction.person,
+                    "date": transaction.date,
+                    "branch": transaction.branch,
+                }
+            )
+        ]
+        if t_data["paid"]:
+            ledger_data.append(
+                Ledger(
+                    **{
+                        "detail": f"Paid on {transaction.account_type.name}",
+                        "amount": transaction.paid_amount,
+                        "transaction": transaction,
+                        "nature": "C",
+                        "account_type": transaction.account_type,
+                        "person": transaction.person,
+                        "date": transaction.date,
+                        "branch": transaction.branch,
+                    }
+                )
+            )
+        Ledger.objects.bulk_create(ledger_data)
