@@ -135,19 +135,23 @@ class PassExternalChequeView(APIView):
         data = request.data
         branch = request.branch
         account_type = AccountType.objects.get(id=data["account_type"], branch=branch)
-        cheque = get_object_or_404(ExternalCheque, id=data["cheque"], branch=branch)
+        cheque = get_object_or_404(
+            ExternalCheque, id=data["cheque"], person__branch=branch
+        )
 
         check_cheque_errors(cheque)
 
         cheque_account = get_cheque_account(branch).account
         remaining_amount = None
         # check if this cheque has any history
-        if ExternalChequeHistory.objects.filter(cheque=cheque, branch=branch).exists():
+        if ExternalChequeHistory.objects.filter(
+            cheque=cheque, parent_cheque__person__branch=branch
+        ).exists():
             remaining_amount = ExternalChequeHistory.get_remaining_amount(
                 cheque, cheque_account, branch
             )
             is_return_cheque = ExternalChequeHistory.objects.filter(
-                return_cheque=cheque, branch=branch
+                return_cheque=cheque, parent_cheque__person__branch=branch
             ).exists()
             # if this cheque has history but is a return cheque then pass it
             if is_return_cheque:
@@ -166,7 +170,7 @@ class PassExternalChequeView(APIView):
         # if there is remaining amount then create a cheque history for this entry
         if (remaining_amount is None) or (remaining_amount > 0):
             prev_history = ExternalChequeHistory.objects.filter(
-                return_cheque=cheque, branch=branch
+                return_cheque=cheque, parent_cheque__person__branch=branch
             )
             parent = None
             if prev_history.exists():
@@ -179,7 +183,6 @@ class PassExternalChequeView(APIView):
                 cheque=cheque,
                 account_type=account_type,
                 amount=cheque.amount,
-                branch=branch,
             )
 
         cheque.status = ChequeStatusChoices.CLEARED
@@ -212,10 +215,12 @@ class ReturnExternalTransferredCheque(APIView):
             ExternalCheque,
             id=data["cheque"],
             status=ChequeStatusChoices.TRANSFERRED,
-            branch=branch,
+            person__branch=branch,
         )
 
-        transfer = ExternalChequeTransfer.objects.get(cheque=cheque, branch=branch)
+        transfer = ExternalChequeTransfer.objects.get(
+            cheque=cheque, person__branch=branch
+        )
 
         # create a credit entry in the ledger of the person the cheque is being returned from
         create_ledger_entry_for_cheque(cheque, "C", True, transfer.person)
@@ -243,7 +248,7 @@ class ReturnExternalCheque(APIView):
                 ExternalCheque,
                 id=data["cheque"],
                 status=ChequeStatusChoices.PENDING,
-                branch=branch,
+                person__branch=branch,
             )
         except:
             return Response(
@@ -275,7 +280,7 @@ class CompleteExternalChequeWithHistory(APIView):
                 ExternalCheque,
                 id=data["cheque"],
                 status=ChequeStatusChoices.PENDING,
-                branch=branch,
+                person__branch=branch,
             )
         except:
             return Response(

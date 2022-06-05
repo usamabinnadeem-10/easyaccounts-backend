@@ -33,7 +33,7 @@ class ValidateTransactionSerial:
         manual_invoice_serial = data["manual_invoice_serial"]
 
         if Transaction.objects.filter(
-            branch=branch,
+            person__branch=branch,
             manual_invoice_serial=manual_invoice_serial,
             manual_serial_type=manual_serial_type,
         ).exists():
@@ -42,18 +42,18 @@ class ValidateTransactionSerial:
             )
 
         self.last_serial_num = Transaction.get_next_serial(
-            branch, "serial", manual_serial_type=manual_serial_type
+            "serial", manual_serial_type=manual_serial_type, person__branch=branch
         )
 
         max_from_cancelled = CancelledInvoice.get_next_serial(
-            branch,
             "manual_invoice_serial",
             manual_serial_type=manual_serial_type,
+            branch=branch,
         )
         max_from_transactions = Transaction.get_next_serial(
-            branch,
             "manual_invoice_serial",
             manual_serial_type=manual_serial_type,
+            person__branch=branch,
         )
         max_final = (
             max_from_cancelled
@@ -133,8 +133,8 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
     paid = serializers.BooleanField(default=False)
 
     serial = serializers.ReadOnlyField()
-    person_name = serializers.CharField(source="person.name", read_only=True)
-    person_type = serializers.CharField(source="person.person_type", read_only=True)
+    # person_name = serializers.CharField(source="person.name", read_only=True)
+    # person_type = serializers.CharField(source="person.person_type", read_only=True)
 
     class Meta:
         model = Transaction
@@ -152,8 +152,8 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
             "account_type",
             "paid_amount",
             "detail",
-            "person_name",
-            "person_type",
+            # "person_name",
+            # "person_type",
             "manual_serial_type",
             "requires_action",
             "builty",
@@ -165,14 +165,9 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
         # transaction_details = validated_data.pop("transaction_detail")
         # paid = validated_data.pop("paid")
         transaction = None
-        try:
-            transaction = Transaction.make_transaction(
-                validated_data,
-                request.user,
-                request.branch,
-            )
-        except Exception as e:
-            raise serializers.ValidationError(e.messages[0], 400)
+        transaction = Transaction.make_transaction(
+            validated_data, request.user, request.branch
+        )
 
         # branch_filter = {"branch": request.branch}
         # user = request.user
@@ -219,20 +214,18 @@ class TransactionSerializer(ValidateTotalAndSerial, serializers.ModelSerializer)
 
 class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
 
-    id = serializers.UUIDField(required=False)
-    new = serializers.BooleanField(default=False, write_only=True)
+    # id = serializers.UUIDField(required=False)
+    # new = serializers.BooleanField(default=False, write_only=True)
 
     class Meta:
         model = TransactionDetail
         fields = [
-            "id",
             "transaction",
             "product",
             "rate",
             "yards_per_piece",
             "quantity",
             "warehouse",
-            "new",
         ]
         read_only_fields = ["transaction"]
 
@@ -245,6 +238,7 @@ class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
 
     transaction_detail = UpdateTransactionDetailSerializer(many=True)
     serial = serializers.ReadOnlyField()
+    paid = serializers.BooleanField(default=False)
 
     class Meta:
         model = Transaction
@@ -254,6 +248,7 @@ class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
             "serial",
             "type",
             "transaction_detail",
+            "paid",
             "nature",
             "discount",
             "person",
@@ -272,7 +267,7 @@ class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         request = self.context["request"]
-        transaction_detail = validated_data.pop("transaction_detail")
+        # transaction_detail = validated_data.pop("transaction_detail")
         branch = request.branch
         branch_filter = {"branch": branch}
 
@@ -282,137 +277,139 @@ class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
                 "You can not change book number while editing",
                 status.HTTP_400_BAD_REQUEST,
             )
-
+        transaction = Transaction.make_transaction(
+            validated_data, request.user, request.branch, instance
+        )
         # delete all the other transaction details
         # which were not in the transaction_detail
-        all_transaction_details = TransactionDetail.objects.filter(
-            **branch_filter, transaction=instance
-        ).values("id", "product", "warehouse", "quantity", "yards_per_piece", "branch")
-        ids_to_keep = []
+        # all_transaction_details = TransactionDetail.objects.filter(
+        #     **branch_filter, transaction=instance
+        # ).values("id", "product", "warehouse", "quantity", "yards_per_piece", "branch")
+        # ids_to_keep = []
 
-        # make a list of transactions that should not be deleted
-        for detail in transaction_detail:
-            if not detail["new"]:
-                ids_to_keep.append(detail["id"])
+        # # make a list of transactions that should not be deleted
+        # for detail in transaction_detail:
+        #     if not detail["new"]:
+        #         ids_to_keep.append(detail["id"])
 
-        # delete transaction detail rows that are not in ids_to_keep
-        # and add stock of those products
-        for transaction in all_transaction_details:
-            if not transaction["id"] in ids_to_keep:
-                to_delete = TransactionDetail.objects.get(
-                    id=transaction["id"], **branch_filter
-                )
-                update_stock(
-                    "C" if instance.nature == "D" else "D",
-                    transaction,
-                    instance.nature,
-                )
-                to_delete.delete()
+        # # delete transaction detail rows that are not in ids_to_keep
+        # # and add stock of those products
+        # for transaction in all_transaction_details:
+        #     if not transaction["id"] in ids_to_keep:
+        #         to_delete = TransactionDetail.objects.get(
+        #             id=transaction["id"], **branch_filter
+        #         )
+        #         update_stock(
+        #             "C" if instance.nature == "D" else "D",
+        #             transaction,
+        #             instance.nature,
+        #         )
+        #         to_delete.delete()
 
-        ledger_string = ""
-        # for all the details, if it is new then create it otherwise edit the previous
-        amount = 0.0
-        for detail in transaction_detail:
-            amount += detail["rate"] * detail["quantity"] * detail["yards_per_piece"]
-            if TransactionDetail.is_rate_invalid(
-                validated_data["nature"], detail["product"], detail["rate"]
-            ):
-                raise serializers.ValidationError(
-                    f"Rate too low for {detail['product'].name}",
-                    status.HTTP_400_BAD_REQUEST,
-                )
-            old_quantity = 0.0
-            if detail["new"]:
-                detail.pop("new")
-                TransactionDetail.objects.create(
-                    transaction=instance, **detail, **branch_filter
-                )
-            else:
-                detail_instance = TransactionDetail.objects.get(
-                    id=detail["id"], **branch_filter
-                )
-                old_quantity = detail_instance.quantity
-                old_gazaana = detail_instance.yards_per_piece
-                old_warehouse = detail_instance.warehouse
-                old_product = detail_instance.product
-                detail_instance.product = detail["product"]
-                detail_instance.rate = detail["rate"]
-                detail_instance.quantity = detail["quantity"]
-                detail_instance.warehouse = detail["warehouse"]
-                detail_instance.yards_per_piece = detail["yards_per_piece"]
-                detail_instance.save()
+        # ledger_string = ""
+        # # for all the details, if it is new then create it otherwise edit the previous
+        # amount = 0.0
+        # for detail in transaction_detail:
+        #     amount += detail["rate"] * detail["quantity"] * detail["yards_per_piece"]
+        #     if TransactionDetail.is_rate_invalid(
+        #         validated_data["nature"], detail["product"], detail["rate"]
+        #     ):
+        #         raise serializers.ValidationError(
+        #             f"Rate too low for {detail['product'].name}",
+        #             status.HTTP_400_BAD_REQUEST,
+        #         )
+        #     old_quantity = 0.0
+        #     if detail["new"]:
+        #         detail.pop("new")
+        #         TransactionDetail.objects.create(
+        #             transaction=instance, **detail, **branch_filter
+        #         )
+        #     else:
+        #         detail_instance = TransactionDetail.objects.get(
+        #             id=detail["id"], **branch_filter
+        #         )
+        #         old_quantity = detail_instance.quantity
+        #         old_gazaana = detail_instance.yards_per_piece
+        #         old_warehouse = detail_instance.warehouse
+        #         old_product = detail_instance.product
+        #         detail_instance.product = detail["product"]
+        #         detail_instance.rate = detail["rate"]
+        #         detail_instance.quantity = detail["quantity"]
+        #         detail_instance.warehouse = detail["warehouse"]
+        #         detail_instance.yards_per_piece = detail["yards_per_piece"]
+        #         detail_instance.save()
 
-            update_stock(
-                validated_data.get("nature"),
-                {**detail, "branch": branch},
-                instance.nature,
-                True,
-                old_quantity,
-                old_gazaana,
-                old_product,
-                old_warehouse,
-            )
+        #     update_stock(
+        #         validated_data.get("nature"),
+        #         {**detail, "branch": branch},
+        #         instance.nature,
+        #         True,
+        #         old_quantity,
+        #         old_gazaana,
+        #         old_product,
+        #         old_warehouse,
+        #     )
 
-            ledger_string += create_ledger_string(detail)
+        #     ledger_string += create_ledger_string(detail)
 
-        amount -= validated_data["discount"]
-        ledger_instance = Ledger.objects.get(
-            transaction=instance, account_type__isnull=True, **branch_filter
-        )
-        ledger_instance.detail = ledger_string + f'{validated_data["detail"]}\n'
-        ledger_instance.nature = validated_data["nature"]
-        ledger_instance.amount = amount
-        ledger_instance.person = validated_data["person"]
-        if validated_data.get("date", None):
-            ledger_instance.date = validated_data["date"]
-        ledger_instance.save()
+        # amount -= validated_data["discount"]
+        # ledger_instance = Ledger.objects.get(
+        #     transaction=instance, account_type__isnull=True, **branch_filter
+        # )
+        # ledger_instance.detail = ledger_string + f'{validated_data["detail"]}\n'
+        # ledger_instance.nature = validated_data["nature"]
+        # ledger_instance.amount = amount
+        # ledger_instance.person = validated_data["person"]
+        # if validated_data.get("date", None):
+        #     ledger_instance.date = validated_data["date"]
+        # ledger_instance.save()
 
-        account_type = (
-            validated_data["account_type"] if "account_type" in validated_data else None
-        )
-        paid_amount = (
-            validated_data["paid_amount"] if "paid_amount" in validated_data else None
-        )
+        # account_type = (
+        #     validated_data["account_type"] if "account_type" in validated_data else None
+        # )
+        # paid_amount = (
+        #     validated_data["paid_amount"] if "paid_amount" in validated_data else None
+        # )
 
-        PAID = TransactionTypes.PAID
-        # if the transaction was unpaid before and is now paid then create a new ledger entry
-        if validated_data["type"] != instance.type and validated_data["type"] == PAID:
-            Ledger.objects.create(
-                **{
-                    "detail": f"Paid on {account_type.name}",
-                    "amount": paid_amount,
-                    "transaction": instance,
-                    "nature": "C",
-                    "account_type": account_type,
-                    "person": instance.person,
-                    "date": instance.date,
-                    "branch": instance.branch,
-                }
-            )
+        # PAID = TransactionTypes.PAID
+        # # if the transaction was unpaid before and is now paid then create a new ledger entry
+        # if validated_data["type"] != instance.type and validated_data["type"] == PAID:
+        #     Ledger.objects.create(
+        #         **{
+        #             "detail": f"Paid on {account_type.name}",
+        #             "amount": paid_amount,
+        #             "transaction": instance,
+        #             "nature": "C",
+        #             "account_type": account_type,
+        #             "person": instance.person,
+        #             "date": instance.date,
+        #             "branch": instance.branch,
+        #         }
+        #     )
 
-        # if transaction was paid and is now unpaid then delete the old ledger entry
-        if instance.type == PAID and validated_data["type"] != PAID:
-            paid_instance = Ledger.objects.get(
-                transaction=instance,
-                account_type__isnull=False,
-                **branch_filter,
-            )
-            paid_instance.delete()
+        # # if transaction was paid and is now unpaid then delete the old ledger entry
+        # if instance.type == PAID and validated_data["type"] != PAID:
+        #     paid_instance = Ledger.objects.get(
+        #         transaction=instance,
+        #         account_type__isnull=False,
+        #         **branch_filter,
+        #     )
+        #     paid_instance.delete()
 
-        # if both types are paid then update the Ledger entry
-        if instance.type == PAID and validated_data["type"] == instance.type:
-            paid_instance = Ledger.objects.get(
-                transaction=instance,
-                account_type__isnull=False,
-                **branch_filter,
-            )
-            paid_instance.amount = validated_data["paid_amount"]
-            paid_instance.account_type = validated_data["account_type"]
-            paid_instance.detail = f'Paid on {validated_data["account_type"].name}'
-            paid_instance.person = validated_data["person"]
-            if validated_data["date"]:
-                paid_instance.date = validated_data["date"]
-            paid_instance.save()
+        # # if both types are paid then update the Ledger entry
+        # if instance.type == PAID and validated_data["type"] == instance.type:
+        #     paid_instance = Ledger.objects.get(
+        #         transaction=instance,
+        #         account_type__isnull=False,
+        #         **branch_filter,
+        #     )
+        #     paid_instance.amount = validated_data["paid_amount"]
+        #     paid_instance.account_type = validated_data["account_type"]
+        #     paid_instance.detail = f'Paid on {validated_data["account_type"].name}'
+        #     paid_instance.person = validated_data["person"]
+        #     if validated_data["date"]:
+        #         paid_instance.date = validated_data["date"]
+        #     paid_instance.save()
 
         Log.create_log(
             self.type,
@@ -421,7 +418,12 @@ class UpdateTransactionSerializer(ValidateTotal, serializers.ModelSerializer):
             request,
         )
 
-        return super().update(instance, validated_data)
+        # return super().update(instance, validated_data)
+        validated_data["transaction_detail"] = transaction["detail"]
+        validated_data["id"] = transaction["transaction"].id
+        validated_data["serial"] = transaction["transaction"].serial
+        validated_data["date"] = transaction["transaction"].date
+        return validated_data
 
 
 class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSerializer):
@@ -459,7 +461,7 @@ class CancelledInvoiceSerializer(ValidateTransactionSerial, serializers.ModelSer
         user = self.request.user
         try:
             serial = Transaction.objects.get(
-                branch=branch,
+                person__branch=branch,
                 manual_invoice_serial=validated_data["manual_invoice_serial"],
                 manual_serial_type=validated_data["manual_serial_type"],
             )
@@ -525,10 +527,12 @@ class TransferStockSerializer(serializers.ModelSerializer):
                     status.HTTP_400_BAD_REQUEST,
                 )
         next_manual = StockTransfer.get_next_serial(
-            branch, "manual_invoice_serial", from_warehouse=data["from_warehouse"]
+            "manual_invoice_serial", from_warehouse=data["from_warehouse"], branch=branch
         )
         next_cancel = CancelStockTransfer.get_next_serial(
-            branch, "manual_invoice_serial", warehouse=data["from_warehouse"]
+            "manual_invoice_serial",
+            warehouse=data["from_warehouse"],
+            warehouse__branch=branch,
         )
         final_serial = max(next_manual, next_cancel)
         if data["manual_invoice_serial"] != final_serial:
@@ -544,7 +548,7 @@ class TransferStockSerializer(serializers.ModelSerializer):
             **validated_data,
             user=user,
             serial=StockTransfer.get_next_serial(
-                branch, "serial", from_warehouse=from_warehouse
+                "serial", from_warehouse=from_warehouse, branch=branch
             ),
             branch=branch,
         )
@@ -629,7 +633,7 @@ class CancelStockTransferSerializer(serializers.ModelSerializer):
             )
 
         if CancelStockTransfer.objects.filter(
-            branch=branch,
+            warehouse__branch=branch,
             warehouse=from_warehouse,
             manual_invoice_serial=serial,
         ).exists():
@@ -638,10 +642,10 @@ class CancelStockTransferSerializer(serializers.ModelSerializer):
             )
 
         next_serial = StockTransfer.get_next_serial(
-            branch, "manual_invoice_serial", from_warehouse=from_warehouse
+            "manual_invoice_serial", from_warehouse=from_warehouse, branch=branch
         )
         next_cancel = CancelStockTransfer.get_next_serial(
-            branch, "manual_invoice_serial", warehouse=from_warehouse
+            "manual_invoice_serial", warehouse=from_warehouse, warehouse__branch=branch
         )
         final_serial = max(next_serial, next_cancel)
         if serial > final_serial:

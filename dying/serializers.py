@@ -116,7 +116,9 @@ class IssueForDyingSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSer
         dying_issue_instance = DyingIssue.objects.create(
             **validated_data,
             user=user,
-            dying_lot_number=DyingIssue.get_next_serial(self.branch, "dying_lot_number")
+            dying_lot_number=DyingIssue.get_next_serial(
+                "dying_lot_number", branch=self.branch
+            )
         )
         for lot in data:
             dying_issue_lot_instance = DyingIssueLot.objects.create(

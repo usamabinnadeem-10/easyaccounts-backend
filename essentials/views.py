@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import datetime, timedelta
 from itertools import chain
 
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
@@ -10,6 +10,7 @@ from cheques.serializers import (
     ShortExternalChequeHistorySerializer,
 )
 from cheques.utils import get_cheque_account
+from core.utils import convert_date_to_datetime
 from django.db.models import F, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -145,39 +146,40 @@ class DayBook(APIView):
     """
 
     def get(self, request):
-        today = date.today()
-        if self.request.query_params.get("date"):
-            today = self.request.query_params.get("date")
-
+        today = convert_date_to_datetime(self.request.query_params.get("date"))
+        today_start = today - timedelta(hours=23, minutes=59, seconds=59)
+        # if self.request.query_params.get("date"):
+        #     today = convert_date_to_datetime(self.request.query_params.get("date"))
+        branch = request.branch
         filters = {
-            "date__gte": today,
+            "date__gte": today_start,
             "date__lte": today,
-            "branch": request.branch,
         }
+        print(filters)
 
         cheque_account = get_cheque_account(request.branch).account
 
-        expenses = ExpenseDetail.objects.filter(**filters)
+        expenses = ExpenseDetail.objects.filter(**filters, expense__branch=branch)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
         ledgers = Ledger.objects.filter(
-            person__person_type=PersonChoices.CUSTOMER, **filters
+            person__person_type=PersonChoices.CUSTOMER, **filters, branch=branch
         )
         ledger_serialized = LedgerSerializer(ledgers, many=True)
 
         transactions = Transaction.objects.filter(
-            person__person_type=PersonChoices.CUSTOMER, **filters
+            person__person_type=PersonChoices.CUSTOMER, **filters, person__branch=branch
         )
         transactions_serialized = TransactionSerializer(transactions, many=True).data
 
-        external_cheques = ExternalCheque.objects.filter(**filters)
+        external_cheques = ExternalCheque.objects.filter(**filters, person__branch=branch)
         external_cheques_serialized = ExternalChequeSerializer(
             external_cheques, many=True
         ).data
 
         external_cheques_history = (
             ExternalChequeHistory.objects.select_related("parent_cheque")
-            .filter(**filters)
+            .filter(**filters, parent_cheque__person__branch=branch)
             .exclude(return_cheque__status=ChequeStatusChoices.RETURNED)
             .order_by("parent_cheque__serial")
         )
@@ -185,7 +187,7 @@ class DayBook(APIView):
             external_cheques_history, many=True
         ).data
 
-        personal_cheques = PersonalCheque.objects.filter(**filters)
+        personal_cheques = PersonalCheque.objects.filter(**filters, person__branch=branch)
         personal_cheques_serialized = IssuePersonalChequeSerializer(
             personal_cheques, many=True
         ).data
@@ -210,13 +212,13 @@ class DayBook(APIView):
         balance_expenses = (
             ExpenseDetail.objects.values("account_type__name")
             .order_by("date")
-            .filter(date__lte=today, branch=request.branch)
+            .filter(date__lte=today, expense__branch=request.branch)
             .annotate(total=Sum("amount"))
         )
 
         balance_external_cheques = (
             ExternalCheque.objects.values("status")
-            .filter(status=ChequeStatusChoices.PENDING, **filters)
+            .filter(status=ChequeStatusChoices.PENDING, **filters, person__branch=branch)
             .aggregate(total=Sum("amount"))
         )
         balance_external_cheques = balance_external_cheques.get("total", 0)
@@ -225,13 +227,21 @@ class DayBook(APIView):
             ExternalChequeHistory.objects.values(
                 "account_type__name",
             )
-            .filter(return_cheque__isnull=True, **filters)
+            .filter(
+                return_cheque__isnull=True,
+                **filters,
+                parent_cheque__person__branch=branch
+            )
             .annotate(total=Sum("amount"))
         )
 
         balance_personal_cheques = (
             PersonalCheque.objects.values("account_type__name")
-            .filter(status=PersonalChequeStatusChoices.CLEARED, **filters)
+            .filter(
+                status=PersonalChequeStatusChoices.CLEARED,
+                **filters,
+                person__branch=branch
+            )
             .annotate(total=Sum("amount"))
         )
 

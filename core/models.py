@@ -24,10 +24,8 @@ class DateTimeAwareModel(models.Model):
 
 class NextSerial:
     @classmethod
-    def get_next_serial(cls, branch, field, **kwargs):
+    def get_next_serial(cls, field, **kwargs):
         return (
-            cls.objects.filter(branch=branch, **kwargs).aggregate(max_serial=Max(field))[
-                "max_serial"
-            ]
+            cls.objects.filter(**kwargs).aggregate(max_serial=Max(field))["max_serial"]
             or 0
         ) + 1

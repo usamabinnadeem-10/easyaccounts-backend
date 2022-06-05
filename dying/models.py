@@ -27,7 +27,9 @@ class DyingIssue(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     def create_auto_issued_lot(cls, branch, dying_unit, lot_number, **kwargs):
         instance = DyingIssue.objects.create(
             dying_unit=DyingUnit.objects.get(id=dying_unit),
-            dying_lot_number=DyingIssue.get_next_serial(branch, "dying_lot_number"),
+            dying_lot_number=DyingIssue.get_next_serial(
+                "dying_lot_number", dying_unit__branch=branch
+            ),
             **kwargs
         )
         DyingIssueLot.objects.create(dying_lot=instance, lot_number=lot_number)

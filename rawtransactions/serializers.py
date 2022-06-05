@@ -141,7 +141,9 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "This book number exists", status.HTTP_400_BAD_REQUEST
             )
-        next_serial = RawTransaction.get_next_serial(branch, "manual_invoice_serial")
+        next_serial = RawTransaction.get_next_serial(
+            "manual_invoice_serial", person__branch=branch
+        )
         if data["manual_invoice_serial"] != next_serial:
             raise serializers.ValidationError(
                 f"Please use book number {next_serial}", status.HTTP_400_BAD_REQUEST
@@ -165,7 +167,9 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                 raw_transaction=transaction,
                 issued=lot["issued"],
                 raw_product=lot["raw_product"],
-                lot_number=RawTransactionLot.get_next_serial(branch, "lot_number"),
+                lot_number=RawTransactionLot.get_next_serial(
+                    "lot_number", raw_transaction__person__branch=branch
+                ),
             )
             ledger_string += f"Lot # {current_lot.lot_number}\n"
             if current_lot.issued:
@@ -205,7 +209,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
             for detail in current_lot_detail:
                 current_detail = RawLotDetail.objects.create(
-                    **detail, lot_number=current_lot, branch=branch
+                    **detail, lot_number=current_lot
                 )
                 amount += (
                     current_detail.quantity
@@ -330,10 +334,11 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
         self.check_stock(data, check_person, person)
         debit_instance = RawDebit.objects.create(
             **validated_data,
-            branch=self.branch,
             user=user,
             bill_number=RawDebit.get_next_serial(
-                self.branch, "bill_number", debit_type=validated_data["debit_type"]
+                "serial",
+                debit_type=validated_data["debit_type"],
+                person__branch=self.branch,
             ),
         )
 
@@ -343,7 +348,6 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
             raw_debit_lot_instance = RawDebitLot.objects.create(
                 lot_number=lot["lot_number"],
                 bill_number=debit_instance,
-                branch=self.branch,
             )
             current_return_details = []
             for detail in lot["detail"]:
@@ -485,7 +489,9 @@ class RawStockTransferSerializer(
             **validated_data,
             branch=self.branch,
             bill_number=RawDebit.get_next_serial(
-                self.branch, "bill_number", debit_type=validated_data["debit_type"]
+                "serial",
+                debit_type=validated_data["debit_type"],
+                person__branch=self.branch,
             ),
         )
 
@@ -493,7 +499,6 @@ class RawStockTransferSerializer(
             raw_debit_lot_instance = RawDebitLot.objects.create(
                 lot_number=lot["lot_number"],
                 bill_number=debit_instance,
-                branch=self.branch,
             )
             current_return_details = []
             for detail in lot["detail"]:
@@ -517,7 +522,6 @@ class RawStockTransferSerializer(
                 current_return_details.append(
                     RawDebitLotDetail(
                         return_lot=raw_debit_lot_instance,
-                        branch=self.branch,
                         **obj,
                     )
                 )
@@ -526,7 +530,6 @@ class RawStockTransferSerializer(
                 current_return_details.append(
                     RawDebitLotDetail(
                         return_lot=raw_debit_lot_instance,
-                        branch=self.branch,
                         **obj,
                     )
                 )

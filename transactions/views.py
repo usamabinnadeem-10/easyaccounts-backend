@@ -342,12 +342,12 @@ class DetailedStockView(APIView):
         product = get_object_or_404(Product, id=qp.get("product"))
         opening_stock = 0.0
         branch = request.branch
-        filters = {"product": product, "branch": branch}
-        filters_transfers = {"product": product, "branch": branch}
+        filters = {"product": product, "transaction__person__branch": branch}
+        filters_transfers = {"product": product, "transfer__branch": branch}
         if qp.get("start"):
-            start = datetime.strptime(qp.get("start"), "%Y-%m-%d")
+            start = datetime.strptime(qp.get("start"), "%Y-%m-%d %H:%M:%S")
             filters.update({"transaction__date__gte": start})
-            filters_transfers.update({"date__gte": start})
+            filters_transfers.update({"transfer__date__gte": start})
             startDateMinusOne = start - timedelta(days=1)
 
             old_stock = (
@@ -356,7 +356,7 @@ class DetailedStockView(APIView):
                 .filter(
                     transaction__date__lte=startDateMinusOne,
                     product=product,
-                    branch=branch,
+                    transaction__person__branch=branch,
                 )
             )
             for old in old_stock:
@@ -367,7 +367,7 @@ class DetailedStockView(APIView):
 
         if qp.get("end"):
             filters.update({"transaction__date__lte": qp.get("end")})
-            filters_transfers.update({"date__lte": qp.get("end")})
+            filters_transfers.update({"transfer__date__lte": qp.get("end")})
 
         if qp.get("yards_per_piece"):
             filters.update({"yards_per_piece": qp.get("yards_per_piece")})
@@ -382,7 +382,7 @@ class DetailedStockView(APIView):
                 qp.get("product"),
                 {
                     "transfer__date__lte": startDateMinusOne,
-                    "branch": branch,
+                    "transfer__branch": branch,
                 },
             )
             opening_stock += old_transfer_quantity
@@ -407,7 +407,6 @@ class DetailedStockView(APIView):
 
         transfer_values = [
             "transfer__date",
-            "from_warehouse",
             "to_warehouse",
             "quantity",
             "id",
@@ -447,6 +446,6 @@ class ViewAllStock(TransactionQuery, generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         qp = request.query_params
-        stock = Transaction.get_all_stock(request.branch, qp.get("date"), None)
+        stock = Transaction.get_all_stock(request.branch, qp.get("date"))
         serializer = self.get_serializer(stock, many=True)
         return Response(serializer.data)

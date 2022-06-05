@@ -18,4 +18,4 @@ class TransferQuery:
 
 class CancelStockTransferQuery:
     def get_queryset(self):
-        return CancelStockTransfer.objects.filter(branch=self.request.branch)
+        return CancelStockTransfer.objects.filter(warehouse__branch=self.request.branch)

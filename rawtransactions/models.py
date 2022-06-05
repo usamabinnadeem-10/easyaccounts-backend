@@ -57,18 +57,10 @@ class RawTransaction(ID, UserAwareModel, NextSerial):
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     date = models.DateField(default=date.today)
     manual_invoice_serial = models.PositiveBigIntegerField()
+    serial = models.PositiveBigIntegerField()
 
     def __str__(self):
         return f"{self.manual_invoice_serial} - {self.person}"
-
-    @classmethod
-    def get_next_serial(cls, branch, field, **kwargs):
-        return (
-            cls.objects.filter(person__branch=branch, **kwargs).aggregate(
-                max_serial=Max(field)
-            )["max_serial"]
-            or 0
-        ) + 1
 
 
 class RawTransactionLot(ID, NextSerial):
@@ -98,7 +90,7 @@ class RawDebit(ID, UserAwareModel, NextSerial):
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     manual_invoice_serial = models.PositiveBigIntegerField()
-    bill_number = models.PositiveBigIntegerField()
+    serial = models.PositiveBigIntegerField()
     date = models.DateField(default=date.today)
     debit_type = models.CharField(max_length=10, choices=RawDebitTypes.choices)
 
