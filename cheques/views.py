@@ -141,6 +141,10 @@ class PassExternalChequeView(APIView):
 
         check_cheque_errors(cheque)
 
+        # if this cheque has history then it can not be passed like this
+        if has_history(cheque, branch):
+            return return_error("This cheque has a history, it can not be passed")
+
         cheque_account = get_cheque_account(branch).account
         remaining_amount = None
         # check if this cheque has any history
@@ -160,8 +164,8 @@ class PassExternalChequeView(APIView):
                 return Response(
                     {"message": "Cheque passed"}, status=status.HTTP_201_CREATED
                 )
-            if remaining_amount > 0:
-                return return_error("This cheque has a history, it can not be passed")
+            # if remaining_amount > 0:
+            #     return return_error("This cheque has a history, it can not be passed")
 
         # check if account type is cheque account
         if cheque_account.id == account_type.id:
@@ -223,7 +227,9 @@ class ReturnExternalTransferredCheque(APIView):
         )
 
         # create a credit entry in the ledger of the person the cheque is being returned from
-        create_ledger_entry_for_cheque(cheque, "C", True, transfer.person)
+        create_ledger_entry_for_cheque(
+            cheque, "C", True, transfer.person, **{"date": data["date"]}
+        )
 
         # set the state of cheque as PENDING
         cheque.status = ChequeStatusChoices.PENDING
@@ -260,7 +266,7 @@ class ReturnExternalCheque(APIView):
         if has_history(cheque, branch):
             return return_error("This cheque has history, it can not be returned")
 
-        create_ledger_entry_for_cheque(cheque, "D")
+        create_ledger_entry_for_cheque(cheque, "D", **{"date": data["date"]})
         cheque.status = ChequeStatusChoices.RETURNED
         cheque.save()
 
@@ -292,19 +298,20 @@ class CompleteExternalChequeWithHistory(APIView):
         if not has_history(cheque, branch):
             return return_error("This cheque has no history, it can not be completed")
 
-        amount_received = ExternalChequeHistory.get_amount_received(cheque, branch)
-
+        amount_left = ExternalChequeHistory.get_remaining_amount(
+            cheque, get_cheque_account(branch).account, branch
+        )
         # make sure the amount received is not less than cheque's value
-        if amount_received < cheque.amount:
+        if amount_left > 0:
             return return_error(
-                "This cheque has remaining amount, it can not be completed"
+                f"This cheque has remaining amount, it can not be completed. Remaining = {amount_left}/="
             )
 
         cheque.status = ChequeStatusChoices.COMPLETED_HISTORY
         cheque.save()
 
         return Response(
-            {"message": "Cheque returned successfully"}, status=status.HTTP_201_CREATED
+            {"message": "Cheque history completed"}, status=status.HTTP_201_CREATED
         )
 
 

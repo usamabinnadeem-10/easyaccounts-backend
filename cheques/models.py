@@ -112,7 +112,7 @@ class PersonalCheque(AbstractCheque):
         return 0
 
 
-class ExternalChequeHistory(ID, UserAwareModel):
+class ExternalChequeHistory(ID, UserAwareModel, DateTimeAwareModel):
     parent_cheque = models.ForeignKey(
         ExternalCheque,
         on_delete=models.CASCADE,
@@ -132,27 +132,51 @@ class ExternalChequeHistory(ID, UserAwareModel):
         null=True,
         related_name="return_cheque",
     )
-    date = models.DateField(default=date.today)
 
     class Meta:
         verbose_name_plural = "External cheque history"
 
     @classmethod
-    def get_remaining_amount(cls, parent_cheque, cheque_account, branch):
+    def get_remaining_amount(cls, external_cheque, cheque_account, branch):
+        """Returns the remaining amount of an external cheque"""
+        filter = {}
+        # if parent cheque
+        if external_cheque.parent_cheque.exists():
+            filter.update({"parent_cheque": external_cheque})
+        # if child cheque
+        else:
+            filter.update({"cheque": external_cheque})
+
         recovered_amount = (
             ExternalChequeHistory.objects.values("parent_cheque__id")
-            .filter(parent_cheque=parent_cheque, parent_cheque__person__branch=branch)
+            .filter(parent_cheque__person__branch=branch, **filter)
             .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
+        passed_cheque_amount = (
+            ExternalChequeHistory.objects.values("parent_cheque__id")
+            .filter(
+                parent_cheque__person__branch=branch,
+                return_cheque__status__in=[
+                    ChequeStatusChoices.CLEARED,
+                    ChequeStatusChoices.COMPLETED_HISTORY,
+                ],
+                **filter
+            )
+            .annotate(amount=Sum("amount"))
+        )
+        final_amount = external_cheque.amount
         if len(recovered_amount):
-            return parent_cheque.amount - recovered_amount[0]["amount"]
-        return parent_cheque.amount
+            final_amount -= recovered_amount[0]["amount"]
+        if len(passed_cheque_amount):
+            final_amount -= passed_cheque_amount[0]["amount"]
+        return final_amount if final_amount > 0 else 0
 
     @classmethod
     def get_amount_received(cls, parent_cheque, branch):
+        """Returns the total amount received regardless if hard cash or not"""
         amount = ExternalChequeHistory.objects.filter(
-            parent_cheque=parent_cheque, parent_cheque__person__branch=branch
+            cheque=parent_cheque, parent_cheque__person__branch=branch
         ).aggregate(total=Sum("amount"))
         amount = amount.get("total", 0)
         amount = amount if amount else 0

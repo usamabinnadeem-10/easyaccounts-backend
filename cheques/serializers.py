@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from essentials.models import Person
@@ -103,6 +105,7 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
                 "branch": branch,
             }
         )
+
         external_cheque = ExternalChequeHistory.objects.create(
             **{
                 **validated_data,
@@ -176,7 +179,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
         cheque_obj = ExternalCheque.objects.create(
             **{
                 **data_for_cheque,
-                "serial": ExternalCheque.get_next_serial("serial", person_branch=branch),
+                "serial": ExternalCheque.get_next_serial("serial", person__branch=branch),
                 "person": validated_data["cheque"].person,
             }
         )
@@ -220,15 +223,19 @@ class ListExternalChequeHistorySerializer(serializers.ModelSerializer):
 
 
 class TransferExternalChequeSerializer(serializers.ModelSerializer):
+
+    date = serializers.DateTimeField(default=datetime.now, write_only=True)
+
     class Meta:
         model = ExternalChequeTransfer
-        fields = ["id", "cheque", "person"]
+        fields = ["id", "cheque", "person", "date"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):
         branch = self.context["request"].branch
         user = self.context["request"].user
         cheque = validated_data["cheque"]
+        date = validated_data.pop("date")
         # cheque with hisotry can not be transferred
         if has_history(cheque, branch):
             raise serializers.ValidationError(
@@ -249,7 +256,7 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
 
         transfer = ExternalChequeTransfer.objects.create(**validated_data, user=user)
         create_ledger_entry_for_cheque(
-            transfer.cheque, "D", True, validated_data["person"]
+            transfer.cheque, "D", True, validated_data["person"], **{"date": date}
         )
 
         cheque.status = ChequeStatusChoices.TRANSFERRED
@@ -302,6 +309,7 @@ class IssuePersonalChequeSerializer(serializers.ModelSerializer):
             "serial": PersonalCheque.get_next_serial("serial", person__branch=branch),
             "user": user,
         }
+        print(validated_data)
         personal_cheque = PersonalCheque.objects.create(**data_for_cheque)
         create_ledger_entry_for_cheque(
             personal_cheque, "D", **{"cheque_type": "personal"}
@@ -313,9 +321,11 @@ class ReturnPersonalChequeSerializer(serializers.Serializer):
     """return personal cheque from a person"""
 
     cheque = serializers.UUIDField()
+    date = serializers.DateTimeField(write_only=True)
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        date = validated_data.pop("date")
         cheque = get_object_or_404(
             PersonalCheque,
             id=validated_data["cheque"],
@@ -325,7 +335,9 @@ class ReturnPersonalChequeSerializer(serializers.Serializer):
         cheque.status = PersonalChequeStatusChoices.RETURNED
         cheque.save()
 
-        create_ledger_entry_for_cheque(cheque, "C", **{"cheque_type": "personal"})
+        create_ledger_entry_for_cheque(
+            cheque, "C", **{"cheque_type": "personal"}, **{"date": date}
+        )
 
         return validated_data
 
@@ -335,9 +347,11 @@ class ReIssuePersonalChequeFromReturnedSerializer(serializers.Serializer):
 
     cheque = serializers.UUIDField()
     person = serializers.UUIDField()
+    date = serializers.DateTimeField(write_only=True)
 
     def create(self, validated_data):
         branch = self.context["request"].branch
+        date = validated_data.pop("date")
         cheque = get_object_or_404(
             PersonalCheque,
             id=validated_data["cheque"],
@@ -349,7 +363,9 @@ class ReIssuePersonalChequeFromReturnedSerializer(serializers.Serializer):
         cheque.status = PersonalChequeStatusChoices.PENDING
         cheque.save()
 
-        create_ledger_entry_for_cheque(cheque, "D", **{"cheque_type": "personal"})
+        create_ledger_entry_for_cheque(
+            cheque, "D", **{"cheque_type": "personal"}, **{"date": date}
+        )
 
         return validated_data
 

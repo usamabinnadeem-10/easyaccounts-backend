@@ -84,7 +84,7 @@ class EditUpdateDeleteTransaction(
 
         transaction_details = TransactionDetail.objects.filter(
             branch=self.request.branch, transaction=instance
-        ).values("product", "quantity", "warehouse", "yards_per_piece", "branch")
+        ).values("product", "quantity", "warehouse", "yards_per_piece")
 
         for transaction in transaction_details:
             update_stock("C" if instance.nature == "D" else "D", transaction)

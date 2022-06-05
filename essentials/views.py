@@ -155,7 +155,6 @@ class DayBook(APIView):
             "date__gte": today_start,
             "date__lte": today,
         }
-        print(filters)
 
         cheque_account = get_cheque_account(request.branch).account
 
@@ -205,7 +204,7 @@ class DayBook(APIView):
                 branch=request.branch
                 # external_cheque__status=ChequeStatusChoices.PENDING,
             )
-            .exclude(account_type=cheque_account)
+            # .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
 
@@ -314,7 +313,9 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
         try:
             qp = request.query_params
             account = qp.get("account")
-            filters = {"branch": request.branch}
+            branch = request.branch
+            branch_filter = {"branch": request.branch}
+            filters = {}
             start_date = (
                 datetime.strptime(qp.get("start"), "%Y-%m-%d")
                 if qp.get("start")
@@ -330,7 +331,7 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
 
             account = get_object_or_404(AccountType, id=account, branch=request.branch)
             filters.update({"account_type": account})
-            ledger = Ledger.objects.filter(**filters).values()
+            ledger = Ledger.objects.filter(**filters, **branch_filter).values()
             ledger = add_type(ledger, "Ledger entry")
 
             opening_balance = [
@@ -344,21 +345,27 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             ]
 
             external_cheque_history = format_cheques_as_ledger(
-                ExternalChequeHistory.objects.filter(**filters).values(),
+                ExternalChequeHistory.objects.filter(
+                    **filters, parent_cheque__person__branch=branch
+                ).values(),
                 "C",
                 "Party cheque",
             )
 
             personal_cheques = format_cheques_as_ledger(
                 PersonalCheque.objects.filter(
-                    **filters, status=PersonalChequeStatusChoices.CLEARED
+                    **filters,
+                    status=PersonalChequeStatusChoices.CLEARED,
+                    person__branch=branch
                 ).values(),
                 "D",
                 "Personal cheque",
             )
 
             expenses = format_cheques_as_ledger(
-                ExpenseDetail.objects.filter(**filters).values(), "D", "Expense"
+                ExpenseDetail.objects.filter(**filters, expense__branch=branch).values(),
+                "D",
+                "Expense",
             )
             final_result = sorted(
                 chain(

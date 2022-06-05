@@ -4,7 +4,7 @@ from functools import reduce
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
 from core.utils import convert_date_to_datetime
-from django.db.models import F, Min, Sum
+from django.db.models import F, Max, Min, Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from essentials.pagination import CustomPagination
 from logs.choices import ActivityCategory, ActivityTypes
@@ -34,7 +34,11 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
         elif self.request.method == "GET":
             qp = self.request.query_params
             person = qp.get("person")
-            endDate = convert_date_to_datetime(qp.get("end"))
+            endDate = (
+                convert_date_to_datetime(qp.get("end"), True)
+                or Ledger.objects.aggregate(date_max=Max("date"))["date_max"]
+                or datetime.now()
+            )
             return Ledger.objects.select_related(
                 "person", "account_type", "transaction"
             ).filter(
@@ -107,7 +111,9 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
         ledger_data = LedgerSerializer(
             self.paginate_queryset(
                 queryset.filter(date__gte=startDate).order_by(
-                    F("date"), F("transaction__serial").asc(nulls_last=False)
+                    F("date"),
+                    F("transaction__serial").asc(nulls_last=False),
+                    F("time_stamp"),
                 )
             ),
             many=True,

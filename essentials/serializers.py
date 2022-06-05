@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 
 from ledgers.models import Ledger
 from logs.choices import ActivityCategory, ActivityTypes
@@ -23,7 +23,9 @@ class PersonSerializer(CreateLogEntry, serializers.ModelSerializer):
 
     category = ActivityCategory.PERSON
 
-    opening_balance_date = serializers.DateField(default=date.today, write_only=True)
+    opening_balance_date = serializers.DateTimeField(
+        default=datetime.now, write_only=True
+    )
     nature = serializers.CharField(write_only=True)
 
     class Meta:

@@ -3,7 +3,7 @@ from .models import CancelledInvoice, CancelStockTransfer, StockTransfer, Transa
 
 class TransactionQuery:
     def get_queryset(self):
-        return Transaction.objects.filter(branch=self.request.branch)
+        return Transaction.objects.filter(person__branch=self.request.branch)
 
 
 class CancelledInvoiceQuery:
