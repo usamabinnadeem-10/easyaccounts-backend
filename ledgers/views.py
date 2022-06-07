@@ -13,7 +13,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ledgers.models import Ledger
+from ledgers.models import Ledger, LedgerAndExternalCheque
 from ledgers.serializers import LedgerSerializer
 
 from .queries import LedgerQuery
@@ -39,9 +39,7 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
                 or Ledger.objects.aggregate(date_max=Max("date"))["date_max"]
                 or datetime.now()
             )
-            return Ledger.objects.select_related(
-                "person", "account_type", "transaction"
-            ).filter(
+            return Ledger.objects.select_related("person", "account_type",).filter(
                 person__branch=self.request.branch,
                 person=person,
                 date__lte=endDate,
@@ -64,12 +62,14 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
 
         branch = request.branch
 
-        balance_external_cheques = Ledger.get_external_cheque_balance(person, branch)
-
+        balance_external_cheques = LedgerAndExternalCheque.get_external_cheque_balance(
+            person, branch
+        )
         recovered_external_cheque_amount = ExternalCheque.get_amount_recovered(
             person, branch
         )
-        cleared_cheques = Ledger.get_passed_cheque_amount(person, branch)
+        cleared_cheques = LedgerAndExternalCheque.get_passed_cheque_amount(person, branch)
+
         cleared_transferred_cheques = (
             ExternalCheque.get_sum_of_cleared_transferred_cheques(person, branch)
         )
@@ -87,8 +87,8 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
 
         # sum of cheques that have been transferred to this person
         balance_cheques = list(
-            queryset.values("nature")
-            .order_by("nature")
+            LedgerAndExternalCheque.objects.values("ledger_entry__nature")
+            .order_by("ledger_entry__nature")
             .filter(external_cheque__status=ChequeStatusChoices.TRANSFERRED)
             .annotate(amount=Sum("external_cheque__amount"))
         )
@@ -112,7 +112,7 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
             self.paginate_queryset(
                 queryset.filter(date__gte=startDate).order_by(
                     F("date"),
-                    F("transaction__serial").asc(nulls_last=False),
+                    # F("ledger_transaction__serial").asc(nulls_last=False),
                     F("time_stamp"),
                 )
             ),

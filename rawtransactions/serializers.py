@@ -112,9 +112,9 @@ class RawTransactionLotSerializer(serializers.ModelSerializer):
 
 def create_ledger_entry(raw_transaction, ledger_string, amount, branch):
     Ledger.objects.create(
-        detail=ledger_string,
+        # detail=ledger_string,
         nature="C",
-        raw_transaction=raw_transaction,
+        # raw_transaction=raw_transaction,
         person=raw_transaction.person,
         date=raw_transaction.date,
         amount=amount,
@@ -362,11 +362,11 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
             RawDebitLotDetail.objects.bulk_create(current_return_details)
 
         Ledger.objects.create(
-            raw_debit=debit_instance,
+            # raw_debit=debit_instance,
             nature="D",
-            detail="Kora maal wapsi"
-            if debit_instance.debit_type == RawDebitTypes.RETURN
-            else "Kora sale",
+            # detail="Kora maal wapsi"
+            # if debit_instance.debit_type == RawDebitTypes.RETURN
+            # else "Kora sale",
             person=debit_instance.person,
             amount=ledger_amount,
             branch=self.branch,

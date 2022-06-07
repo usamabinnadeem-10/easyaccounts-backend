@@ -8,6 +8,7 @@ from django.db.models import Count, Max, Sum
 from essentials.choices import LinkedAccountChoices
 from essentials.models import AccountType, LinkedAccount, Person
 from rest_framework import serializers
+from transactions.choices import TransactionChoices
 
 from .choices import *
 
@@ -19,6 +20,16 @@ class AbstractCheque(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     due_date = models.DateField()
     amount = models.FloatField(validators=[MinValueValidator(1.0)])
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
+
+    @classmethod
+    def get_transaction_string(cls, instances, cheque_type):
+        """Return string for ledger. Instances here are LedgerAnd(External or Personal)Cheque records"""
+        string = ""
+        PERSONAL = "personal"
+        for i in instances:
+            cheque = i.personal_cheque if cheque_type == PERSONAL else i.external_cheque
+            string += f"Cheque # {cheque.serial} {cheque.get_bank_display()} {cheque.cheque_number}"
+        return string
 
     class Meta:
         abstract = True
@@ -161,7 +172,7 @@ class ExternalChequeHistory(ID, UserAwareModel, DateTimeAwareModel):
                     ChequeStatusChoices.CLEARED,
                     ChequeStatusChoices.COMPLETED_HISTORY,
                 ],
-                **filter
+                **filter,
             )
             .annotate(amount=Sum("amount"))
         )

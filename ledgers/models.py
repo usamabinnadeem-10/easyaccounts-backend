@@ -3,15 +3,13 @@ from functools import reduce
 
 from authentication.models import BranchAwareModel, UserAwareModel
 from cheques.choices import ChequeStatusChoices
-from cheques.models import ExternalCheque, PersonalCheque
 from core.constants import MIN_POSITIVE_VAL_SMALL
-from core.models import DateTimeAwareModel
+from core.models import ID, DateTimeAwareModel
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 from essentials.models import AccountType, Person
-from rawtransactions.models import RawDebit, RawTransaction
 
 
 class TransactionChoices(models.TextChoices):
@@ -20,24 +18,10 @@ class TransactionChoices(models.TextChoices):
 
 
 class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
-    detail = models.TextField(max_length=1000, null=True, blank=True)
     amount = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
     account_type = models.ForeignKey(AccountType, on_delete=models.SET_NULL, null=True)
-    transaction = models.ForeignKey(
-        "transactions.Transaction", on_delete=models.CASCADE, null=True
-    )
-    external_cheque = models.ForeignKey(
-        ExternalCheque, on_delete=models.CASCADE, null=True
-    )
-    personal_cheque = models.ForeignKey(
-        PersonalCheque, on_delete=models.CASCADE, null=True
-    )
-    raw_transaction = models.ForeignKey(
-        RawTransaction, on_delete=models.CASCADE, null=True
-    )
-    raw_debit = models.ForeignKey(RawDebit, on_delete=models.CASCADE, null=True)
 
     class Meta:
         ordering = ["date"]
@@ -48,13 +32,14 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
             Ledger.objects.values("nature")
             .filter(
                 person__branch=branch,
-                external_cheque__isnull=False,
+                ledger_external_cheque__isnull=False,
                 person=person,
-                external_cheque__person=person,
+                ledger_external_cheque__person=person,
             )
             .exclude(external_cheque__status=ChequeStatusChoices.RETURNED)
             .annotate(amount=Sum("amount"))
         )
+        print(all_external_cheques)
         balance_of_external_cheques = reduce(
             lambda prev, curr: prev
             + (curr["amount"] if curr["nature"] == "C" else -curr["amount"]),
@@ -79,18 +64,6 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
         return 0
 
     @classmethod
-    def create_ledger_string(cls, detail):
-        """creates ledger string for the transaction details"""
-        string = ""
-        for d in list(detail):
-            string += (
-                f"{float(d['quantity'])} thaan "
-                f"{d['product'].name} ({d['yards_per_piece']} Yards) "
-                f"@ PKR {str(d['rate'])} per yard\n"
-            )
-        return string
-
-    @classmethod
     def create_ledger_entry_for_transasction(cls, t_data):
         """creates ledger entries for transaction"""
         transaction = t_data["transaction"]
@@ -102,18 +75,15 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
             0,
         )
         amount -= transaction.discount
-        ledger_string = Ledger.create_ledger_string(t_detail)
         ledger_data = [
             Ledger(
                 **{
-                    "detail": ledger_string,
                     "amount": amount,
-                    "transaction": transaction,
                     "user": transaction.user,
                     "nature": transaction.nature,
                     "person": transaction.person,
                     "date": transaction.date,
-                    "branch": transaction.branch,
+                    "branch": transaction.person.branch,
                 }
             )
         ]
@@ -121,15 +91,104 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
             ledger_data.append(
                 Ledger(
                     **{
-                        "detail": f"Paid on {transaction.account_type.name}",
                         "amount": transaction.paid_amount,
-                        "transaction": transaction,
                         "nature": "C",
                         "account_type": transaction.account_type,
                         "person": transaction.person,
                         "date": transaction.date,
-                        "branch": transaction.branch,
+                        "branch": transaction.person.branch,
                     }
                 )
             )
-        Ledger.objects.bulk_create(ledger_data)
+        ledger_instances = Ledger.objects.bulk_create(ledger_data)
+        for instance in ledger_instances:
+            LedgerAndTransaction.objects.create(
+                ledger_entry=instance, transaction=transaction
+            )
+
+
+class LedgerAndTransaction(ID):
+    """Ledger and Transaction link"""
+
+    ledger_entry = models.ForeignKey(
+        Ledger, on_delete=models.CASCADE, related_name="ledger_transaction"
+    )
+    transaction = models.ForeignKey("transactions.Transaction", on_delete=models.CASCADE)
+
+
+class LedgerAndExternalCheque(ID):
+    """Ledger and External Cheque link"""
+
+    ledger_entry = models.ForeignKey(
+        Ledger, on_delete=models.CASCADE, related_name="ledger_external_cheque"
+    )
+    external_cheque = models.ForeignKey(
+        "cheques.ExternalCheque", on_delete=models.CASCADE
+    )
+
+    @classmethod
+    def get_external_cheque_balance(cls, person, branch):
+        all_external_cheques = (
+            LedgerAndExternalCheque.objects.values("ledger_entry__nature")
+            .filter(
+                ledger_entry__person__branch=branch,
+                external_cheque__isnull=False,
+                ledger_entry__person=person,
+                external_cheque__person=person,
+            )
+            .exclude(external_cheque__status=ChequeStatusChoices.RETURNED)
+            .annotate(amount=Sum("external_cheque__amount"))
+        )
+
+        balance_of_external_cheques = reduce(
+            lambda prev, curr: prev
+            + (
+                curr["amount"] if curr["ledger_entry__nature"] == "C" else -curr["amount"]
+            ),
+            all_external_cheques,
+            0,
+        )
+
+        return balance_of_external_cheques
+
+    @classmethod
+    def get_passed_cheque_amount(cls, person, branch):
+        total = LedgerAndExternalCheque.objects.filter(
+            ledger_entry__person__branch=branch,
+            external_cheque__isnull=False,
+            ledger_entry__person=person,
+            external_cheque__is_passed_with_history=False,
+            external_cheque__person=person,
+            external_cheque__status=ChequeStatusChoices.CLEARED,
+        ).aggregate(total=Sum("external_cheque__amount"))
+        total = total.get("total", 0)
+        if total is not None:
+            return total
+        return 0
+
+
+class LedgerAndPersonalCheque(ID):
+    """Ledger and Personal Cheque link"""
+
+    ledger_entry = models.ForeignKey(
+        Ledger, on_delete=models.CASCADE, related_name="ledger_personal_cheque"
+    )
+    personal_cheque = models.ForeignKey(
+        "cheques.PersonalCheque", on_delete=models.CASCADE
+    )
+
+
+class LedgerAndRawTransaction(ID):
+    ledger_entry = models.ForeignKey(
+        Ledger, on_delete=models.CASCADE, related_name="ledger_raw_transaction"
+    )
+    raw_transaction = models.ForeignKey(
+        "rawtransactions.RawTransaction", on_delete=models.CASCADE
+    )
+
+
+class LedgerAndRawDebit(ID):
+    ledger_entry = models.ForeignKey(
+        Ledger, on_delete=models.CASCADE, related_name="ledger_raw_debit"
+    )
+    raw_debit = models.ForeignKey("rawtransactions.RawDebit", on_delete=models.CASCADE)

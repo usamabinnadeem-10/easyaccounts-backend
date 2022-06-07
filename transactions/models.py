@@ -44,6 +44,9 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     def get_manual_serial(self):
         return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
 
+    def get_computer_serial(self):
+        return f"{self.manual_serial_type}-{self.serial}"
+
     @classmethod
     def check_average_selling_rates(cls, date, t_detail):
         """check if selling rate is more than buying"""
@@ -151,6 +154,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
 
     @classmethod
     def make_transaction(cls, data, user=None, branch=None, old=None):
+        """make a transaction"""
         if user and branch:
             Transaction.check_stock(branch, data["date"], data, old)
             transaction_details = data.pop("transaction_detail")
@@ -202,6 +206,34 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             "No user / branch found",
             400,
         )
+
+    @classmethod
+    def get_transaction_string(cls, instances, nature, account_type):
+        """Return string for ledger. Instances here are LedgerAndTransaction records"""
+        string = ""
+        for i in instances:
+            transaction = i.transaction
+            details = transaction.transaction_detail.all()
+            serial_type = transaction.manual_serial_type
+            serial_num = transaction.get_computer_serial()
+            if serial_type == TransactionSerialTypes.INV:
+                if nature == TransactionChoices.CREDIT:
+                    return f"Paid for {serial_num} against {account_type.name}"
+                string += "Sale"
+            elif serial_type == TransactionSerialTypes.SUP:
+                string += "Purchase"
+            elif serial_type == TransactionSerialTypes.MWC:
+                string += "Purchase return"
+            elif serial_type == TransactionSerialTypes.MWS:
+                string += "Sale return"
+            string += f" {serial_num} : "
+            for d in details:
+                string += (
+                    f"{float(d.quantity)} thaan "
+                    f"{d.product.name} ({d.yards_per_piece} Yards) "
+                    f"@ PKR {str(d.rate)} per yard\n"
+                )
+        return string
 
 
 class TransactionDetail(ID):

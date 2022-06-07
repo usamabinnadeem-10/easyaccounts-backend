@@ -5,7 +5,7 @@ from core.utils import convert_date_to_datetime
 from django.db.models import Sum
 from essentials.choices import LinkedAccountChoices
 from essentials.models import LinkedAccount
-from ledgers.models import Ledger
+from ledgers.models import Ledger, LedgerAndExternalCheque, LedgerAndPersonalCheque
 from rest_framework import serializers, status
 
 from .choices import ChequeStatusChoices
@@ -33,7 +33,7 @@ def is_valid_history_entry(data, parent_cheque):
     )
     if total_amount_received == data["cheque"].amount:
         error = f"All amounts received against this cheque. Please check children cheques"
-    elif (data["cheque"].amount - total_amount_received) - data["amount"] < 0:
+    elif (data["cheque"].amount - abs(total_amount_received)) - data["amount"] < 0:
         error = f"Remaining amount = {data['cheque'].amount - total_amount_received}"
 
     # if remaining_amount >= data["amount"]:
@@ -113,20 +113,27 @@ def create_ledger_entry_for_cheque(
         "nature": nature,
         "person": transfer_to if is_transfer else cheque_obj.person,
         "account_type": cheque_linked_account.account,
-        "detail": (
-            f"""{message}{cheque_obj.get_bank_display()} -- {cheque_obj.cheque_number} / due date : {cheque_obj.due_date} / serial ({cheque_obj.serial})"""
-        ),
+        # "detail": (
+        #     f"""{message}{cheque_obj.get_bank_display()} -- {cheque_obj.cheque_number} / due date : {cheque_obj.due_date} / serial ({cheque_obj.serial})"""
+        # ),
     }
 
-    extra_detail = ""
-    if cheque_type == "personal":
-        data_for_ledger.update({"personal_cheque": cheque_obj})
-        if nature == "C":
-            extra_detail = "Personal cheque return -- "
-        else:
-            extra_detail = "Personal cheque issue -- "
-        data_for_ledger.update({"detail": f"{extra_detail}{data_for_ledger['detail']}"})
-    else:
-        data_for_ledger.update({"external_cheque": cheque_obj})
+    # extra_detail = ""
 
-    Ledger.objects.create(**data_for_ledger)
+    ledger_entry = Ledger.objects.create(**data_for_ledger)
+
+    if cheque_type == "personal":
+        # data_for_ledger.update({"personal_cheque": cheque_obj})
+        LedgerAndPersonalCheque.objects.create(
+            ledger_entry=ledger_entry, personal_cheque=cheque_obj
+        )
+        # if nature == "C":
+        #     extra_detail = "Personal cheque return -- "
+        # else:
+        #     extra_detail = "Personal cheque issue -- "
+        # data_for_ledger.update({"detail": f"{extra_detail}{data_for_ledger['detail']}"})
+    else:
+        LedgerAndExternalCheque.objects.create(
+            ledger_entry=ledger_entry, external_cheque=cheque_obj
+        )
+        # data_for_ledger.update({"external_cheque": cheque_obj})
