@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "rawtransactions.apps.RawtransactionsConfig",
     "dying",
     "logs",
+    "payments",
 ]
 
 MIDDLEWARE = [
