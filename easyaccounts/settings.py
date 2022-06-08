@@ -31,7 +31,7 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 # ]
 
 ALLOWED_HOSTS = os.getenv(
-    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,8971-39-37-209-158.ngrok.io"
+    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,e52d-182-186-196-185.ngrok.io"
 ).split(",")
 
 
@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "dying",
     "logs",
     "payments",
+    "django_cleanup.apps.CleanupConfig",
 ]
 
 MIDDLEWARE = [

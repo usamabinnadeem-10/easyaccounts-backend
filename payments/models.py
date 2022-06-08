@@ -20,4 +20,6 @@ class Payment(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
 
 class PaymentImage(ID):
     image = models.ImageField(upload_to=get_image_upload_path)
-    payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
+    payment = models.ForeignKey(
+        Payment, on_delete=models.CASCADE, related_name="image_list"
+    )
