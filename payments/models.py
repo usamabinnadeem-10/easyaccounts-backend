@@ -17,9 +17,23 @@ class Payment(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     serial = models.PositiveBigIntegerField()
 
+    @classmethod
+    def get_transaction_string(cls, instances):
+        """Return string for ledger. Instances here are LedgerAndPayment records"""
+        string = ""
+        for i in instances:
+            payment = i.payment
+            account_type = payment.account_type.name or ""
+            string += f"P-{payment.serial} ({account_type})"
+        return string
+
 
 class PaymentImage(ID):
     image = models.ImageField(upload_to=get_image_upload_path)
-    payment = models.ForeignKey(
-        Payment, on_delete=models.CASCADE, related_name="image_list"
+
+
+class PaymentAndImage(ID):
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
+    image = models.ForeignKey(
+        PaymentImage, on_delete=models.CASCADE, related_name="payment_image"
     )

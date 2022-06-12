@@ -28,7 +28,6 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
                 "nature": transaction.nature,
                 "person": transaction.person,
                 "date": transaction.date,
-                "branch": transaction.branch,
             }
         )
     ]
@@ -43,7 +42,6 @@ def create_ledger_entries(transaction, transaction_details, paid, ledger_string)
                     "account_type": transaction.account_type,
                     "person": transaction.person,
                     "date": transaction.date,
-                    "branch": transaction.branch,
                 }
             )
         )

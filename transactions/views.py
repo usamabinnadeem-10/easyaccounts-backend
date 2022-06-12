@@ -31,7 +31,6 @@ from .serializers import (
     UpdateTransactionSerializer,
     ViewTransfersSerializer,
 )
-from .utils import update_stock
 
 
 class GetOrCreateTransaction(generics.ListCreateAPIView):
@@ -81,15 +80,8 @@ class EditUpdateDeleteTransaction(
 
     def delete(self, *args, **kwargs):
         instance = self.get_object()
-
-        transaction_details = TransactionDetail.objects.filter(
-            branch=self.request.branch, transaction=instance
-        ).values("product", "quantity", "warehouse", "yards_per_piece")
-
-        for transaction in transaction_details:
-            update_stock("C" if instance.nature == "D" else "D", transaction)
-
         self.perform_destroy(instance)
+        Transaction.check_stock(self.request.branch, None)
         Log.create_log(
             ActivityTypes.DELETED,
             ActivityCategory.TRANSACTION,
@@ -293,19 +285,8 @@ class DeleteTransferStock(TransferQuery, generics.DestroyAPIView):
     """Delete transfer stock"""
 
     def perform_destroy(self, instance):
-        transfer_detail = StockTransferDetail.objects.filter(transfer=instance)
-        for detail in transfer_detail:
-            data = {
-                "product": detail.product,
-                "warehouse": instance.from_warehouse,
-                "yards_per_piece": detail.yards_per_piece,
-                "quantity": detail.quantity,
-                "branch": self.request.branch,
-            }
-            update_stock("C", data)
-            data["warehouse"] = detail.to_warehouse
-            update_stock("D", data)
         super().perform_destroy(instance)
+        Transaction.check_stock(self.request.branch)
         Log.create_log(
             ActivityTypes.DELETED,
             ActivityCategory.STOCK_TRANSFER,

@@ -1,7 +1,7 @@
 from datetime import date
 from functools import reduce
 
-from authentication.models import BranchAwareModel, UserAwareModel
+from authentication.models import UserAwareModel
 from cheques.choices import ChequeStatusChoices
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel
@@ -17,7 +17,7 @@ class TransactionChoices(models.TextChoices):
     DEBIT = "D", _("Debit")
 
 
-class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
+class Ledger(ID, UserAwareModel, DateTimeAwareModel):
     amount = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
@@ -39,7 +39,6 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
             .exclude(external_cheque__status=ChequeStatusChoices.RETURNED)
             .annotate(amount=Sum("amount"))
         )
-        print(all_external_cheques)
         balance_of_external_cheques = reduce(
             lambda prev, curr: prev
             + (curr["amount"] if curr["nature"] == "C" else -curr["amount"]),
@@ -83,7 +82,6 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
                     "nature": transaction.nature,
                     "person": transaction.person,
                     "date": transaction.date,
-                    "branch": transaction.person.branch,
                 }
             )
         ]
@@ -96,7 +94,6 @@ class Ledger(BranchAwareModel, UserAwareModel, DateTimeAwareModel):
                         "account_type": transaction.account_type,
                         "person": transaction.person,
                         "date": transaction.date,
-                        "branch": transaction.person.branch,
                     }
                 )
             )
@@ -192,3 +189,22 @@ class LedgerAndRawDebit(ID):
         Ledger, on_delete=models.CASCADE, related_name="ledger_raw_debit"
     )
     raw_debit = models.ForeignKey("rawtransactions.RawDebit", on_delete=models.CASCADE)
+
+
+class LedgerAndPayment(ID):
+    ledger_entry = models.ForeignKey(
+        Ledger, on_delete=models.CASCADE, related_name="ledger_payment"
+    )
+    payment = models.ForeignKey(
+        "payments.Payment", on_delete=models.CASCADE, related_name="payment_ledger"
+    )
+
+    @classmethod
+    def create_ledger_entry(cls, payment):
+        ledger_instance = Ledger.objects.create(
+            amount=payment.amount,
+            nature=payment.nature,
+            person=payment.person,
+            account_type=payment.account_type,
+        )
+        LedgerAndPayment.objects.create(ledger_entry=ledger_instance, payment=payment)

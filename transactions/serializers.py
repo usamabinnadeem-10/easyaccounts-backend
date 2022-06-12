@@ -553,28 +553,30 @@ class TransferStockSerializer(serializers.ModelSerializer):
             branch=branch,
         )
         detail_entries = []
-        total_quantity = 0
+        total_quantity = reduce(
+            lambda prev, curr: prev + curr["quantity"], transfer_detail, 0
+        )
         for detail in transfer_detail:
-            total_quantity += detail["quantity"]
-            data = {
-                "product": detail["product"],
-                "warehouse": from_warehouse,
-                "yards_per_piece": detail["yards_per_piece"],
-                "quantity": detail["quantity"],
-                "branch": branch,
-            }
-            update_stock("D", data)
-            data.update({"warehouse": detail["to_warehouse"]})
-            update_stock("C", data)
+            # total_quantity += detail["quantity"]
+            # data = {
+            #     "product": detail["product"],
+            #     "warehouse": from_warehouse,
+            #     "yards_per_piece": detail["yards_per_piece"],
+            #     "quantity": detail["quantity"],
+            #     "branch": branch,
+            # }
+            # update_stock("D", data)
+            # data.update({"warehouse": detail["to_warehouse"]})
+            # update_stock("C", data)
 
             detail_entries.append(
                 StockTransferDetail(
-                    branch=branch,
                     transfer=transfer_instance,
                     **detail,
                 )
             )
         StockTransferDetail.objects.bulk_create(detail_entries)
+        Transaction.check_stock(branch, transfer_instance.date)
 
         Log.create_log(
             self.type,

@@ -6,8 +6,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import PaymentImage
-from .queries import PaymentImageQuery, PaymentQuery
-from .serializers import PaymentImageSerializer, PaymentSerializer
+from .queries import PaymentAndImageQuery, PaymentImageQuery, PaymentQuery
+from .serializers import (
+    PaymentAndImageListSerializer,
+    PaymentSerializer,
+    UploadImageSerializer,
+)
 
 
 class ListPaymentView(PaymentQuery, ListAPIView):
@@ -16,7 +20,7 @@ class ListPaymentView(PaymentQuery, ListAPIView):
     """
 
     parser_classes = [MultiPartParser, FormParser]
-    serializer_class = PaymentSerializer
+    serializer_class = PaymentAndImageListSerializer
     pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -31,10 +35,15 @@ class ListPaymentView(PaymentQuery, ListAPIView):
 class CreatePaymentView(PaymentQuery, CreateAPIView):
     """create payments"""
 
-    parser_classes = [MultiPartParser, FormParser]
+    # parser_classes = [MultiPartParser, FormParser]
     serializer_class = PaymentSerializer
 
 
-class DeletePictureView(PaymentImageQuery, DestroyAPIView):
+class AddImageView(PaymentImageQuery, CreateAPIView):
+    """add images only"""
 
-    serializer_class = PaymentImageSerializer
+    serializer_class = UploadImageSerializer
+
+
+class DeletePictureView(PaymentImageQuery, DestroyAPIView):
+    pass

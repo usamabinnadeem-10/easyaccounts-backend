@@ -1,6 +1,7 @@
 from cheques.models import ExternalCheque, PersonalCheque
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
+from payments.models import Payment
 from rest_framework import serializers
 from transactions.models import Transaction
 
@@ -68,5 +69,8 @@ class LedgerSerializer(serializers.ModelSerializer):
         elif obj.ledger_personal_cheque.exists():
             instances = obj.ledger_personal_cheque.all()
             string = PersonalCheque.get_transaction_string(instances, "personal")
+        elif obj.ledger_payment.exists():
+            instances = obj.ledger_payment.all()
+            string = Payment.get_transaction_string(instances)
 
         return string

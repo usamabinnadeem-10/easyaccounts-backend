@@ -85,6 +85,33 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 opening,
             )
         )
+        transfers = (
+            StockTransferDetail.objects.values(
+                "product", "to_warehouse", "yards_per_piece", "transfer__from_warehouse"
+            )
+            .filter(transfer__date__lte=date)
+            .annotate(quantity=Sum("quantity"))
+        )
+        for t in transfers:
+            product = {
+                "product": t["product"],
+                "yards_per_piece": t["yards_per_piece"],
+                "quantity": t["quantity"],
+            }
+            opening.append(
+                {
+                    "warehouse": t["transfer__from_warehouse"],
+                    "transaction__nature": "D",
+                    **product,
+                }
+            )
+            opening.append(
+                {
+                    "warehouse": t["to_warehouse"],
+                    "transaction__nature": "C",
+                    **product,
+                }
+            )
         if t_old and t_new:
             stock_raw = (
                 TransactionDetail.objects.values(
@@ -143,10 +170,9 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         return final
 
     @classmethod
-    def check_stock(cls, branch, date, t_new, t_old):
+    def check_stock(cls, branch, date=None, t_new=None, t_old=None):
         """checks if the stock is valid"""
         stock = Transaction.get_all_stock(branch, date, t_new, t_old)
-
         for s in stock:
             if s["quantity"] < 0:
                 product = Product.objects.get(id=s["product"])
@@ -156,7 +182,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     def make_transaction(cls, data, user=None, branch=None, old=None):
         """make a transaction"""
         if user and branch:
-            Transaction.check_stock(branch, data["date"], data, old)
+            # Transaction.check_stock(branch, data["date"], data, old)
             transaction_details = data.pop("transaction_detail")
             paid = data.pop("paid")
             if paid and data["paid_amount"] <= 0.0:
@@ -197,7 +223,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                     )
                 )
             transactions = TransactionDetail.objects.bulk_create(details)
-            # Transaction.check_stock(branch, transaction.date, transaction_details)
+            Transaction.check_stock(branch)
             Ledger.create_ledger_entry_for_transasction(
                 {"transaction": transaction, "detail": transaction_details, "paid": paid}
             )
