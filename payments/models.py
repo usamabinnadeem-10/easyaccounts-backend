@@ -23,8 +23,10 @@ class Payment(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
         string = ""
         for i in instances:
             payment = i.payment
-            account_type = payment.account_type.name or ""
-            string += f"P-{payment.serial} ({account_type})"
+            account_type = (
+                f" ({payment.account_type.name})" if payment.account_type else ""
+            )
+            string += f"Payment : P-{payment.serial}{account_type}"
         return string
 
 

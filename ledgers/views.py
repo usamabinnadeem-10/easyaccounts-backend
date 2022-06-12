@@ -3,10 +3,10 @@ from functools import reduce
 
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
+from core.pagination import LargePagination
 from core.utils import convert_date_to_datetime
 from django.db.models import F, Max, Min, Sum
 from django_filters.rest_framework import DjangoFilterBackend
-from essentials.pagination import CustomPagination
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 from rest_framework import generics, status
@@ -26,7 +26,8 @@ class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
     """
 
     serializer_class = LedgerSerializer
-    pagination_class = CustomPagination
+    page_size = 50
+    pagination_class = LargePagination
 
     def filter_queryset(self):
         if self.request.method == "POST":

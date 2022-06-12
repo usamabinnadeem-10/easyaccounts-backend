@@ -10,6 +10,7 @@ from cheques.serializers import (
     ShortExternalChequeHistorySerializer,
 )
 from cheques.utils import get_cheque_account
+from core.pagination import PaginationHandlerMixin, StandardPagination
 from core.utils import convert_date_to_datetime
 from django.db.models import F, Q, Sum
 from django.shortcuts import get_object_or_404
@@ -26,7 +27,6 @@ from transactions.models import Transaction
 from transactions.serializers import TransactionSerializer
 
 from essentials.choices import PersonChoices
-from essentials.pagination import CustomPagination, PaginationHandlerMixin
 
 from .models import *
 from .queries import (
@@ -307,7 +307,7 @@ class GetStockQuantity(StockQuery, ListAPIView):
 class GetAccountHistory(APIView, PaginationHandlerMixin):
     """Get account history for a specific account type"""
 
-    pagination_class = CustomPagination
+    pagination_class = StandardPagination
 
     def get(self, request):
         try:

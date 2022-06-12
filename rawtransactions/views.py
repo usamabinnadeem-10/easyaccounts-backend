@@ -1,8 +1,8 @@
 from collections import defaultdict
 from operator import itemgetter
 
+from core.pagination import StandardPagination
 from django_filters.rest_framework import DjangoFilterBackend
-from essentials.pagination import CustomPagination
 from rest_framework import generics
 from transactions.choices import TransactionChoices
 
@@ -66,7 +66,7 @@ class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
 
     serializer_class = RawLotNumberAndIdSerializer
     filter_backends = [DjangoFilterBackend]
-    pagination_class = CustomPagination
+    pagination_class = StandardPagination
     filter_fields = {
         "raw_transaction__person": ["exact"],
     }

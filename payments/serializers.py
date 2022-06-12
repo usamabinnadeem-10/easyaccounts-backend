@@ -91,13 +91,19 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         self.branch = self.context["request"].branch
-        if data["account_type"]:
+        account_type = data["account_type"]
+        if account_type:
             cheque_account = get_cheque_account(self.branch).account
-            if data["account_type"] == cheque_account:
+            if account_type == cheque_account:
                 raise serializers.ValidationError(
                     "Please use another account for payments", status.HTTP_400_BAD_REQUEST
                 )
-            pass
+        else:
+            if data["nature"] == "C":
+                raise serializers.ValidationError(
+                    "Please use an account to add payment", status.HTTP_400_BAD_REQUEST
+                )
+        return data
 
     def create(self, validated_data):
         images = validated_data.pop("images")

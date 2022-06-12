@@ -1,5 +1,5 @@
+from core.pagination import StandardPagination
 from django_filters.rest_framework import DjangoFilterBackend
-from essentials.pagination import CustomPagination
 from rest_framework.generics import CreateAPIView, DestroyAPIView, ListAPIView
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -21,7 +21,7 @@ class ListPaymentView(PaymentQuery, ListAPIView):
 
     parser_classes = [MultiPartParser, FormParser]
     serializer_class = PaymentAndImageListSerializer
-    pagination_class = CustomPagination
+    pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
         "date": ["gte", "lte", "exact"],

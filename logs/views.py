@@ -1,5 +1,5 @@
+from core.pagination import StandardPagination
 from django_filters.rest_framework import DjangoFilterBackend
-from essentials.pagination import CustomPagination
 from rest_framework.generics import ListAPIView
 
 from .queries import LogQuery
@@ -12,7 +12,7 @@ class LogView(LogQuery, ListAPIView):
     """
 
     serializer_class = LogSerializer
-    pagination_class = CustomPagination
+    pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
         "time_stamp": ["gte", "lte"],

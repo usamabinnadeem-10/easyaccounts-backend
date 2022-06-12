@@ -1,11 +1,11 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
+from core.pagination import StandardPagination
 from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from essentials.models import *
-from essentials.pagination import CustomPagination
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
 from logs.choices import ActivityCategory, ActivityTypes
@@ -39,7 +39,7 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
     """
 
     serializer_class = TransactionSerializer
-    pagination_class = CustomPagination
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         transactions = (
@@ -94,7 +94,7 @@ class EditUpdateDeleteTransaction(
 class FilterTransactions(TransactionQuery, generics.ListAPIView):
 
     serializer_class = TransactionSerializer
-    pagination_class = CustomPagination
+    pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
         "date": ["gte", "lte"],
