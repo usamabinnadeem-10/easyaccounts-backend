@@ -8,27 +8,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# env = environ.Env()
-# environ.Env.read_env()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# SECRET_KEY = "django-insecure-eb7!+icg1r0+*z+@+6h66g-7o*(oq-@0@6r%k=oikq84w)%56-"
-# SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 DEBUG = os.getenv("DEBUG", "True") == "True"
-
-# ALLOWED_HOSTS = [
-#     "localhost",
-#     "127.0.0.1",
-#     "8971-39-37-209-158.ngrok.io",
-# ]
 
 ALLOWED_HOSTS = os.getenv(
     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,e52d-182-186-196-185.ngrok.io"
@@ -41,7 +29,6 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -62,8 +49,9 @@ INSTALLED_APPS = [
     "rawtransactions.apps.RawtransactionsConfig",
     "dying",
     "logs",
-    "payments",
+    "payments.apps.PaymentsConfig",
     "django_cleanup.apps.CleanupConfig",
+    "storages",
 ]
 
 MIDDLEWARE = [
@@ -99,19 +87,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "easyaccounts.wsgi.application"
-
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": "easyaccounts",
-#         "USER": "usama",
-#         "PASSWORD": "8080",
-#         "HOST": "127.0.0.1",
-#         "PORT": "5432",
-#         "ATOMIC_REQUESTS": True,
-#     }
-# }
 
 DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "False") == "True"
 
@@ -164,22 +139,16 @@ USE_L10N = True
 # USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.2/howto/static-files/
-
-STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-INTERNAL_IPS = [
-    # ...
-    "127.0.0.1",
-    # ...
-]
+# INTERNAL_IPS = [
+#     # ...
+#     "127.0.0.1",
+#     # ...
+# ]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -220,3 +189,32 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 }
+
+"""S3 settings"""
+
+S3_ENABLED = os.getenv("S3_ENABLED") == "True"
+
+if S3_ENABLED:
+    # aws settings
+    AWS_S3_ACCESS_KEY_ID = os.getenv("AWS_S3_ACCESS_KEY_ID")
+    AWS_S3_SECRET_ACCESS_KEY = os.getenv("AWS_S3_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_DEFAULT_ACL = None
+    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+    # s3 static settings
+    STATIC_LOCATION = "static"
+    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_LOCATION}/"
+    STATICFILES_STORAGE = "easyaccounts.storage_backends.StaticStorage"
+    # s3 public media settings
+    PUBLIC_MEDIA_LOCATION = "media"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/"
+    DEFAULT_FILE_STORAGE = "easyaccounts.storage_backends.PublicMediaStorage"
+    # s3 private media settings
+    PRIVATE_MEDIA_LOCATION = "private"
+    PRIVATE_FILE_STORAGE = "easyaccounts.storage_backends.PrivateMediaStorage"
+else:
+    STATIC_URL = "/static/"
+    STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")

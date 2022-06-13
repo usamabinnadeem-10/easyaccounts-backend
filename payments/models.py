@@ -2,6 +2,7 @@ from authentication.models import UserAwareModel
 from core.models import ID, DateTimeAwareModel, NextSerial
 from django.core.validators import MinValueValidator
 from django.db import models
+from easyaccounts.storage_backends import PrivateMediaStorage
 from essentials.models import AccountType, Person
 from transactions.choices import TransactionChoices
 
@@ -31,7 +32,9 @@ class Payment(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
 
 
 class PaymentImage(ID):
-    image = models.ImageField(upload_to=get_image_upload_path)
+    image = models.ImageField(
+        upload_to=get_image_upload_path, storage=PrivateMediaStorage()
+    )
 
 
 class PaymentAndImage(ID):
