@@ -27,7 +27,7 @@ class Payment(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
             account_type = (
                 f" ({payment.account_type.name})" if payment.account_type else ""
             )
-            string += f"Payment : P-{payment.serial}{account_type}"
+            string += f"Payment : {account_type}"
         return string
 
 

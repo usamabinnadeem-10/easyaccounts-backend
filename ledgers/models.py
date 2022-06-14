@@ -206,5 +206,6 @@ class LedgerAndPayment(ID):
             nature=payment.nature,
             person=payment.person,
             account_type=payment.account_type,
+            date=payment.date,
         )
         LedgerAndPayment.objects.create(ledger_entry=ledger_instance, payment=payment)

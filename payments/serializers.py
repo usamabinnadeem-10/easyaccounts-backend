@@ -71,12 +71,30 @@ class UploadImageSerializer(serializers.ModelSerializer):
         return validated_data
 
 
-class PaymentSerializer(serializers.ModelSerializer):
+class ValidateAccountTypeForPayment:
+    def validate(self, data):
+        self.branch = self.context["request"].branch
+        account_type = data["account_type"]
+        if account_type:
+            cheque_account = get_cheque_account(self.branch).account
+            if account_type == cheque_account:
+                raise serializers.ValidationError(
+                    "Please use another account for payments", status.HTTP_400_BAD_REQUEST
+                )
+        return data
+
+
+class PaymentSerializer(
+    ValidateAccountTypeForPayment,
+    serializers.ModelSerializer,
+):
     """serialize payment form along with an array of image ids"""
 
     images = PaymentImageIdWriteSerializer(many=True, required=False, write_only=True)
     image_urls = PaymentImageUrlSerializer(many=True, read_only=True)
     branch = None
+    image_urls_final = []
+    user = None
 
     class Meta:
         model = Payment
@@ -94,45 +112,55 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "serial"]
 
     def validate(self, data):
+        super().validate(data)
+        self.user = self.context["request"].user
         self.branch = self.context["request"].branch
-        account_type = data["account_type"]
-        if account_type:
-            cheque_account = get_cheque_account(self.branch).account
-            if account_type == cheque_account:
-                raise serializers.ValidationError(
-                    "Please use another account for payments", status.HTTP_400_BAD_REQUEST
-                )
         return data
 
-    def create(self, validated_data):
-        images = validated_data.pop("images")
-        user = self.context["request"].user
-        branch = self.context["request"].branch
-        serial = Payment.get_next_serial("serial", person__branch=branch)
-        payment_instance = Payment.objects.create(
-            user=user, serial=serial, **validated_data
-        )
+    def link_images(self, images, payment_instance):
+        """link up image ids with payment object"""
         payment_imgs = []
-        image_urls = []
         for img in images:
             tuple_list = list(img.items())
             key_value = tuple_list[0]
             image_instance = key_value[1]
-            image_urls.append({"id": image_instance.id, "url": image_instance.image.url})
+            self.image_urls_final.append(
+                {"id": image_instance.id, "url": image_instance.image.url}
+            )
             payment_imgs.append(
                 PaymentAndImage(payment=payment_instance, image=image_instance)
             )
-        LedgerAndPayment.create_ledger_entry(payment_instance)
         PaymentAndImage.objects.bulk_create(payment_imgs)
-        validated_data["image_urls"] = image_urls
+
+    def create(self, validated_data):
+        images = validated_data.pop("images")
+        serial = Payment.get_next_serial("serial", person__branch=self.branch)
+        payment_instance = Payment.objects.create(
+            user=self.user, serial=serial, **validated_data
+        )
+        self.link_images(images, payment_instance)
+        LedgerAndPayment.create_ledger_entry(payment_instance)
+        validated_data["image_urls"] = self.image_urls_final
         validated_data["serial"] = serial
+        return validated_data
+
+    def update(self, instance, validated_data):
+        images = validated_data.pop("images")
+        self.link_images(images, instance)
+        # delete the older instance in the ledger
+        LedgerAndPayment.objects.get(payment=instance).delete()
+
+        new_payment = super().update(instance, validated_data)
+        LedgerAndPayment.create_ledger_entry(new_payment)
+        validated_data["image_urls"] = self.image_urls_final
+        validated_data["serial"] = new_payment.serial
         return validated_data
 
 
 class PaymentAndImageListSerializer(serializers.ModelSerializer):
     """Serialize payments and attach all images of the payment"""
 
-    images = serializers.SerializerMethodField()
+    image_urls = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
@@ -143,9 +171,10 @@ class PaymentAndImageListSerializer(serializers.ModelSerializer):
             "account_type",
             "person",
             "serial",
-            "images",
+            "image_urls",
+            "amount",
         ]
 
-    def get_images(self, obj):
+    def get_image_urls(self, obj):
         images = PaymentImage.objects.filter(payment_image__payment=obj)
         return map(lambda x: {"id": x.id, "url": x.image.url}, images)

@@ -6,7 +6,6 @@ from .models import PaymentAndImage
 
 @receiver(post_delete, sender=PaymentAndImage)
 def delete_images_if_payment_is_deleted(sender, instance, **kwargs):
-    print(instance)
     try:
         if instance.image:
             instance.image.delete()

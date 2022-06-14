@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "essentials",
-    "ledgers",
+    "ledgers.apps.LedgersConfig",
     "transactions",
     "expenses",
     "cheques.apps.ChequesConfig",
