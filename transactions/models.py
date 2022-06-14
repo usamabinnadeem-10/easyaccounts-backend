@@ -243,16 +243,18 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             serial_type = transaction.manual_serial_type
             serial_num = transaction.get_computer_serial()
             if serial_type == TransactionSerialTypes.INV:
-                if nature == TransactionChoices.CREDIT:
+                if nature == TransactionChoices.CREDIT and account_type is not None:
                     return f"Paid for {serial_num} against {account_type.name}"
-                string += "Sale"
+                else:
+                    return f"Paid for {serial_num}"
+                string += "Sale : "
             elif serial_type == TransactionSerialTypes.SUP:
-                string += "Purchase"
+                string += "Purchase : "
             elif serial_type == TransactionSerialTypes.MWC:
-                string += "Purchase return"
+                string += "Purchase return : "
             elif serial_type == TransactionSerialTypes.MWS:
-                string += "Sale return"
-            string += f" {serial_num} : "
+                string += "Sale return : "
+            # string += f" {serial_num} : "
             for d in details:
                 string += (
                     f"{float(d.quantity)} thaan "

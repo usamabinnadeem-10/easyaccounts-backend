@@ -5,21 +5,16 @@ from payments.models import Payment
 from rest_framework import serializers
 from transactions.models import Transaction
 
+from .constants import INSTANCE_TYPES
 from .models import *
 
 
 class LedgerSerializer(serializers.ModelSerializer):
 
-    transaction_serial = serializers.CharField(
-        source="transaction.serial", read_only=True
-    )
-    manual_invoice_serial = serializers.IntegerField(
-        source="transaction.manual_invoice_serial", read_only=True
-    )
-    manual_serial_type = serializers.CharField(
-        source="transaction.manual_serial_type", read_only=True
-    )
     detail = serializers.SerializerMethodField(read_only=True)
+    serial = serializers.SerializerMethodField(read_only=True)
+    instances = None
+    instance_type = None
 
     class Meta:
         model = Ledger
@@ -30,12 +25,10 @@ class LedgerSerializer(serializers.ModelSerializer):
             "amount",
             "nature",
             "account_type",
-            "transaction_serial",
-            "manual_invoice_serial",
-            "manual_serial_type",
             "detail",
+            "serial",
         ]
-        read_only_fields = ["id", "detail"]
+        read_only_fields = ["id", "detail", "serial"]
         extra_kwargs = {
             "account_type": {"required": False},
             "transaction": {"required": False},
@@ -54,23 +47,53 @@ class LedgerSerializer(serializers.ModelSerializer):
         )
         return instance
 
+    def _set_instances(self, obj):
+        """set related instances of the current object being serialized"""
+        if obj.ledger_transaction.exists():
+            self.instances = obj.ledger_transaction.all()
+            self.instance_type = INSTANCE_TYPES["T"]
+        elif obj.ledger_external_cheque.exists():
+            self.instances = obj.ledger_external_cheque.all()
+            self.instance_type = INSTANCE_TYPES["EC"]
+        elif obj.ledger_personal_cheque.exists():
+            self.instances = obj.ledger_personal_cheque.all()
+            self.instance_type = INSTANCE_TYPES["PC"]
+        elif obj.ledger_payment.exists():
+            self.instances = obj.ledger_payment.all()
+            self.instance_type = INSTANCE_TYPES["P"]
+
+    def set_instances(self, obj):
+        """check if self.instance is None and set the property"""
+        print(self.instances)
+        if self.instances is None:
+            self._set_instances(obj)
+        print(self.instances)
+
     def get_detail(self, obj):
         """create ledger detail"""
+        self.set_instances(obj)
         string = ""
         nature = obj.nature
-        if obj.ledger_transaction.exists():
-            instances = obj.ledger_transaction.all()
+        if self.instance_type == INSTANCE_TYPES["T"]:
             string = Transaction.get_transaction_string(
-                instances, nature, obj.account_type
+                self.instances, nature, obj.account_type
             )
-        elif obj.ledger_external_cheque.exists():
-            instances = obj.ledger_external_cheque.all()
-            string = ExternalCheque.get_transaction_string(instances, "external")
-        elif obj.ledger_personal_cheque.exists():
-            instances = obj.ledger_personal_cheque.all()
-            string = PersonalCheque.get_transaction_string(instances, "personal")
-        elif obj.ledger_payment.exists():
-            instances = obj.ledger_payment.all()
-            string = Payment.get_transaction_string(instances)
+        elif self.instance_type == INSTANCE_TYPES["EC"]:
+            string = ExternalCheque.get_transaction_string(self.instances, "external")
+        elif self.instance_type == INSTANCE_TYPES["PC"]:
+            string = PersonalCheque.get_transaction_string(self.instances, "personal")
+        elif self.instance_type == INSTANCE_TYPES["P"]:
+            string = Payment.get_transaction_string(self.instances)
 
         return string
+
+    def get_serial(self, obj):
+        """serial number"""
+        if obj.ledger_transaction.exists():
+            return obj.ledger_transaction.first().transaction.get_computer_serial()
+        elif obj.ledger_external_cheque.exists():
+            return f"CH-E : {obj.ledger_external_cheque.first().external_cheque.serial}"
+        elif obj.ledger_personal_cheque.exists():
+            return f"CH-P : {obj.ledger_personal_cheque.first().personal_cheque.serial}"
+        elif obj.ledger_payment.exists():
+            return f"P : {obj.ledger_payment.first().payment.serial}"

@@ -162,7 +162,7 @@ class DayBook(APIView):
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
         ledgers = Ledger.objects.filter(
-            person__person_type=PersonChoices.CUSTOMER, **filters, branch=branch
+            person__person_type=PersonChoices.CUSTOMER, **filters, person__branch=branch
         )
         ledger_serialized = LedgerSerializer(ledgers, many=True)
 
@@ -201,7 +201,7 @@ class DayBook(APIView):
             .filter(
                 date__lte=today,
                 account_type__isnull=False,
-                branch=request.branch
+                person__branch=request.branch
                 # external_cheque__status=ChequeStatusChoices.PENDING,
             )
             # .exclude(account_type=cheque_account)
