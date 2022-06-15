@@ -89,7 +89,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             StockTransferDetail.objects.values(
                 "product", "to_warehouse", "yards_per_piece", "transfer__from_warehouse"
             )
-            .filter(transfer__date__lte=date)
+            # .filter(transfer__date__lte=date)
             .annotate(quantity=Sum("quantity"))
         )
         for t in transfers:
@@ -140,7 +140,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 )
                 .filter(
                     transaction__person__branch=branch,
-                    transaction__date__lte=date,
+                    # transaction__date__lte=date,
                     **kwargs,
                 )
                 .annotate(quantity=Sum("quantity"))
@@ -233,34 +233,35 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             400,
         )
 
-    @classmethod
-    def get_transaction_string(cls, instances, nature, account_type):
+    def get_transaction_string(self, nature):
         """Return string for ledger. Instances here are LedgerAndTransaction records"""
         string = ""
-        for i in instances:
-            transaction = i.transaction
-            details = transaction.transaction_detail.all()
-            serial_type = transaction.manual_serial_type
-            serial_num = transaction.get_computer_serial()
-            if serial_type == TransactionSerialTypes.INV:
-                if nature == TransactionChoices.CREDIT and account_type is not None:
-                    return f"Paid for {serial_num} against {account_type.name}"
+        transaction = self
+        details = transaction.transaction_detail.all()
+        serial_type = transaction.manual_serial_type
+        serial_num = transaction.get_computer_serial()
+        if serial_type == TransactionSerialTypes.INV:
+            if nature == TransactionChoices.CREDIT:
+                if self.account_type is not None:
+                    return f"Paid for {serial_num} against {self.account_type.name}"
                 else:
                     return f"Paid for {serial_num}"
+            else:
+                # return f"Paid for {serial_num}"
                 string += "Sale : "
-            elif serial_type == TransactionSerialTypes.SUP:
-                string += "Purchase : "
-            elif serial_type == TransactionSerialTypes.MWC:
-                string += "Purchase return : "
-            elif serial_type == TransactionSerialTypes.MWS:
-                string += "Sale return : "
-            # string += f" {serial_num} : "
-            for d in details:
-                string += (
-                    f"{float(d.quantity)} thaan "
-                    f"{d.product.name} ({d.yards_per_piece} Yards) "
-                    f"@ PKR {str(d.rate)} per yard\n"
-                )
+        elif serial_type == TransactionSerialTypes.SUP:
+            string += "Purchase : "
+        elif serial_type == TransactionSerialTypes.MWC:
+            string += "Purchase return : "
+        elif serial_type == TransactionSerialTypes.MWS:
+            string += "Sale return : "
+        # string += f" {serial_num} : "
+        for d in details:
+            string += (
+                f"{float(d.quantity)} thaan "
+                f"{d.product.name} ({d.yards_per_piece} Yards) "
+                f"@ PKR {str(d.rate)} per yard\n"
+            )
         return string
 
 

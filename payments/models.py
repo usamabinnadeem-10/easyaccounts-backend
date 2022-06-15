@@ -18,16 +18,11 @@ class Payment(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     serial = models.PositiveBigIntegerField()
 
-    @classmethod
-    def get_transaction_string(cls, instances):
+    def get_ledger_string(self):
         """Return string for ledger. Instances here are LedgerAndPayment records"""
         string = ""
-        for i in instances:
-            payment = i.payment
-            account_type = (
-                f" ({payment.account_type.name})" if payment.account_type else ""
-            )
-            string += f"Payment : {account_type}"
+        account_type = f" : ({self.account_type.name})" if self.account_type else ""
+        string += f"Payment{account_type}"
         return string
 
 

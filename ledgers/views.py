@@ -166,7 +166,7 @@ class GetAllBalances(APIView):
     """
 
     def get(self, request):
-        filters = {"branch": request.branch}
+        filters = {"person__branch": request.branch}
 
         if request.query_params.get("person"):
             filters.update({"person__person_type": request.query_params.get("person")})

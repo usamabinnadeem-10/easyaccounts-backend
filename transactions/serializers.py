@@ -576,7 +576,7 @@ class TransferStockSerializer(serializers.ModelSerializer):
                 )
             )
         StockTransferDetail.objects.bulk_create(detail_entries)
-        Transaction.check_stock(branch, transfer_instance.date)
+        Transaction.check_stock(branch, None)
 
         Log.create_log(
             self.type,
@@ -677,4 +677,4 @@ class GetAllStockSerializer(serializers.Serializer):
     warehouse = serializers.UUIDField(read_only=True)
     yards_per_piece = serializers.FloatField(read_only=True)
     quantity = serializers.FloatField(read_only=True)
-    date = serializers.DateTimeField(write_only=True, default=datetime.now())
+    # date = serializers.DateTimeField(write_only=True, default=datetime.now())

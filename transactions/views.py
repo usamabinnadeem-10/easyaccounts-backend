@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from core.pagination import StandardPagination
+from core.utils import convert_qp_dict_to_qp
 from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -424,9 +425,25 @@ class CancelStockTransferView(CancelStockTransferQuery, generics.CreateAPIView):
 class ViewAllStock(TransactionQuery, generics.ListAPIView):
 
     serializer_class = GetAllStockSerializer
+    filter_backends = [DjangoFilterBackend]
+    filter_fields = {
+        "quantity": ["gte", "lte", "exact"],
+        "yards_per_piece": ["gte", "lte", "exact"],
+        "product": ["exact"],
+        "warehouse": ["exact"],
+    }
 
     def list(self, request, *args, **kwargs):
         qp = request.query_params
-        stock = Transaction.get_all_stock(request.branch, qp.get("date"))
+        qpDict = dict(request.GET.lists())
+        qps = convert_qp_dict_to_qp(qpDict)
+        print(qps)
+        outcut = qps.pop("outcut", None)
+        date = qps.pop("date", None)
+        stock = Transaction.get_all_stock(request.branch, date, None, None, **qps)
+        if outcut:
+            stock = filter(
+                lambda x: x["yards_per_piece"] != 44 and x["yards_per_piece"] != 66, stock
+            )
         serializer = self.get_serializer(stock, many=True)
         return Response(serializer.data)

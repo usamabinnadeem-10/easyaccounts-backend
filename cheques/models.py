@@ -21,15 +21,9 @@ class AbstractCheque(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     amount = models.FloatField(validators=[MinValueValidator(1.0)])
     person = models.ForeignKey(Person, on_delete=models.CASCADE)
 
-    @classmethod
-    def get_transaction_string(cls, instances, cheque_type):
+    def get_ledger_string(self, cheque_type):
         """Return string for ledger. Instances here are LedgerAnd(External or Personal)Cheque records"""
-        string = ""
-        PERSONAL = "personal"
-        for i in instances:
-            cheque = i.personal_cheque if cheque_type == PERSONAL else i.external_cheque
-            string += f"Cheque # {cheque.serial} {cheque.get_bank_display()} {cheque.cheque_number}"
-        return string
+        return f"Cheque # {self.serial} {self.get_bank_display()} {self.cheque_number}"
 
     class Meta:
         abstract = True
