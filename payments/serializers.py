@@ -134,14 +134,10 @@ class PaymentSerializer(
 
     def create(self, validated_data):
         images = validated_data.pop("images")
-        serial = Payment.get_next_serial("serial", person__branch=self.branch)
-        payment_instance = Payment.objects.create(
-            user=self.user, serial=serial, **validated_data
-        )
+        payment_instance = Payment.make_payment(self.context["request"], validated_data)
         self.link_images(images, payment_instance)
-        LedgerAndPayment.create_ledger_entry(payment_instance)
         validated_data["image_urls"] = self.image_urls_final
-        validated_data["serial"] = serial
+        validated_data["serial"] = payment_instance.serial
         return validated_data
 
     def update(self, instance, validated_data):

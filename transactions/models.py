@@ -12,6 +12,7 @@ from django.db import models
 from django.db.models import Avg, Sum
 from essentials.models import AccountType, Person, Product, Stock, Warehouse
 from ledgers.models import Ledger
+from payments.models import Payment
 from rest_framework.serializers import ValidationError
 
 from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
@@ -179,10 +180,11 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 raise ValidationError(f"{product.name} low in stock", 400)
 
     @classmethod
-    def make_transaction(cls, data, user=None, branch=None, old=None):
+    def make_transaction(cls, data, request, old=None):
         """make a transaction"""
+        user = request.user
+        branch = request.branch
         if user and branch:
-            # Transaction.check_stock(branch, data["date"], data, old)
             transaction_details = data.pop("transaction_detail")
             paid = data.pop("paid")
             if paid and data["paid_amount"] <= 0.0:
@@ -208,6 +210,8 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 ),
             )
             details = []
+
+            # verify if the selling rates are legal
             for detail in transaction_details:
                 if TransactionDetail.is_rate_invalid(
                     transaction.nature, detail["product"], detail["rate"]
@@ -223,10 +227,27 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                     )
                 )
             transactions = TransactionDetail.objects.bulk_create(details)
+
+            # check if the stock is okay
             Transaction.check_stock(branch)
+
+            # create ledger entry for the current transaction
             Ledger.create_ledger_entry_for_transasction(
-                {"transaction": transaction, "detail": transaction_details, "paid": paid}
+                {"transaction": transaction, "detail": transaction_details}
             )
+
+            # if the transaction is paid then create a payment entry
+            # if paid:
+            #     Payment.make_payment(
+            #         request,
+            #         {
+            #             "nature": TransactionChoices.CREDIT,
+            #             "amount": transaction.paid_amount,
+            #             "account_type": transaction.account_type,
+            #             "person": transaction.person,
+            #         },
+            #     )
+
             return {"transaction": transaction, "detail": transactions}
         raise ValidationError(
             "No user / branch found",

@@ -19,6 +19,8 @@ from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
 from ledgers.models import Ledger
 from ledgers.serializers import LedgerSerializer
+from payments.models import Payment
+from payments.serializers import PaymentAndImageListSerializer
 from rest_framework import status
 from rest_framework.generics import CreateAPIView, ListAPIView
 from rest_framework.response import Response
@@ -161,15 +163,20 @@ class DayBook(APIView):
         expenses = ExpenseDetail.objects.filter(**filters, expense__branch=branch)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
-        ledgers = Ledger.objects.filter(
-            person__person_type=PersonChoices.CUSTOMER, **filters, person__branch=branch
-        )
-        ledger_serialized = LedgerSerializer(ledgers, many=True)
+        # ledgers = Ledger.objects.filter(
+        #     person__person_type=PersonChoices.CUSTOMER, **filters, person__branch=branch
+        # )
+        # ledger_serialized = LedgerSerializer(ledgers, many=True)
 
         transactions = Transaction.objects.filter(
             person__person_type=PersonChoices.CUSTOMER, **filters, person__branch=branch
         )
         transactions_serialized = TransactionSerializer(transactions, many=True).data
+
+        payments = Payment.objects.filter(
+            person__branch=branch, person__person_type=PersonChoices.CUSTOMER, **filters
+        )
+        payments_serialized = PaymentAndImageListSerializer(payments, many=True).data
 
         external_cheques = ExternalCheque.objects.filter(**filters, person__branch=branch)
         external_cheques_serialized = ExternalChequeSerializer(
@@ -204,7 +211,7 @@ class DayBook(APIView):
                 person__branch=request.branch
                 # external_cheque__status=ChequeStatusChoices.PENDING,
             )
-            # .exclude(account_type=cheque_account)
+            .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
 
@@ -272,7 +279,7 @@ class DayBook(APIView):
         return Response(
             {
                 "expenses": expenses_serialized.data,
-                "ledgers": ledger_serialized.data,
+                "payments": payments_serialized,
                 "transactions": transactions_serialized,
                 "balance_ledgers": final_account_balances,
                 "balance_expenses": balance_expenses,
@@ -331,7 +338,9 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
 
             account = get_object_or_404(AccountType, id=account, branch=request.branch)
             filters.update({"account_type": account})
-            ledger = Ledger.objects.filter(**filters, **branch_filter).values()
+            ledger = Ledger.objects.filter(
+                **filters, person__branch=request.branch
+            ).values()
             ledger = add_type(ledger, "Ledger entry")
 
             opening_balance = [

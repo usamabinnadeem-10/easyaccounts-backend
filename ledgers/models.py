@@ -74,34 +74,18 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
             0,
         )
         amount -= transaction.discount
-        ledger_data = [
-            Ledger(
-                **{
-                    "amount": amount,
-                    "user": transaction.user,
-                    "nature": transaction.nature,
-                    "person": transaction.person,
-                    "date": transaction.date,
-                }
-            )
-        ]
-        if t_data["paid"]:
-            ledger_data.append(
-                Ledger(
-                    **{
-                        "amount": transaction.paid_amount,
-                        "nature": "C",
-                        "account_type": transaction.account_type,
-                        "person": transaction.person,
-                        "date": transaction.date,
-                    }
-                )
-            )
-        ledger_instances = Ledger.objects.bulk_create(ledger_data)
-        for instance in ledger_instances:
-            LedgerAndTransaction.objects.create(
-                ledger_entry=instance, transaction=transaction
-            )
+        ledger_instance = Ledger.objects.create(
+            **{
+                "amount": amount,
+                "user": transaction.user,
+                "nature": transaction.nature,
+                "person": transaction.person,
+                "date": transaction.date,
+            }
+        )
+        LedgerAndTransaction.objects.create(
+            ledger_entry=ledger_instance, transaction=transaction
+        )
 
 
 class LedgerAndTransaction(ID):
@@ -110,7 +94,10 @@ class LedgerAndTransaction(ID):
     ledger_entry = models.ForeignKey(
         Ledger, on_delete=models.CASCADE, related_name="ledger_transaction"
     )
-    transaction = models.ForeignKey("transactions.Transaction", on_delete=models.CASCADE)
+    transaction = models.ForeignKey(
+        "transactions.Transaction",
+        on_delete=models.CASCADE,
+    )
 
 
 class LedgerAndExternalCheque(ID):
@@ -120,7 +107,8 @@ class LedgerAndExternalCheque(ID):
         Ledger, on_delete=models.CASCADE, related_name="ledger_external_cheque"
     )
     external_cheque = models.ForeignKey(
-        "cheques.ExternalCheque", on_delete=models.CASCADE
+        "cheques.ExternalCheque",
+        on_delete=models.CASCADE,
     )
 
     @classmethod
@@ -171,7 +159,8 @@ class LedgerAndPersonalCheque(ID):
         Ledger, on_delete=models.CASCADE, related_name="ledger_personal_cheque"
     )
     personal_cheque = models.ForeignKey(
-        "cheques.PersonalCheque", on_delete=models.CASCADE
+        "cheques.PersonalCheque",
+        on_delete=models.CASCADE,
     )
 
 
@@ -180,7 +169,8 @@ class LedgerAndRawTransaction(ID):
         Ledger, on_delete=models.CASCADE, related_name="ledger_raw_transaction"
     )
     raw_transaction = models.ForeignKey(
-        "rawtransactions.RawTransaction", on_delete=models.CASCADE
+        "rawtransactions.RawTransaction",
+        on_delete=models.CASCADE,
     )
 
 
@@ -209,3 +199,36 @@ class LedgerAndPayment(ID):
             date=payment.date,
         )
         LedgerAndPayment.objects.create(ledger_entry=ledger_instance, payment=payment)
+
+
+# class LedgerAndTransactionAndPayment(ID):
+#     ledger_entry = models.ForeignKey(
+#         Ledger,
+#         on_delete=models.SET_NULL,
+#         related_name="ledger_transaction_payment",
+#         null=True,
+#     )
+#     payment = models.ForeignKey(
+#         "payments.Payment",
+#         on_delete=models.CASCADE,
+#         related_name="payment_ledger_transaction",
+#     )
+#     transaction = models.ForeignKey(
+#         "transactions.Transaction",
+#         on_delete=models.SET_NULL,
+#         null=True,
+#         related_name="transaction_ledger_payment",
+#     )
+
+#     @classmethod
+#     def create_ledger_entry(cls, payment, transaction):
+#         ledger_instance = Ledger.objects.create(
+#             amount=payment.amount,
+#             nature=payment.nature,
+#             person=payment.person,
+#             account_type=payment.account_type,
+#             date=payment.date,
+#         )
+#         LedgerAndTransactionAndPayment.objects.create(
+#             ledger_entry=ledger_instance, payment=payment, transaction=transaction
+#         )

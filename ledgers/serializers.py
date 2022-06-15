@@ -48,6 +48,8 @@ class LedgerSerializer(serializers.ModelSerializer):
 
     def _set_instances(self, obj):
         """set related instances of the current object being serialized"""
+        # if obj.ledger_transaction_payment.exists():
+        #     self.instance_type = INSTANCE_TYPES["TP"]
         if obj.ledger_transaction.exists():
             self.instance_type = INSTANCE_TYPES["T"]
         elif obj.ledger_external_cheque.exists():
@@ -65,6 +67,13 @@ class LedgerSerializer(serializers.ModelSerializer):
         """create ledger detail"""
         self.set_instances(obj)
         nature = obj.nature
+        # if self.instance_type == INSTANCE_TYPES["TP"]:
+        #     return (
+        #         obj.ledger_transaction_payment.first().transaction.get_transaction_string(
+        #             nature
+        #         )
+        #         + f" (Payment # P - {(obj.ledger_transaction_payment.first().payment.serial)})"
+        #     )
         if self.instance_type == INSTANCE_TYPES["T"]:
             return obj.ledger_transaction.first().transaction.get_transaction_string(
                 nature
@@ -82,6 +91,10 @@ class LedgerSerializer(serializers.ModelSerializer):
 
     def get_serial(self, obj):
         """serial number"""
+        # if self.instance_type == INSTANCE_TYPES["TP"]:
+        #     return (
+        #         obj.ledger_transaction_payment.first().transaction.get_computer_serial()
+        #     )
         if self.instance_type == INSTANCE_TYPES["T"]:
             return obj.ledger_transaction.first().transaction.get_computer_serial()
         elif self.instance_type == INSTANCE_TYPES["EC"]:
