@@ -251,7 +251,7 @@ class UpdateTransactionSerializer(
 
     def validate(self, data):
         data = self.validate_total(data)
-        data = self.validate_account_type(data)
+        data = self.validate_account(data)
         return data
 
     def update(self, instance, validated_data):
