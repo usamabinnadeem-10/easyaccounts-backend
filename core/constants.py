@@ -1,1 +1,2 @@
 MIN_POSITIVE_VAL_SMALL = 0.00001
+CHEQUE_ACCOUNT = "cheque_account"

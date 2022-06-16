@@ -3,7 +3,7 @@ from functools import reduce
 from dying.models import DyingIssue
 from essentials.choices import PersonChoices
 from essentials.models import Warehouse
-from ledgers.models import Ledger
+from ledgers.models import Ledger, LedgerAndRawTransaction
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from transactions.choices import TransactionChoices
@@ -110,18 +110,6 @@ class RawTransactionLotSerializer(serializers.ModelSerializer):
         ]
 
 
-def create_ledger_entry(raw_transaction, ledger_string, amount, branch):
-    Ledger.objects.create(
-        # detail=ledger_string,
-        nature="C",
-        # raw_transaction=raw_transaction,
-        person=raw_transaction.person,
-        date=raw_transaction.date,
-        amount=amount,
-        branch=branch,
-    )
-
-
 class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
     lots = RawTransactionLotSerializer(many=True, required=True)
@@ -157,10 +145,10 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         transaction = RawTransaction.objects.create(
             **validated_data,
+            serial=RawTransaction.get_next_serial("serial", person__branch=branch),
             user=user,
         )
 
-        ledger_string = "Kora wasooli\n"
         amount = 0
         for lot in lots:
             current_lot = RawTransactionLot.objects.create(
@@ -171,7 +159,6 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                     "lot_number", raw_transaction__person__branch=branch
                 ),
             )
-            ledger_string += f"Lot # {current_lot.lot_number}\n"
             if current_lot.issued:
                 try:
                     DyingIssue.create_auto_issued_lot(
@@ -221,7 +208,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
                     )
                 )
         if transaction.person:
-            create_ledger_entry(transaction, ledger_string, amount, branch)
+            LedgerAndRawTransaction.create_ledger_entry(transaction, amount)
 
         return {
             "id": transaction.id,

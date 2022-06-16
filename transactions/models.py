@@ -213,13 +213,13 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
 
             # verify if the selling rates are legal
             for detail in transaction_details:
-                if TransactionDetail.is_rate_invalid(
-                    transaction.nature, detail["product"], detail["rate"]
-                ):
-                    raise ValidationError(
-                        f"Rate too low for {detail['product'].name}",
-                        400,
-                    )
+                # if TransactionDetail.is_rate_invalid(
+                #     transaction.nature, detail["product"], detail["rate"]
+                # ):
+                #     raise ValidationError(
+                #         f"Rate too low for {detail['product'].name}",
+                #         400,
+                #     )
                 details.append(
                     TransactionDetail(
                         transaction_id=transaction.id,

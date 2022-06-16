@@ -173,6 +173,19 @@ class LedgerAndRawTransaction(ID):
         on_delete=models.CASCADE,
     )
 
+    @classmethod
+    def create_ledger_entry(cls, raw_transaction, amount):
+        ledger_instance = Ledger.objects.create(
+            nature="C",
+            person=raw_transaction.person,
+            date=raw_transaction.date,
+            amount=amount,
+        )
+        LedgerAndRawTransaction.objects.create(
+            ledger_entry=ledger_instance, raw_transaction=raw_transaction
+        )
+        pass
+
 
 class LedgerAndRawDebit(ID):
     ledger_entry = models.ForeignKey(

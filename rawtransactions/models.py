@@ -2,7 +2,7 @@ from datetime import date
 
 from authentication.models import BranchAwareModel, UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
-from core.models import ID, NextSerial
+from core.models import ID, DateTimeAwareModel, NextSerial
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Max
@@ -51,11 +51,10 @@ class RawProduct(ID):
         return f"{self.name} - {self.person} - {self.type}"
 
 
-class RawTransaction(ID, UserAwareModel, NextSerial):
+class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw transaction"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
-    date = models.DateField(default=date.today)
     manual_invoice_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
 
@@ -85,13 +84,12 @@ class RawLotDetail(AbstractRawLotDetail):
     )
 
 
-class RawDebit(ID, UserAwareModel, NextSerial):
+class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw return or sale"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     manual_invoice_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
-    date = models.DateField(default=date.today)
     debit_type = models.CharField(max_length=10, choices=RawDebitTypes.choices)
 
     @classmethod

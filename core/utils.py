@@ -1,5 +1,10 @@
 from datetime import datetime
 
+from essentials.models import LinkedAccount
+from rest_framework import serializers
+
+from .constants import CHEQUE_ACCOUNT
+
 
 def convert_date_to_datetime(date, return_none=False, time=None):
     """get datetime format"""
@@ -26,3 +31,12 @@ def convert_qp_dict_to_qp(qpDict):
         else:
             dict[key] = val
     return dict
+
+
+def get_cheque_account(branch):
+    """get cheque account"""
+    try:
+        print(branch)
+        return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT, account__branch=branch)
+    except:
+        raise serializers.ValidationError("Please create a cheque account first", 400)

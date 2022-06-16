@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import chain
 
+from authentication.choices import RoleChoices
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeHistory, PersonalCheque
 from cheques.serializers import (
@@ -9,9 +10,8 @@ from cheques.serializers import (
     IssuePersonalChequeSerializer,
     ShortExternalChequeHistorySerializer,
 )
-from cheques.utils import get_cheque_account
 from core.pagination import PaginationHandlerMixin, StandardPagination
-from core.utils import convert_date_to_datetime
+from core.utils import convert_date_to_datetime, get_cheque_account
 from django.db.models import F, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -41,7 +41,12 @@ from .queries import (
     WarehouseQuery,
 )
 from .serializers import *
-from .utils import add_type, format_cheques_as_ledger, get_account_balances
+from .utils import (
+    add_type,
+    format_cheques_as_ledger,
+    format_external_cheques_as_ledger,
+    get_account_balances,
+)
 
 
 class CreatePerson(PersonQuery, CreateAPIView):
@@ -149,33 +154,30 @@ class DayBook(APIView):
 
     def get(self, request):
         today = convert_date_to_datetime(self.request.query_params.get("date"))
-        today_start = today - timedelta(hours=23, minutes=59, seconds=59)
-        # if self.request.query_params.get("date"):
-        #     today = convert_date_to_datetime(self.request.query_params.get("date"))
+        today_start = today.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today.replace(hour=23, minute=59, second=59, microsecond=999999)
         branch = request.branch
         filters = {
             "date__gte": today_start,
-            "date__lte": today,
+            "date__lte": today_end,
         }
+        person_filter = {}
+        if request.role not in [RoleChoices.ADMIN]:
+            person_filter = {"person__person_type": PersonChoices.CUSTOMER}
 
         cheque_account = get_cheque_account(request.branch).account
 
         expenses = ExpenseDetail.objects.filter(**filters, expense__branch=branch)
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
-        # ledgers = Ledger.objects.filter(
-        #     person__person_type=PersonChoices.CUSTOMER, **filters, person__branch=branch
-        # )
-        # ledger_serialized = LedgerSerializer(ledgers, many=True)
-
         transactions = Transaction.objects.filter(
-            person__person_type=PersonChoices.CUSTOMER, **filters, person__branch=branch
+            **person_filter, **filters, person__branch=branch
         )
         transactions_serialized = TransactionSerializer(transactions, many=True).data
 
         payments = Payment.objects.filter(
-            person__branch=branch, person__person_type=PersonChoices.CUSTOMER, **filters
-        )
+            person__branch=branch, **person_filter, **filters
+        ).order_by("serial")
         payments_serialized = PaymentAndImageListSerializer(payments, many=True).data
 
         external_cheques = ExternalCheque.objects.filter(**filters, person__branch=branch)
@@ -206,10 +208,7 @@ class DayBook(APIView):
             Ledger.objects.values("account_type__name", "nature")
             .order_by("nature")
             .filter(
-                date__lte=today,
-                account_type__isnull=False,
-                person__branch=request.branch
-                # external_cheque__status=ChequeStatusChoices.PENDING,
+                date__lte=today, account_type__isnull=False, person__branch=request.branch
             )
             .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
@@ -321,27 +320,36 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             qp = request.query_params
             account = qp.get("account")
             branch = request.branch
-            branch_filter = {"branch": request.branch}
             filters = {}
-            start_date = (
-                datetime.strptime(qp.get("start"), "%Y-%m-%d")
-                if qp.get("start")
-                else None
-            )
-            if start_date:
-                filters.update({"date__gte": start_date})
-            end_date = (
-                datetime.strptime(qp.get("end"), "%Y-%m-%d") if qp.get("end") else None
-            )
-            if end_date:
-                filters.update({"date__lte": end_date})
+            date_filters = {}
+            start = convert_date_to_datetime(qp.get("start"), True)
+            end = convert_date_to_datetime(qp.get("end"), True)
+            if start:
+                date_filters.update(
+                    {
+                        "date__gte": start.replace(
+                            hour=0, minute=0, second=0, microsecond=0
+                        )
+                    }
+                )
+            if end:
+                date_filters.update(
+                    {
+                        "date__lte": end.replace(
+                            hour=23, minute=59, second=59, microsecond=999999
+                        )
+                    }
+                )
 
             account = get_object_or_404(AccountType, id=account, branch=request.branch)
-            filters.update({"account_type": account})
-            ledger = Ledger.objects.filter(
-                **filters, person__branch=request.branch
-            ).values()
-            ledger = add_type(ledger, "Ledger entry")
+            cheque_account = get_cheque_account(branch).account
+
+            filters.update({"account_type": account, **date_filters})
+
+            payments = Payment.objects.filter(**filters, person__branch=branch).values(
+                "amount", "nature", "serial", "date", "id"
+            )
+            payments = add_type(payments, "P")
 
             opening_balance = [
                 {
@@ -352,13 +360,28 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
                     "type": "Opening Balance",
                 }
             ]
+            external_cheques = []
+            if account == cheque_account:
+                external_cheques = format_external_cheques_as_ledger(
+                    ExternalCheque.objects.filter(
+                        **date_filters, person__branch=branch
+                    ).values("amount", "date", "id", "serial", "status"),
+                    "CH-E",
+                )
 
             external_cheque_history = format_cheques_as_ledger(
                 ExternalChequeHistory.objects.filter(
                     **filters, parent_cheque__person__branch=branch
-                ).values(),
+                )
+                .exclude(account_type=cheque_account)
+                .values(
+                    "amount",
+                    "date",
+                    "id",
+                    serial=F("parent_cheque__serial"),
+                ),
                 "C",
-                "Party cheque",
+                "CH-E-H",
             )
 
             personal_cheques = format_cheques_as_ledger(
@@ -366,19 +389,23 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
                     **filters,
                     status=PersonalChequeStatusChoices.CLEARED,
                     person__branch=branch
-                ).values(),
+                ).values("amount", "date", "serial", "id"),
                 "D",
-                "Personal cheque",
+                "CH-P",
             )
 
             expenses = format_cheques_as_ledger(
-                ExpenseDetail.objects.filter(**filters, expense__branch=branch).values(),
+                ExpenseDetail.objects.filter(**filters, expense__branch=branch).values(
+                    "amount", "date", "serial", "id"
+                ),
                 "D",
-                "Expense",
+                "E",
             )
+
             final_result = sorted(
                 chain(
-                    ledger,
+                    payments,
+                    external_cheques,
                     external_cheque_history,
                     personal_cheques,
                     expenses,
@@ -390,7 +417,7 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             paginated = self.get_paginated_response(paginated).data
             return Response({"data": paginated}, status=status.HTTP_200_OK)
 
-        except:
+        except Exception:
             return Response(
                 {"error": "Please choose an account type"},
                 status=status.HTTP_400_BAD_REQUEST,
