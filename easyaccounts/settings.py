@@ -19,7 +19,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = os.getenv(
-    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,143.244.130.80"
+    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,128.199.23.125"
 ).split(",")
 
 
@@ -107,7 +107,7 @@ else:
         "default": {
             "ENGINE": "django.db.backends.postgresql_psycopg2",
             "NAME": "easyaccounts_db",
-            "USER": "admin",
+            "USER": "usama",
             "PASSWORD": "Pakistan6564!",
             "HOST": "localhost",
             "PORT": "",
