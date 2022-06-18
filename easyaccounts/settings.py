@@ -92,7 +92,7 @@ WSGI_APPLICATION = "easyaccounts.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "easyaccounts_db",
+        "NAME": "easyaccounts",
         "USER": "easyaccounts",
         "PASSWORD": "Pakistan6564!",
         "HOST": "localhost",
