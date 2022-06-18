@@ -21,7 +21,7 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 # ALLOWED_HOSTS = os.getenv(
 #     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,128.199.23.125"
 # ).split(",")
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "143.110.253.219"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "165.22.219.77"]
 
 
 CORS_ALLOWED_ORIGINS = [
