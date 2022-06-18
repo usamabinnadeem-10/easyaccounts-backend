@@ -175,9 +175,9 @@ class DayBook(APIView):
         )
         transactions_serialized = TransactionSerializer(transactions, many=True).data
 
-        payments = Payment.objects.filter(
-            person__branch=branch, **person_filter, **filters
-        ).order_by("serial")
+        payments = Payment.objects.filter(person__branch=branch, **filters).order_by(
+            "serial"
+        )
         payments_serialized = PaymentAndImageListSerializer(payments, many=True).data
 
         external_cheques = ExternalCheque.objects.filter(**filters, person__branch=branch)
