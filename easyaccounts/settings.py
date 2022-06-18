@@ -102,12 +102,24 @@ if DEVELOPMENT_MODE is True:
             "ATOMIC_REQUESTS": True,
         }
     }
-elif len(sys.argv) > 0 and sys.argv[1] != "collectstatic":
-    if os.getenv("DATABASE_URL", None) is None:
-        raise Exception("DATABASE_URL environment variable not defined")
+else:
     DATABASES = {
-        "default": dj_database_url.parse(os.environ.get("DATABASE_URL")),
+        "default": {
+            "ENGINE": "django.db.backends.postgresql_psycopg2",
+            "NAME": "easyaccounts_db",
+            "USER": "admin",
+            "PASSWORD": "Pakistan6564!",
+            "HOST": "localhost",
+            "PORT": "",
+            "ATOMIC_REQUESTS": True,
+        }
     }
+# elif len(sys.argv) > 0 and sys.argv[1] != "collectstatic":
+#     if os.getenv("DATABASE_URL", None) is None:
+#         raise Exception("DATABASE_URL environment variable not defined")
+#     DATABASES = {
+#         "default": dj_database_url.parse(os.environ.get("DATABASE_URL")),
+#     }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -202,10 +214,10 @@ if S3_ENABLED:
     AWS_DEFAULT_ACL = None
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
     AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
-    # s3 static settings
-    STATIC_LOCATION = "static"
-    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_LOCATION}/"
-    STATICFILES_STORAGE = "easyaccounts.storage_backends.StaticStorage"
+    # # s3 static settings
+    # STATIC_LOCATION = "static"
+    # STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_LOCATION}/"
+    # STATICFILES_STORAGE = "easyaccounts.storage_backends.StaticStorage"
     # s3 public media settings
     PUBLIC_MEDIA_LOCATION = "media"
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/"
@@ -214,7 +226,11 @@ if S3_ENABLED:
     PRIVATE_MEDIA_LOCATION = "private"
     PRIVATE_FILE_STORAGE = "easyaccounts.storage_backends.PrivateMediaStorage"
 else:
-    STATIC_URL = "/static/"
-    STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+    # STATIC_URL = "/static/"
+    # STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
     MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
