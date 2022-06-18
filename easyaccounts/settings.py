@@ -18,9 +18,10 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 # DEBUG = True
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = os.getenv(
-    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,128.199.23.125"
-).split(",")
+# ALLOWED_HOSTS = os.getenv(
+#     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,128.199.23.125"
+# ).split(",")
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "143.110.253.219"]
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -88,32 +89,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "easyaccounts.wsgi.application"
 
-DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "False") == "True"
-
-if DEVELOPMENT_MODE is True:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": "easy",
-            "USER": "usama",
-            "PASSWORD": "8080",
-            "HOST": "127.0.0.1",
-            "PORT": "5432",
-            "ATOMIC_REQUESTS": True,
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": "easyaccounts_db",
+        "USER": "easyacocunts",
+        "PASSWORD": "Pakistan6564!",
+        "HOST": "localhost",
+        "PORT": "",
+        "ATOMIC_REQUESTS": True,
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql_psycopg2",
-            "NAME": "easyaccounts_db",
-            "USER": "usama",
-            "PASSWORD": "Pakistan6564!",
-            "HOST": "localhost",
-            "PORT": "",
-            "ATOMIC_REQUESTS": True,
-        }
-    }
+}
 # elif len(sys.argv) > 0 and sys.argv[1] != "collectstatic":
 #     if os.getenv("DATABASE_URL", None) is None:
 #         raise Exception("DATABASE_URL environment variable not defined")
@@ -214,7 +200,7 @@ if S3_ENABLED:
     AWS_DEFAULT_ACL = None
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
     AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
-    # # s3 static settings
+    # s3 static settings
     # STATIC_LOCATION = "static"
     # STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_LOCATION}/"
     # STATICFILES_STORAGE = "easyaccounts.storage_backends.StaticStorage"
