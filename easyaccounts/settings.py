@@ -21,7 +21,7 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 # ALLOWED_HOSTS = os.getenv(
 #     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,128.199.23.125"
 # ).split(",")
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "142.93.222.240"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "206.189.135.28"]
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -190,7 +190,7 @@ SIMPLE_JWT = {
 
 """S3 settings"""
 
-S3_ENABLED = os.getenv("S3_ENABLED") == "True"
+S3_ENABLED = os.getenv("S3_ENABLED", "True") == "True"
 
 if S3_ENABLED:
     # aws settings
