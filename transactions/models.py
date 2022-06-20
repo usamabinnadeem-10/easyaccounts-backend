@@ -27,26 +27,20 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     detail = models.CharField(max_length=1000, null=True)
     account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
     paid_amount = models.FloatField(default=0.0)
-    manual_invoice_serial = models.BigIntegerField()
-    manual_serial_type = models.CharField(
-        max_length=3, choices=TransactionSerialTypes.choices
-    )
+    # manual_invoice_serial = models.BigIntegerField()
+    serial_type = models.CharField(max_length=3, choices=TransactionSerialTypes.choices)
     requires_action = models.BooleanField(default=False)
     builty = models.CharField(max_length=100, null=True, default=None)
 
     class Meta:
         ordering = ["serial"]
-        unique_together = (
-            "manual_invoice_serial",
-            "manual_serial_type",
-        )
 
     # returns serial like SUP-123, INV-1453 ...
-    def get_manual_serial(self):
-        return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
+    # def get_manual_serial(self):
+    #     return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
 
     def get_computer_serial(self):
-        return f"{self.manual_serial_type}-{self.serial}"
+        return f"{self.serial_type}-{self.serial}"
 
     @classmethod
     def check_average_selling_rates(cls, date, t_detail):
@@ -192,7 +186,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                     "Please enter a valid paid amount",
                     400,
                 )
-            if data["manual_serial_type"] in [
+            if data["serial_type"] in [
                 TransactionSerialTypes.INV,
                 TransactionSerialTypes.MWC,
             ]:
@@ -205,7 +199,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 **data,
                 serial=Transaction.get_next_serial(
                     "serial",
-                    manual_serial_type=data["manual_serial_type"],
+                    serial_type=data["serial_type"],
                     person__branch=branch,
                 ),
             )
@@ -259,7 +253,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         string = ""
         transaction = self
         details = transaction.transaction_detail.all()
-        serial_type = transaction.manual_serial_type
+        serial_type = transaction.serial_type
         serial_num = transaction.get_computer_serial()
         if serial_type == TransactionSerialTypes.INV:
             if nature == TransactionChoices.CREDIT:
@@ -307,39 +301,39 @@ class TransactionDetail(ID):
         return False
 
 
-class CancelledInvoice(BranchAwareModel, UserAwareModel, NextSerial):
-    manual_invoice_serial = models.BigIntegerField()
-    manual_serial_type = models.CharField(
-        max_length=3, choices=TransactionSerialTypes.choices
-    )
-    comment = models.CharField(max_length=500)
+# class CancelledInvoice(BranchAwareModel, UserAwareModel, NextSerial):
+#     manual_invoice_serial = models.BigIntegerField()
+#     manual_serial_type = models.CharField(
+#         max_length=3, choices=TransactionSerialTypes.choices
+#     )
+#     comment = models.CharField(max_length=500)
 
-    class Meta:
-        unique_together = (
-            "manual_invoice_serial",
-            "manual_serial_type",
-            "branch",
-        )
+#     class Meta:
+#         unique_together = (
+#             "manual_invoice_serial",
+#             "manual_serial_type",
+#             "branch",
+#         )
 
-    # returns serial like SUP-123, INV-1453 ...
-    def get_manual_serial(self):
-        return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
+#     # returns serial like SUP-123, INV-1453 ...
+#     def get_manual_serial(self):
+#         return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
 
 
-class CancelStockTransfer(ID, UserAwareModel, NextSerial):
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
-    manual_invoice_serial = models.PositiveBigIntegerField()
+# class CancelStockTransfer(ID, UserAwareModel, NextSerial):
+#     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
+#     manual_invoice_serial = models.PositiveBigIntegerField()
 
 
 class StockTransfer(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial = models.PositiveBigIntegerField()
-    manual_invoice_serial = models.PositiveBigIntegerField()
+    # manual_invoice_serial = models.PositiveBigIntegerField()
     from_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name="from_warehouse", default=None
     )
 
     class Meta:
-        unique_together = ["serial", "manual_invoice_serial", "from_warehouse"]
+        unique_together = ["serial", "from_warehouse"]
 
     class Meta:
         verbose_name_plural = "Stock transfers"

@@ -116,28 +116,28 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RawTransaction
-        fields = ["id", "person", "manual_invoice_serial", "date", "lots"]
+        fields = ["id", "person", "date", "lots"]
         read_only_fields = [
             "id",
         ]
 
-    def validate(self, data):
-        branch = self.context["request"].branch
-        if RawTransaction.objects.filter(
-            person__branch=branch, manual_invoice_serial=data["manual_invoice_serial"]
-        ).exists():
-            raise serializers.ValidationError(
-                "This book number exists", status.HTTP_400_BAD_REQUEST
-            )
-        next_serial = RawTransaction.get_next_serial(
-            "manual_invoice_serial", person__branch=branch
-        )
-        if data["manual_invoice_serial"] != next_serial:
-            raise serializers.ValidationError(
-                f"Please use book number {next_serial}", status.HTTP_400_BAD_REQUEST
-            )
+    # def validate(self, data):
+    #     branch = self.context["request"].branch
+    #     # if RawTransaction.objects.filter(
+    #     #     person__branch=branch, manual_invoice_serial=data["manual_invoice_serial"]
+    #     # ).exists():
+    #     #     raise serializers.ValidationError(
+    #     #         "This book number exists", status.HTTP_400_BAD_REQUEST
+    #     #     )
+    #     # next_serial = RawTransaction.get_next_serial(
+    #     #     "manual_invoice_serial", person__branch=branch
+    #     # )
+    #     # if data["manual_invoice_serial"] != next_serial:
+    #     #     raise serializers.ValidationError(
+    #     #         f"Please use book number {next_serial}", status.HTTP_400_BAD_REQUEST
+    #     #     )
 
-        return data
+    #     return data
 
     def create(self, validated_data):
         lots = validated_data.pop("lots")
@@ -213,7 +213,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         return {
             "id": transaction.id,
             "person": transaction.person,
-            "manual_invoice_serial": transaction.manual_invoice_serial,
+            # "manual_invoice_serial": transaction.manual_invoice_serial,
             "date": transaction.date,
             "lots": lots,
         }
@@ -290,7 +290,7 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
         fields = [
             "id",
             "person",
-            "manual_invoice_serial",
+            # "manual_invoice_serial",
             "bill_number",
             "date",
             "data",
@@ -300,12 +300,12 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
 
     def validate(self, data):
         super().validate(data)
-        if not RawDebit.is_serial_unique(
-            manual_invoice_serial=data["manual_invoice_serial"],
-            debit_type=data["debit_type"],
-            branch=self.context["request"].branch,
-        ):
-            raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
+        # if not RawDebit.is_serial_unique(
+        #     manual_invoice_serial=data["manual_invoice_serial"],
+        #     debit_type=data["debit_type"],
+        #     branch=self.context["request"].branch,
+        # ):
+        #     raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
         if not data["person"]:
             raise ValidationError("Please choose a person", status.HTTP_400_BAD_REQUEST)
 
@@ -445,7 +445,7 @@ class RawStockTransferSerializer(
         model = RawDebit
         fields = [
             "id",
-            "manual_invoice_serial",
+            # "manual_invoice_serial",
             "bill_number",
             "date",
             "data",
@@ -455,12 +455,12 @@ class RawStockTransferSerializer(
 
     def validate(self, data):
         super().validate(data)
-        if not RawDebit.is_serial_unique(
-            manual_invoice_serial=data["manual_invoice_serial"],
-            debit_type=data["debit_type"],
-            branch=self.context["request"].branch,
-        ):
-            raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
+        # if not RawDebit.is_serial_unique(
+        #     manual_invoice_serial=data["manual_invoice_serial"],
+        #     debit_type=data["debit_type"],
+        #     branch=self.context["request"].branch,
+        # ):
+        #     raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
 
         if data["debit_type"] != RawDebitTypes.TRANSFER:
             raise ValidationError(

@@ -55,11 +55,11 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw transaction"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
-    manual_invoice_serial = models.PositiveBigIntegerField()
+    # manual_invoice_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
 
     def __str__(self):
-        return f"{self.manual_invoice_serial} - {self.person}"
+        return f"{self.serial} - {self.person}"
 
 
 class RawTransactionLot(ID, NextSerial):
@@ -88,16 +88,13 @@ class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw return or sale"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
-    manual_invoice_serial = models.PositiveBigIntegerField()
+    # manual_invoice_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
     debit_type = models.CharField(max_length=10, choices=RawDebitTypes.choices)
 
     @classmethod
     def is_serial_unique(cls, **kwargs):
         return not RawDebit.objects.filter(**kwargs).exists()
-
-    class Meta:
-        unique_together = ("manual_invoice_serial", "debit_type")
 
 
 class RawDebitLot(ID):
