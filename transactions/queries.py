@@ -1,7 +1,7 @@
 from authentication.choices import RoleChoices
 from essentials.choices import PersonChoices
 
-from .models import CancelledInvoice, CancelStockTransfer, StockTransfer, Transaction
+from .models import StockTransfer, Transaction
 
 
 class TransactionQuery:
@@ -14,9 +14,9 @@ class TransactionQuery:
         )
 
 
-class CancelledInvoiceQuery:
-    def get_queryset(self):
-        return CancelledInvoice.objects.filter(branch=self.request.branch)
+# class CancelledInvoiceQuery:
+#     def get_queryset(self):
+#         return CancelledInvoice.objects.filter(branch=self.request.branch)
 
 
 class TransferQuery:
@@ -24,6 +24,6 @@ class TransferQuery:
         return StockTransfer.objects.filter(branch=self.request.branch)
 
 
-class CancelStockTransferQuery:
-    def get_queryset(self):
-        return CancelStockTransfer.objects.filter(warehouse__branch=self.request.branch)
+# class CancelStockTransferQuery:
+#     def get_queryset(self):
+#         return CancelStockTransfer.objects.filter(warehouse__branch=self.request.branch)
