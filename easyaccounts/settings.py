@@ -21,7 +21,7 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 # ALLOWED_HOSTS = os.getenv(
 #     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,128.199.23.125"
 # ).split(",")
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "206.189.135.28"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "159.89.172.136"]
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -92,7 +92,7 @@ WSGI_APPLICATION = "easyaccounts.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "easyaccounts",
+        "NAME": "easy_db",
         "USER": "easyaccounts",
         "PASSWORD": "Pakistan6564!",
         "HOST": "localhost",
