@@ -74,6 +74,18 @@ from .models import (  # CancelledInvoice,; CancelStockTransfer,
 #         return data
 
 
+class ValidateSerial:
+    """Validates if manual serial is unique for branch"""
+
+    def validate_serial(self, data):
+        if data["manual_serial"]:
+            if Transaction.objects.filter(manual_serial=data["manual_serial"]).exists():
+                raise serializers.ValidationError(
+                    "This serial already exists", status.HTTP_400_BAD_REQUEST
+                )
+        return data
+
+
 class ValidateTotal:
     """Validates total for transaction"""
 
@@ -110,14 +122,14 @@ class ValidateAccountType:
 
 class ValidateTransaction(
     ValidateAccountType,
-    # ValidateTransactionSerial,
+    ValidateSerial,
     ValidateTotal,
 ):
     """Validates transaction serial, account_type and total"""
 
     def validate(self, data):
         data = self.validate_total(data)
-        # data = self.validate_serial(data)
+        data = self.validate_serial(data)
         data = self.validate_account(data)
 
         return data
@@ -155,7 +167,7 @@ class TransactionSerializer(
         fields = [
             "id",
             "serial",
-            # "manual_invoice_serial",
+            "manual_serial",
             "date",
             "transaction_detail",
             "nature",
@@ -166,7 +178,6 @@ class TransactionSerializer(
             "account_type",
             "paid_amount",
             "detail",
-            # "manual_serial_type",
             "serial_type",
             "requires_action",
             "builty",
@@ -211,7 +222,7 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
 
 
 class UpdateTransactionSerializer(
-    ValidateTotal, ValidateAccountType, serializers.ModelSerializer
+    ValidateAccountType, ValidateTotal, serializers.ModelSerializer
 ):
     """Serializer for updating transaction"""
 
@@ -237,7 +248,7 @@ class UpdateTransactionSerializer(
             "account_type",
             "paid_amount",
             "detail",
-            # "manual_invoice_serial",
+            "manual_serial",
             # "manual_serial_type",
             "serial_type",
             "requires_action",
@@ -253,14 +264,16 @@ class UpdateTransactionSerializer(
         request = self.context["request"]
         # transaction_detail = validated_data.pop("transaction_detail")
         branch = request.branch
-        branch_filter = {"branch": branch}
-
         # check if user changed the book number
-        # if instance.manual_invoice_serial != validated_data["manual_invoice_serial"]:
-        #     raise serializers.ValidationError(
-        #         "You can not change book number while editing",
-        #         status.HTTP_400_BAD_REQUEST,
-        #     )
+        # if he did, then ensure it does not exist already
+        if instance.manual_serial != validated_data["manual_serial"]:
+            if Transaction.objects.filter(
+                manual_serial=validated_data["manual_serial"]
+            ).exists():
+                raise serializers.ValidationError(
+                    "This serial already exists",
+                    status.HTTP_400_BAD_REQUEST,
+                )
         transaction = Transaction.make_transaction(validated_data, request, instance)
 
         Log.create_log(

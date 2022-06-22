@@ -27,7 +27,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     detail = models.CharField(max_length=1000, null=True)
     account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
     paid_amount = models.FloatField(default=0.0)
-    # manual_invoice_serial = models.BigIntegerField()
+    manual_serial = models.BigIntegerField(null=True)
     serial_type = models.CharField(max_length=3, choices=TransactionSerialTypes.choices)
     requires_action = models.BooleanField(default=False)
     builty = models.CharField(max_length=100, null=True, default=None)

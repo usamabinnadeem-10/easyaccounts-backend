@@ -31,7 +31,7 @@ class Command(BaseCommand):
         color_end = options["color_end"]
         product = options["product_name"]
         for color in list(range(color_start, color_end + 1)):
-            product_name = f"{product} - {color}"
+            product_name = f"{product}-{color}"
             records.append(
                 Product(name=product_name, branch_id=branch.id, category=_category)
             )
