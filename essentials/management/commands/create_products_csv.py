@@ -32,7 +32,6 @@ class Command(BaseCommand):
                     products.append(
                         Product(
                             name=row[0],
-                            branch_id=branch.id,
                             category=category,
                             minimum_rate=row[2],
                         )

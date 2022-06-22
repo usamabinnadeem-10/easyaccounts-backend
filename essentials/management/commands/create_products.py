@@ -23,7 +23,7 @@ class Command(BaseCommand):
             raise CommandError(f"Branch {branch_name} does not exist")
 
         try:
-            _category = ProductCategory.objects.get(name=category)
+            _category = ProductCategory.objects.get(name=category, branch=branch)
         except ProductCategory.DoesNotExist:
             raise CommandError(f"Category {category} does not exist")
 
@@ -32,9 +32,7 @@ class Command(BaseCommand):
         product = options["product_name"]
         for color in list(range(color_start, color_end + 1)):
             product_name = f"{product}-{color}"
-            records.append(
-                Product(name=product_name, branch_id=branch.id, category=_category)
-            )
+            records.append(Product(name=product_name, category=_category))
 
         Product.objects.bulk_create(records)
         self.stdout.write(
