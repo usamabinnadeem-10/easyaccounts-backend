@@ -1,9 +1,10 @@
 import os
-import sys
+
+# import sys
 from pathlib import Path
 
-import dj_database_url
-from django.core.management.utils import get_random_secret_key
+# import dj_database_url
+# from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,15 +13,15 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY", "um-9b&_d$u+sep-j_r5cw1eg)8l1c+$4%pehhiqvxqlzds1l1b"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = os.getenv(
-    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,e52d-182-186-196-185.ngrok.io"
-).split(",")
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -88,26 +89,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "easyaccounts.wsgi.application"
 
-DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "False") == "True"
-
-if DEVELOPMENT_MODE is True:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": "easy",
-            "USER": "usama",
-            "PASSWORD": "8080",
-            "HOST": "127.0.0.1",
-            "PORT": "5432",
-            "ATOMIC_REQUESTS": True,
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": "easy_db",
+        "USER": "easyaccounts",
+        "PASSWORD": "Pakistan6564!",
+        "HOST": "localhost",
+        "PORT": "",
+        "ATOMIC_REQUESTS": True,
     }
-elif len(sys.argv) > 0 and sys.argv[1] != "collectstatic":
-    if os.getenv("DATABASE_URL", None) is None:
-        raise Exception("DATABASE_URL environment variable not defined")
-    DATABASES = {
-        "default": dj_database_url.parse(os.environ.get("DATABASE_URL")),
-    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -143,12 +135,6 @@ USE_L10N = True
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# INTERNAL_IPS = [
-#     # ...
-#     "127.0.0.1",
-#     # ...
-# ]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -192,33 +178,39 @@ SIMPLE_JWT = {
 
 """S3 settings"""
 
-S3_ENABLED = os.getenv("S3_ENABLED") == "True"
+S3_ENABLED = os.getenv("S3_ENABLED", "True") == "True"
 
 if S3_ENABLED:
     # aws settings
-    AWS_S3_ACCESS_KEY_ID = os.getenv("AWS_S3_ACCESS_KEY_ID")
-    AWS_S3_SECRET_ACCESS_KEY = os.getenv("AWS_S3_SECRET_ACCESS_KEY")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+    AWS_S3_ENDPOINT_URL = f"https://{AWS_S3_REGION_NAME}.digitaloceanspaces.com"
+
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+
     AWS_DEFAULT_ACL = None
-    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
     AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
-    # s3 static settings
-    # STATIC_LOCATION = "static"
-    # STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_LOCATION}/"
-    # STATICFILES_STORAGE = "easyaccounts.storage_backends.StaticStorage"
+
     # s3 public media settings
     PUBLIC_MEDIA_LOCATION = "media"
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/"
+    MEDIA_URL = f"https://{AWS_S3_ENDPOINT_URL}/{PUBLIC_MEDIA_LOCATION}/"
     DEFAULT_FILE_STORAGE = "easyaccounts.storage_backends.PublicMediaStorage"
+
     # s3 private media settings
     PRIVATE_MEDIA_LOCATION = "private"
     PRIVATE_FILE_STORAGE = "easyaccounts.storage_backends.PrivateMediaStorage"
 else:
-    # STATIC_URL = "/static/"
-    # STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
     MEDIA_URL = "/media/"
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
-STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
