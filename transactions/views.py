@@ -17,15 +17,11 @@ from rest_framework.status import *
 from rest_framework.views import APIView
 
 from .models import *
-from .queries import (
-    CancelledInvoiceQuery,
-    CancelStockTransferQuery,
+from .queries import (  # CancelledInvoiceQuery,; CancelStockTransferQuery,
     TransactionQuery,
     TransferQuery,
 )
-from .serializers import (
-    CancelledInvoiceSerializer,
-    CancelStockTransferSerializer,
+from .serializers import (  # CancelledInvoiceSerializer,; CancelStockTransferSerializer,
     GetAllStockSerializer,
     TransactionSerializer,
     TransferStockSerializer,
@@ -103,8 +99,8 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         "detail": ["contains"],
         "person": ["exact"],
         "serial": ["exact", "gte", "lte"],
-        "manual_invoice_serial": ["exact", "gte", "lte"],
-        "manual_serial_type": ["exact"],
+        "manual_serial": ["exact", "gte", "lte"],
+        "serial_type": ["exact"],
         "discount": ["gte", "lte"],
         "type": ["exact"],
         "requires_action": ["exact"],
@@ -313,9 +309,9 @@ class ViewTransfers(TransferQuery, generics.ListAPIView):
     }
 
 
-class CancelInvoice(CancelledInvoiceQuery, generics.ListCreateAPIView):
+# class CancelInvoice(CancelledInvoiceQuery, generics.ListCreateAPIView):
 
-    serializer_class = CancelledInvoiceSerializer
+#     serializer_class = CancelledInvoiceSerializer
 
 
 class DetailedStockView(APIView):
@@ -375,8 +371,8 @@ class DetailedStockView(APIView):
                 "transaction_id",
                 "transaction__date",
                 "transaction__serial",
-                "transaction__manual_invoice_serial",
-                "transaction__manual_serial_type",
+                "transaction__manual_serial",
+                "transaction__serial_type",
                 "transaction__person",
                 "warehouse",
                 "yards_per_piece",
@@ -417,9 +413,9 @@ class DetailedStockView(APIView):
         )
 
 
-class CancelStockTransferView(CancelStockTransferQuery, generics.CreateAPIView):
+# class CancelStockTransferView(CancelStockTransferQuery, generics.CreateAPIView):
 
-    serializer_class = CancelStockTransferSerializer
+#     serializer_class = CancelStockTransferSerializer
 
 
 class ViewAllStock(TransactionQuery, generics.ListAPIView):

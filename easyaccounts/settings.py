@@ -16,12 +16,12 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
-DEBUG = os.getenv("DEBUG", "True") == "True"
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # ALLOWED_HOSTS = os.getenv(
 #     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,128.199.23.125"
 # ).split(",")
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "159.89.172.136"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "142.93.216.14"]
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -218,5 +218,5 @@ else:
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
-STATIC_URL = "static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")

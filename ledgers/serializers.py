@@ -46,60 +46,31 @@ class LedgerSerializer(serializers.ModelSerializer):
         )
         return instance
 
-    def _set_instances(self, obj):
-        """set related instances of the current object being serialized"""
-        # if obj.ledger_transaction_payment.exists():
-        #     self.instance_type = INSTANCE_TYPES["TP"]
-        if obj.ledger_transaction.exists():
-            self.instance_type = INSTANCE_TYPES["T"]
-        elif obj.ledger_external_cheque.exists():
-            self.instance_type = INSTANCE_TYPES["EC"]
-        elif obj.ledger_personal_cheque.exists():
-            self.instance_type = INSTANCE_TYPES["PC"]
-        elif obj.ledger_payment.exists():
-            self.instance_type = INSTANCE_TYPES["P"]
-
-    def set_instances(self, obj):
-        """check if self.instance is None and set the property"""
-        self._set_instances(obj)
-
     def get_detail(self, obj):
         """create ledger detail"""
-        self.set_instances(obj)
         nature = obj.nature
-        # if self.instance_type == INSTANCE_TYPES["TP"]:
-        #     return (
-        #         obj.ledger_transaction_payment.first().transaction.get_transaction_string(
-        #             nature
-        #         )
-        #         + f" (Payment # P - {(obj.ledger_transaction_payment.first().payment.serial)})"
-        #     )
-        if self.instance_type == INSTANCE_TYPES["T"]:
+        if obj.ledger_transaction.exists():
             return obj.ledger_transaction.first().transaction.get_transaction_string(
                 nature
             )
-        elif self.instance_type == INSTANCE_TYPES["EC"]:
+        elif obj.ledger_external_cheque.exists():
             return obj.ledger_external_cheque.first().external_cheque.get_ledger_string(
                 "external"
             )
-        elif self.instance_type == INSTANCE_TYPES["PC"]:
+        elif obj.ledger_personal_cheque.exists():
             return obj.ledger_personal_cheque.first().personal_cheque.get_ledger_string(
                 "personal"
             )
-        elif self.instance_type == INSTANCE_TYPES["P"]:
+        elif obj.ledger_payment.exists():
             return obj.ledger_payment.first().payment.get_ledger_string()
 
     def get_serial(self, obj):
         """serial number"""
-        # if self.instance_type == INSTANCE_TYPES["TP"]:
-        #     return (
-        #         obj.ledger_transaction_payment.first().transaction.get_computer_serial()
-        #     )
-        if self.instance_type == INSTANCE_TYPES["T"]:
+        if obj.ledger_transaction.exists():
             return obj.ledger_transaction.first().transaction.get_computer_serial()
-        elif self.instance_type == INSTANCE_TYPES["EC"]:
+        elif obj.ledger_external_cheque.exists():
             return f"CH-E : {obj.ledger_external_cheque.first().external_cheque.serial}"
-        elif self.instance_type == INSTANCE_TYPES["PC"]:
+        elif obj.ledger_personal_cheque.exists():
             return f"CH-P : {obj.ledger_personal_cheque.first().personal_cheque.serial}"
-        elif self.instance_type == INSTANCE_TYPES["P"]:
+        elif obj.ledger_payment.exists():
             return f"P : {obj.ledger_payment.first().payment.serial}"
