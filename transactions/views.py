@@ -82,7 +82,7 @@ class EditUpdateDeleteTransaction(
         Log.create_log(
             ActivityTypes.DELETED,
             ActivityCategory.TRANSACTION,
-            f"{instance.get_manual_serial()} for {instance.person.name}",
+            f"{instance.get_computer_serial()} for {instance.person.name}",
             self.request,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
