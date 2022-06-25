@@ -25,12 +25,14 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     type = models.CharField(max_length=10, choices=TransactionTypes.choices)
     serial = models.PositiveBigIntegerField()
     detail = models.CharField(max_length=1000, null=True)
-    account_type = models.ForeignKey(AccountType, null=True, on_delete=models.SET_NULL)
+    account_type = models.ForeignKey(
+        AccountType, null=True, on_delete=models.SET_NULL, blank=True
+    )
     paid_amount = models.FloatField(default=0.0)
-    manual_serial = models.BigIntegerField(null=True)
+    manual_serial = models.BigIntegerField(null=True, blank=True)
     serial_type = models.CharField(max_length=3, choices=TransactionSerialTypes.choices)
     requires_action = models.BooleanField(default=False)
-    builty = models.CharField(max_length=100, null=True, default=None)
+    builty = models.CharField(max_length=100, null=True, default=None, blank=True)
 
     class Meta:
         ordering = ["serial"]
