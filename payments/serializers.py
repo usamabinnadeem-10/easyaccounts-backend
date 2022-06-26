@@ -106,6 +106,7 @@ class PaymentSerializer(
             "amount",
             "serial",
             "account_type",
+            "detail",
             "images",
             "image_urls",
         ]
@@ -167,6 +168,7 @@ class PaymentAndImageListSerializer(serializers.ModelSerializer):
             "account_type",
             "person",
             "serial",
+            "detail",
             "image_urls",
             "amount",
         ]

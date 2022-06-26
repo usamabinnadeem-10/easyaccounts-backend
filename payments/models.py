@@ -18,12 +18,14 @@ class Payment(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
     amount = models.FloatField(validators=[MinValueValidator(1.0)])
     nature = models.CharField(max_length=1, choices=TransactionChoices.choices)
     serial = models.PositiveBigIntegerField()
+    detail = models.CharField(max_length=1000, null=True)
 
     def get_ledger_string(self):
         """Return string for ledger. Instances here are LedgerAndPayment records"""
         string = ""
         account_type = f" : ({self.account_type.name})" if self.account_type else ""
-        string += f"Payment{account_type}"
+        detail = f" {self.detail}" if self.detail is not None else ""
+        string += f"Payment{account_type}{detail}"
         return string
 
     @classmethod

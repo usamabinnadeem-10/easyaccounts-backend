@@ -209,13 +209,6 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
 
             # verify if the selling rates are legal
             for detail in transaction_details:
-                # if TransactionDetail.is_rate_invalid(
-                #     transaction.nature, detail["product"], detail["rate"]
-                # ):
-                #     raise ValidationError(
-                #         f"Rate too low for {detail['product'].name}",
-                #         400,
-                #     )
                 details.append(
                     TransactionDetail(
                         transaction_id=transaction.id,
@@ -295,12 +288,6 @@ class TransactionDetail(ID):
     )
     quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
-
-    @classmethod
-    def is_rate_invalid(cls, nature, product, current_rate):
-        if nature == TransactionChoices.DEBIT:
-            return product.minimum_rate > current_rate
-        return False
 
 
 # class CancelledInvoice(BranchAwareModel, UserAwareModel, NextSerial):

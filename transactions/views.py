@@ -417,6 +417,8 @@ class DetailedStockView(APIView):
 
 #     serializer_class = CancelStockTransferSerializer
 
+import operator
+
 
 class ViewAllStock(TransactionQuery, generics.ListAPIView):
 
@@ -441,5 +443,7 @@ class ViewAllStock(TransactionQuery, generics.ListAPIView):
             stock = filter(
                 lambda x: x["yards_per_piece"] != 44 and x["yards_per_piece"] != 66, stock
             )
+
+        stock.sort(key=operator.itemgetter("product", "yards_per_piece"))
         serializer = self.get_serializer(stock, many=True)
         return Response(serializer.data)

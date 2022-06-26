@@ -5,7 +5,8 @@ from datetime import datetime
 from authentication.models import Branch
 from django.core.management.base import BaseCommand, CommandError
 from essentials.models import Area, Person
-from ledgers.models import Ledger
+from ledgers.models import LedgerAndPayment
+from payments.models import Payment
 
 
 class Command(BaseCommand):
@@ -28,7 +29,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         persons = []
-        ledgers = []
         branch_name = options["branch_name"]
         file = options["file"]
         opening_date = datetime.strptime(
@@ -59,18 +59,17 @@ class Command(BaseCommand):
                     person = Person(**data)
                     persons.append(person)
                     balance = data["opening_balance"]
-                    if balance > 0.0:
-                        ledgers.append(
-                            Ledger(
-                                date=opening_date,
-                                detail="Opening Balance",
-                                amount=abs(balance),
-                                nature="C" if balance > 0.0 else "D",
-                                person=person,
-                            )
+
+                    if abs(balance) > 0.0:
+                        payment = Payment.objects.create(
+                            date=opening_date,
+                            detail="Opening Balance",
+                            amount=abs(balance),
+                            nature="C" if balance > 0.0 else "D",
+                            person=person,
                         )
+                        LedgerAndPayment.create_ledger_entry(payment)
         except IOError:
             raise CommandError(f"{file}.csv does not exist")
         Person.objects.bulk_create(persons)
-        Ledger.objects.bulk_create(ledgers)
         self.stdout.write(self.style.SUCCESS(f"Persons added"))

@@ -117,7 +117,7 @@ class WarehouseSerializer(CreateLogEntry, serializers.ModelSerializer):
 class ProductSerializer(CreateLogEntry, serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ["id", "name", "category", "minimum_rate"]
+        fields = ["id", "name", "category"]
         read_only_fields = ["id"]
 
     def validate(self, data):
