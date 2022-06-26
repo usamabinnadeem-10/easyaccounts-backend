@@ -24,8 +24,9 @@ class CreateExpenseDetail(ExpenseDetailQuery, generics.ListCreateAPIView):
     serializer_class = ExpenseDetailSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
-        "date": ["gte", "lte"],
-        "amount": ["gte", "lte"],
+        "date": ["gte", "lte", "exact"],
+        "amount": ["gte", "lte", "exact"],
+        "serial": ["gte", "lte", "exact"],
         "account_type": ["exact"],
         "expense__type": ["exact"],
         "detail": ["icontains"],
