@@ -31,7 +31,9 @@ class Command(BaseCommand):
         ledgers = []
         branch_name = options["branch_name"]
         file = options["file"]
-        opening_date = datetime.strptime(options["opening_balance_date"], "%Y-%m-%d")
+        opening_date = datetime.strptime(
+            options["opening_balance_date"], "%Y-%m-%d %H:%M:%S"
+        )
         path = os.path.dirname(os.path.abspath(__file__)) + f"/data/{file}.csv"
         try:
             branch = Branch.objects.get(name=branch_name)

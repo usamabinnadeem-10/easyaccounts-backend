@@ -79,7 +79,10 @@ class ValidateSerial:
 
     def validate_serial(self, data):
         if data["manual_serial"]:
-            if Transaction.objects.filter(manual_serial=data["manual_serial"]).exists():
+            if Transaction.objects.filter(
+                manual_serial=data["manual_serial"],
+                person__branch=self.context["request"].branch,
+            ).exists():
                 raise serializers.ValidationError(
                     "This serial already exists", status.HTTP_400_BAD_REQUEST
                 )
@@ -268,7 +271,8 @@ class UpdateTransactionSerializer(
         # if he did, then ensure it does not exist already
         if instance.manual_serial != validated_data["manual_serial"]:
             if Transaction.objects.filter(
-                manual_serial=validated_data["manual_serial"]
+                manual_serial=validated_data["manual_serial"],
+                person__branch=request.branch,
             ).exists():
                 raise serializers.ValidationError(
                     "This serial already exists",
