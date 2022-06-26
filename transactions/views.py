@@ -378,8 +378,8 @@ class DetailedStockView(APIView):
                 "yards_per_piece",
                 "transaction__type",
             )
-            .annotate(quantity=Sum("quantity"))
             .filter(**filters)
+            .annotate(quantity=Sum("quantity"))
             .order_by("transaction__date")
         )
 
@@ -392,7 +392,7 @@ class DetailedStockView(APIView):
         ]
         if qp.get("warehouse"):
             transfers = StockTransferDetail.objects.filter(
-                Q(from_warehouse=qp.get("warehouse"))
+                Q(transfer__from_warehouse=qp.get("warehouse"))
                 | Q(to_warehouse=qp.get("warehouse")),
                 **filters_transfers,
             ).values(*transfer_values)
