@@ -22,7 +22,7 @@ class ValidateAccountType:
 class ExpenseAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseAccount
-        fields = ["id", "name"]
+        fields = ["id", "name", "type"]
         read_only_fields = ["id"]
 
     def create(self, validated_data):

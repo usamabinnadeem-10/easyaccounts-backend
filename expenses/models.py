@@ -3,9 +3,14 @@ from core.models import ID, DateTimeAwareModel, NextSerial
 from django.db import models
 from essentials.models import AccountType
 
+from .choices import ExpenseTypes
+
 
 class ExpenseAccount(BranchAwareModel):
     name = models.CharField(max_length=100)
+    type = models.CharField(
+        max_length=14, choices=ExpenseTypes.choices, default=ExpenseTypes.OTHER
+    )
 
 
 class ExpenseDetail(ID, UserAwareModel, DateTimeAwareModel, NextSerial):

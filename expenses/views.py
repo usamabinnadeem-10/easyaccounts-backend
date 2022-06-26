@@ -27,6 +27,7 @@ class CreateExpenseDetail(ExpenseDetailQuery, generics.ListCreateAPIView):
         "date": ["gte", "lte"],
         "amount": ["gte", "lte"],
         "account_type": ["exact"],
+        "expense__type": ["exact"],
         "detail": ["icontains"],
     }
 
