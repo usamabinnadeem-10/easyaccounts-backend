@@ -63,6 +63,8 @@ class LedgerSerializer(serializers.ModelSerializer):
             )
         elif obj.ledger_payment.exists():
             return obj.ledger_payment.first().payment.get_ledger_string()
+        else:
+            return "Opening Balance"
 
     def get_serial(self, obj):
         """serial number"""

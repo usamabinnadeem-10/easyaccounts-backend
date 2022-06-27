@@ -5,8 +5,7 @@ from datetime import datetime
 from authentication.models import Branch
 from django.core.management.base import BaseCommand, CommandError
 from essentials.models import Area, Person
-from ledgers.models import LedgerAndPayment
-from payments.models import Payment
+from ledgers.models import Ledger
 
 
 class Command(BaseCommand):
@@ -29,6 +28,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         persons = []
+        ledgers = []
         branch_name = options["branch_name"]
         file = options["file"]
         opening_date = datetime.strptime(
@@ -49,6 +49,7 @@ class Command(BaseCommand):
                         "address": self._data_or_null(row[1]),
                         "phone_number": self._clean_phone_number(row[3]),
                         "opening_balance": self._data_or_null(row[2]) or 0.0,
+                        "branch": branch,
                     }
                     AREA = self._data_or_null(row[5])
                     if AREA is not None:
@@ -58,18 +59,18 @@ class Command(BaseCommand):
                         data.update({"area": AREA})
                     person = Person(**data)
                     persons.append(person)
-                    balance = data["opening_balance"]
-
+                    balance = person.opening_balance
                     if abs(balance) > 0.0:
-                        payment = Payment.objects.create(
-                            date=opening_date,
-                            detail="Opening Balance",
-                            amount=abs(balance),
-                            nature="C" if balance > 0.0 else "D",
-                            person=person,
+                        ledgers.append(
+                            Ledger(
+                                amount=balance,
+                                person=person,
+                                nature="C" if balance > 0.0 else "D",
+                                date=opening_date,
+                            )
                         )
-                        LedgerAndPayment.create_ledger_entry(payment)
         except IOError:
             raise CommandError(f"{file}.csv does not exist")
         Person.objects.bulk_create(persons)
-        self.stdout.write(self.style.SUCCESS(f"Persons added"))
+        Ledger.objects.bulk_create(ledgers)
+        self.stdout.write(self.style.SUCCESS(f"Persons created"))

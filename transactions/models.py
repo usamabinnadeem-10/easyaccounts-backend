@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 from functools import reduce
+from math import inf
 
 from authentication.models import BranchAwareModel, UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
@@ -9,7 +10,7 @@ from core.models import ID, DateTimeAwareModel, NextSerial
 # from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Avg, Sum
+from django.db.models import Avg, F, Sum
 from essentials.models import AccountType, Person, Product, Stock, Warehouse
 from ledgers.models import Ledger
 from payments.models import Payment
@@ -55,14 +56,34 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             )
             .annotate(avg_buying=Avg("rate"))
         )
+        averages_opening = Stock.objects.values("product", rate=F("opening_stock_rate"))
         for d in t_detail:
             curr_avg = list(
                 filter(lambda x: str(x["product"]) == str(d["product"].id), averages)
             )
+            curr_opening_avg = list(
+                filter(
+                    lambda x: str(x["product"]) == str(d["product"].id), averages_opening
+                )
+            )
 
-            if len(curr_avg) == 0:
+            curr_exists = len(curr_avg) > 0
+            opening_exits = len(curr_opening_avg) > 0
+
+            # if there is no purchase and no opening stock for the
+            # product then ignore selling rate
+            if not curr_exists and not opening_exits:
                 return
-            if d["rate"] <= curr_avg[0]["avg_buying"]:
+            AVG = inf
+            if curr_exists and opening_exits:
+                AVG = (curr_avg[0]["avg_buying"] + curr_opening_avg[0]["rate"]) / 2
+            else:
+                AVG = (
+                    curr_avg[0]["avg_buying"]
+                    if curr_exists
+                    else curr_opening_avg[0]["rate"]
+                )
+            if d["rate"] <= AVG:
                 raise ValidationError(f"Rate too low for {d['product']}", 400)
 
     @classmethod
