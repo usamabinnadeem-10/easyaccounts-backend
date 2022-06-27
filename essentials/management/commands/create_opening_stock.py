@@ -39,7 +39,7 @@ class Command(BaseCommand):
 
                     rate = RATES[product.category.name]
                     stock = Stock.objects.get_or_create(
-                        product=product.id, warehouse=warehouse.id, yards_per_piece=row[2]
+                        product=product, warehouse=warehouse, yards_per_piece=row[2]
                     )
                     stock.opening_stock = row[3]
                     stock.opening_stock_rate = rate
