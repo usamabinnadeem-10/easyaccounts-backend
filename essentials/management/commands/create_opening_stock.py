@@ -38,11 +38,12 @@ class Command(BaseCommand):
                             warehouse = Warehouse.objects.get(name=CURR_WAREHOUSE)
 
                     rate = RATES[product.category.name]
-                    stock = Stock.objects.get_or_create(
+                    stock, created = Stock.objects.get_or_create(
                         product=product, warehouse=warehouse, yards_per_piece=row[2]
                     )
                     stock.opening_stock = row[3]
                     stock.opening_stock_rate = rate
+                    stock.save()
         except IOError:
             raise CommandError(f"{file}.csv does not exist")
         self.stdout.write(self.style.SUCCESS(f"Stock created"))
