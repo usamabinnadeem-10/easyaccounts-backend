@@ -1,4 +1,4 @@
-from uuid import uuid4
+from datetime import datetime
 
 from authentication.models import BranchAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
@@ -101,3 +101,11 @@ class Stock(ID):
 class LinkedAccount(ID):
     name = models.CharField(max_length=15, choices=LinkedAccountChoices.choices)
     account = models.ForeignKey(AccountType, on_delete=models.CASCADE)
+
+
+class OpeningSaleData(BranchAwareModel):
+
+    date = models.DateTimeField(default=datetime.now)
+    revenue = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
+    cogs = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
+    expense = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
