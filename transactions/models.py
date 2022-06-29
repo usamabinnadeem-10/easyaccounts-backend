@@ -38,10 +38,6 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     class Meta:
         ordering = ["serial"]
 
-    # returns serial like SUP-123, INV-1453 ...
-    # def get_manual_serial(self):
-    #     return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
-
     def get_computer_serial(self):
         return f"{self.serial_type}-{self.serial}"
 
@@ -310,34 +306,90 @@ class TransactionDetail(ID):
     quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
 
+    @classmethod
+    def get_yards_balance(cls, branch, date=None):
+        date_filter = {"transaction__date__lte": date} if date is not None else {}
+        yards_data = (
+            TransactionDetail.objects.values(nature=F("transaction__nature"))
+            .filter(transaction__person__branch=branch, **date_filter)
+            .annotate(total=Sum(F("yards_per_piece") * F("quantity")))
+        )
+        opening_yards = (
+            Stock.objects.filter(warehouse__branch=branch).aggregate(
+                total=Sum(F("opening_stock") * F("yards_per_piece"))
+            )["total"]
+            or 0
+        )
+        yards_in = list(filter(lambda x: x["nature"] == "C", yards_data))
+        yards_in = yards_in[0]["total"] if len(yards_in) else 0
+        yards_out = list(filter(lambda x: x["nature"] == "D", yards_data))
+        yards_out = yards_out[0]["total"] if len(yards_out) else 0
 
-# class CancelledInvoice(BranchAwareModel, UserAwareModel, NextSerial):
-#     manual_invoice_serial = models.BigIntegerField()
-#     manual_serial_type = models.CharField(
-#         max_length=3, choices=TransactionSerialTypes.choices
-#     )
-#     comment = models.CharField(max_length=500)
+        return {
+            "yards_in": yards_in + opening_yards,
+            "yards_out": yards_out,
+            "remaining": (yards_in + opening_yards) - yards_out,
+        }
 
-#     class Meta:
-#         unique_together = (
-#             "manual_invoice_serial",
-#             "manual_serial_type",
-#             "branch",
-#         )
+    @classmethod
+    def calculate_per_yard_cost(cls, branch, total_yards, date=None):
+        """calculates per-yard cost of buying"""
 
-#     # returns serial like SUP-123, INV-1453 ...
-#     def get_manual_serial(self):
-#         return f"{self.manual_serial_type}-{self.manual_invoice_serial}"
+        date_filter = {"transaction__date__lte": date} if date is not None else {}
+        data = (
+            TransactionDetail.objects.values(nature=F("transaction__nature"))
+            .filter(
+                transaction__person__branch=branch, transaction__nature="C", **date_filter
+            )
+            .aggregate(inventory=Sum(F("rate") * F("yards_per_piece") * F("quantity")))[
+                "inventory"
+            ]
+            or 0
+        )
 
+        opening = Stock.get_total_opening_inventory(branch)
 
-# class CancelStockTransfer(ID, UserAwareModel, NextSerial):
-#     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
-#     manual_invoice_serial = models.PositiveBigIntegerField()
+        return (data + opening) / total_yards if total_yards else 0
+
+    @classmethod
+    def calculate_per_yard_selling_price(cls, branch, yards_sold, date=None):
+        """calculates per-yard selling price"""
+
+        date_filter = {"transaction__date__lte": date} if date is not None else {}
+        data = (
+            TransactionDetail.objects.values(nature=F("transaction__nature"))
+            .filter(
+                transaction__person__branch=branch, transaction__nature="D", **date_filter
+            )
+            .aggregate(inventory=Sum(F("rate") * F("yards_per_piece") * F("quantity")))[
+                "inventory"
+            ]
+            or 0
+        )
+
+        return data / yards_sold if yards_sold else 0
+
+    @classmethod
+    def get_inventory_stats(cls, branch, date=None):
+        """calculates total inventory value in hand"""
+        yards_data = TransactionDetail.get_yards_balance(branch, date)
+
+        per_yard_cost = TransactionDetail.calculate_per_yard_cost(
+            branch, yards_data["yards_in"], date
+        )
+        per_yard_selling = TransactionDetail.calculate_per_yard_selling_price(
+            branch, yards_data["yards_out"], date
+        )
+
+        return {
+            "inventory": per_yard_cost * yards_data["remaining"],
+            "profit": ((per_yard_selling - per_yard_cost) * yards_data["yards_out"]),
+            "opening_inventory": Stock.get_total_opening_inventory(branch),
+        }
 
 
 class StockTransfer(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial = models.PositiveBigIntegerField()
-    # manual_invoice_serial = models.PositiveBigIntegerField()
     from_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name="from_warehouse", default=None
     )

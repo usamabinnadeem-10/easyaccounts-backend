@@ -5,10 +5,12 @@ from authentication.models import UserAwareModel
 from cheques.choices import ChequeStatusChoices
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel
+from core.utils import get_cheque_account
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
+from essentials.choices import PersonChoices
 from essentials.models import AccountType, Person
 
 
@@ -86,6 +88,80 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
         LedgerAndTransaction.objects.create(
             ledger_entry=ledger_instance, transaction=transaction
         )
+
+    @classmethod
+    def get_account_payable_receivable(cls, branch, date=None):
+        """calculate total payable and receivable"""
+        date_filter = {"date": date} if date is not None else {}
+
+        data = (
+            Ledger.objects.values("nature")
+            .order_by("nature")
+            .filter(person__branch=branch, **date_filter)
+            .exclude(person__person_type=PersonChoices.EQUITY)
+            .annotate(total=Sum("amount"))
+        )
+        payable = list(filter(lambda x: x["nature"] == "C", data))
+        receivable = list(filter(lambda x: x["nature"] == "D", data))
+        return {
+            "payable": payable[0]["total"] if len(payable) else 0,
+            "receivable": receivable[0]["total"] if len(receivable) else 0,
+        }
+
+    @classmethod
+    def get_total_account_balance(cls, branch, date=None, exclude_cheque=False):
+        """calculates total balances in account types"""
+        date_filter = {"date__lte": date} if date is not None else {}
+        exclude_filter = {}
+        if exclude_cheque:
+            cheque_account = get_cheque_account(branch).account
+            exclude_filter.update({"account_type": cheque_account})
+        balances = (
+            Ledger.objects.values("nature")
+            .order_by("nature")
+            .filter(account_type__isnull=False, person__branch=branch, **date_filter)
+            .exclude(**exclude_filter)
+            .annotate(total=Sum("amount"))
+        )
+        if exclude_cheque:
+            account_balances = (
+                AccountType.objects.exclude(id=cheque_account.id).aggregate(
+                    total=Sum("opening_balance")
+                )["total"]
+                or 0
+            )
+        else:
+            account_balances = (
+                AccountType.objects.aggregate(total=Sum("opening_balance"))["total"] or 0
+            )
+        credits = list(filter(lambda x: x["nature"] == "C", balances))
+        debits = list(filter(lambda x: x["nature"] == "D", balances))
+
+        return {
+            "credit": (credits[0]["total"] if len(credits) else 0) + account_balances,
+            "debit": debits[0]["total"] if len(debits) else 0,
+        }
+
+    @classmethod
+    def get_total_owners_equity(cls, branch, date=None):
+        """calculates the total owner equity ledgers"""
+        date_filter = {"date__lte": date} if date is not None else {}
+        equity = (
+            Ledger.objects.values("nature")
+            .order_by("nature")
+            .filter(
+                person__person_type=PersonChoices.EQUITY,
+                person__branch=branch,
+                **date_filter
+            )
+            .annotate(total=Sum("amount"))
+        )
+        credits = list(filter(lambda x: x["nature"] == "C", equity))
+        credits = credits[0]["total"] if len(credits) else 0
+        debits = list(filter(lambda x: x["nature"] == "D", equity))
+        debits = debits[0]["total"] if len(debits) else 0
+
+        return credits - debits
 
 
 class LedgerAndTransaction(ID):
@@ -212,36 +288,3 @@ class LedgerAndPayment(ID):
             date=payment.date,
         )
         LedgerAndPayment.objects.create(ledger_entry=ledger_instance, payment=payment)
-
-
-# class LedgerAndTransactionAndPayment(ID):
-#     ledger_entry = models.ForeignKey(
-#         Ledger,
-#         on_delete=models.SET_NULL,
-#         related_name="ledger_transaction_payment",
-#         null=True,
-#     )
-#     payment = models.ForeignKey(
-#         "payments.Payment",
-#         on_delete=models.CASCADE,
-#         related_name="payment_ledger_transaction",
-#     )
-#     transaction = models.ForeignKey(
-#         "transactions.Transaction",
-#         on_delete=models.SET_NULL,
-#         null=True,
-#         related_name="transaction_ledger_payment",
-#     )
-
-#     @classmethod
-#     def create_ledger_entry(cls, payment, transaction):
-#         ledger_instance = Ledger.objects.create(
-#             amount=payment.amount,
-#             nature=payment.nature,
-#             person=payment.person,
-#             account_type=payment.account_type,
-#             date=payment.date,
-#         )
-#         LedgerAndTransactionAndPayment.objects.create(
-#             ledger_entry=ledger_instance, payment=payment, transaction=transaction
-#         )

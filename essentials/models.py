@@ -5,6 +5,7 @@ from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
+from django.db.models import F, Sum
 
 from .choices import LinkedAccountChoices, PersonChoices
 
@@ -96,6 +97,17 @@ class Stock(ID):
 
     class Meta:
         unique_together = ("product", "warehouse", "yards_per_piece")
+
+    @classmethod
+    def get_total_opening_inventory(cls, branch):
+        return (
+            Stock.objects.filter(warehouse__branch=branch).aggregate(
+                inventory=Sum(
+                    F("opening_stock") * F("yards_per_piece") * F("opening_stock_rate")
+                )
+            )["inventory"]
+            or 0
+        )
 
 
 class LinkedAccount(ID):

@@ -19,7 +19,7 @@ from ledgers.serializers import LedgerSerializer
 from .queries import LedgerQuery
 
 
-class CreateOrListLedgerDetail(LedgerQuery, generics.ListCreateAPIView):
+class ListLedger(LedgerQuery, generics.ListAPIView):
     """
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance

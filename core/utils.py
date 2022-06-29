@@ -6,7 +6,7 @@ from rest_framework import serializers
 from .constants import CHEQUE_ACCOUNT
 
 
-def convert_date_to_datetime(date, return_none=False, time=None):
+def convert_date_to_datetime(date, return_none=False):
     """get datetime format"""
     return (
         datetime.strptime(f"{date}", "%Y-%m-%d %H:%M:%S")
@@ -36,7 +36,6 @@ def convert_qp_dict_to_qp(qpDict):
 def get_cheque_account(branch):
     """get cheque account"""
     try:
-        print(branch)
         return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT, account__branch=branch)
     except:
         raise serializers.ValidationError("Please create a cheque account first", 400)

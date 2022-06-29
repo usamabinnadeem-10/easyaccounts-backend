@@ -65,9 +65,7 @@ class PersonSerializer(CreateLogEntry, serializers.ModelSerializer):
                 person=person,
                 nature=nature,
                 date=opening_balance_date,
-                detail="Opening Balance",
                 amount=abs(person.opening_balance),
-                branch=person.branch,
             )
         return person
 

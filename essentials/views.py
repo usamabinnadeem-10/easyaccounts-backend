@@ -18,7 +18,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
 from ledgers.models import Ledger
-from ledgers.serializers import LedgerSerializer
 from payments.models import Payment
 from payments.serializers import PaymentAndImageListSerializer
 from rest_framework import status

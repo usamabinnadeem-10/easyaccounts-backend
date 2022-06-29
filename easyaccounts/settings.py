@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "payments.apps.PaymentsConfig",
     "django_cleanup.apps.CleanupConfig",
     "assets",
+    "reports",
     "storages",
 ]
 

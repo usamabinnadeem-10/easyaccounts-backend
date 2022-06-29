@@ -432,10 +432,8 @@ class ViewAllStock(TransactionQuery, generics.ListAPIView):
     }
 
     def list(self, request, *args, **kwargs):
-        qp = request.query_params
         qpDict = dict(request.GET.lists())
         qps = convert_qp_dict_to_qp(qpDict)
-        print(qps)
         outcut = qps.pop("outcut", None)
         date = qps.pop("date", None)
         stock = Transaction.get_all_stock(request.branch, date, None, None, **qps)
