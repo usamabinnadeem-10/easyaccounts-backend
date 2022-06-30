@@ -79,6 +79,8 @@ class IncomeStatement(APIView):
             + (opening_sale_data["cogs"] or 0),
             "expenses": expenses,
             "asset_profit": Asset.get_total_asset_profit(branch, date__lte, date__gte),
+            "date__gte": date__gte,
+            "date__lte": date__lte,
         }
 
         return Response(final_data, status=status.HTTP_200_OK)
