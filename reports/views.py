@@ -25,9 +25,9 @@ class BalanceSheet(APIView):
                 "assets": {
                     "receivable": pay_recv["receivable"],
                     "inventory": transaction_stats["inventory"],
-                    "cash_in_hand": account_balances["credit"]
+                    "cash_and_equivalent": account_balances["credit"]
                     - account_balances["debit"],
-                    "total_assets": Asset.get_total_assets(branch, date),
+                    "assets": Asset.get_total_assets(branch, date),
                 },
                 "liabilities": {
                     "payable": pay_recv["payable"],
@@ -39,6 +39,7 @@ class BalanceSheet(APIView):
                     + OpeningSaleData.get_opening_profit(branch, date)
                     - ExpenseDetail.calculate_total_expenses(branch, None, date),
                 },
+                "date": date,
             },
             200,
         )
