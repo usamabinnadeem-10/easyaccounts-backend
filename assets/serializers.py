@@ -10,7 +10,16 @@ from .models import Asset
 class AssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
-        fields = ["id", "date", "name", "value", "status", "type", "sold_value"]
+        fields = [
+            "id",
+            "date",
+            "name",
+            "value",
+            "status",
+            "type",
+            "sold_value",
+            "sold_date",
+        ]
         read_only_fields = ["id"]
 
     def validate(self, data):
@@ -21,6 +30,7 @@ class AssetSerializer(serializers.ModelSerializer):
                 )
         else:
             data["sold_value"] = None
+            data["sold_date"] = None
 
         return data
 

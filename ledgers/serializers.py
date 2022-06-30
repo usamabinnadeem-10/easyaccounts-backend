@@ -1,18 +1,15 @@
-from cheques.models import ExternalCheque, PersonalCheque
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
-from payments.models import Payment
 from rest_framework import serializers
-from transactions.models import Transaction
 
-from .constants import INSTANCE_TYPES
-from .models import *
+from .models import Ledger, LedgerAndDetail
 
 
 class LedgerSerializer(serializers.ModelSerializer):
 
     detail = serializers.SerializerMethodField(read_only=True)
     serial = serializers.SerializerMethodField(read_only=True)
+    ledger_detail_id = serializers.SerializerMethodField(read_only=True)
     instance_type = None
 
     class Meta:
@@ -26,6 +23,7 @@ class LedgerSerializer(serializers.ModelSerializer):
             "account_type",
             "detail",
             "serial",
+            "ledger_detail_id",
         ]
         read_only_fields = ["id", "detail", "serial"]
         extra_kwargs = {
@@ -63,8 +61,8 @@ class LedgerSerializer(serializers.ModelSerializer):
             )
         elif obj.ledger_payment.exists():
             return obj.ledger_payment.first().payment.get_ledger_string()
-        else:
-            return "Opening Balance"
+        elif obj.ledger_detail.exists():
+            return obj.ledger_detail.first().detail
 
     def get_serial(self, obj):
         """serial number"""
@@ -76,3 +74,52 @@ class LedgerSerializer(serializers.ModelSerializer):
             return f"CH-P : {obj.ledger_personal_cheque.first().personal_cheque.serial}"
         elif obj.ledger_payment.exists():
             return f"P : {obj.ledger_payment.first().payment.serial}"
+        else:
+            return "---"
+
+    def get_ledger_detail_id(self, obj):
+        if obj.ledger_detail.exists():
+            return obj.ledger_detail.first().id
+        return None
+
+
+class LedgerSerializerForCreation(serializers.ModelSerializer):
+    class Meta:
+        model = Ledger
+        fields = [
+            "id",
+            "person",
+            "date",
+            "amount",
+            "nature",
+            "account_type",
+        ]
+        read_only_fields = ["id"]
+
+
+class LedgerAndDetailSerializer(serializers.ModelSerializer):
+
+    ledger_entry = LedgerSerializerForCreation()
+
+    class Meta:
+        model = LedgerAndDetail
+        fields = ["id", "ledger_entry", "detail"]
+        read_only_fields = ["id"]
+
+    def create(self, validated_data):
+        detail = validated_data.pop("detail")
+        ledger_entry = Ledger.objects.create(**validated_data["ledger_entry"])
+        LedgerAndDetail.objects.create(ledger_entry=ledger_entry, detail=detail)
+        validated_data["detail"] = detail
+        return validated_data
+
+    def update(self, instance, validated_data):
+        detail = validated_data.pop("detail")
+        ledger_entry = Ledger.objects.get(id=instance.ledger_entry.id)
+        for attr, value in validated_data["ledger_entry"].items():
+            setattr(ledger_entry, attr, value)
+        ledger_entry.save()
+        instance.detail = detail
+        instance.save()
+        validated_data["detail"] = detail
+        return validated_data

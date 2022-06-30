@@ -332,3 +332,10 @@ class LedgerAndPayment(ID):
             date=payment.date,
         )
         LedgerAndPayment.objects.create(ledger_entry=ledger_instance, payment=payment)
+
+
+class LedgerAndDetail(ID):
+    ledger_entry = models.ForeignKey(
+        Ledger, on_delete=models.CASCADE, related_name="ledger_detail"
+    )
+    detail = models.CharField(max_length=1000)

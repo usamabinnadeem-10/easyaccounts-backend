@@ -1,7 +1,7 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from functools import reduce
 
-from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
+from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
 from core.pagination import LargePagination
 from core.utils import convert_date_to_datetime
@@ -14,9 +14,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ledgers.models import Ledger, LedgerAndExternalCheque
-from ledgers.serializers import LedgerSerializer
+from ledgers.serializers import LedgerAndDetailSerializer, LedgerSerializer
 
-from .queries import LedgerQuery
+from .queries import LedgerAndDetailQuery, LedgerQuery
 
 
 class ListLedger(LedgerQuery, generics.ListAPIView):
@@ -130,7 +130,7 @@ class ListLedger(LedgerQuery, generics.ListAPIView):
         return Response(page.data, status=status.HTTP_200_OK)
 
 
-class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.RetrieveUpdateDestroyAPIView):
+class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.DestroyAPIView):
     """
     Edit / Update / Delete a ledger record
     """
@@ -146,16 +146,16 @@ class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.RetrieveUpdateDestroyAP
             self.request,
         )
 
-    def perform_update(self, serializer):
-        instance = self.get_object()
-        super().perform_update(serializer)
-        updated = self.get_object()
-        Log.create_log(
-            ActivityTypes.EDITED,
-            ActivityCategory.LEDGER_ENTRY,
-            f"{instance.date} of type {instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/= to --> {updated.date} of type {updated.get_nature_display()} for {updated.person.name} for amount {updated.amount}",
-            self.request,
-        )
+    # def perform_update(self, serializer):
+    #     instance = self.get_object()
+    #     super().perform_update(serializer)
+    #     updated = self.get_object()
+    #     Log.create_log(
+    #         ActivityTypes.EDITED,
+    #         ActivityCategory.LEDGER_ENTRY,
+    #         f"{instance.date} of type {instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/= to --> {updated.date} of type {updated.get_nature_display()} for {updated.person.name} for amount {updated.amount}",
+    #         self.request,
+    #     )
 
 
 class GetAllBalances(APIView):
@@ -224,3 +224,12 @@ class FilterLedger(LedgerQuery, generics.ListAPIView):
         "nature": ["exact"],
         "person": ["exact"],
     }
+
+
+class LedgerAndDetailEntry(
+    LedgerAndDetailQuery,
+    generics.CreateAPIView,
+    generics.UpdateAPIView,
+):
+
+    serializer_class = LedgerAndDetailSerializer
