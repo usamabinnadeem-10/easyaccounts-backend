@@ -309,7 +309,6 @@ class IssuePersonalChequeSerializer(serializers.ModelSerializer):
             "serial": PersonalCheque.get_next_serial("serial", person__branch=branch),
             "user": user,
         }
-        print(validated_data)
         personal_cheque = PersonalCheque.objects.create(**data_for_cheque)
         create_ledger_entry_for_cheque(
             personal_cheque, "D", **{"cheque_type": "personal"}

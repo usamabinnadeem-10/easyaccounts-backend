@@ -248,7 +248,6 @@ class DayBook(APIView):
             )
             .annotate(total=Sum("amount"))
         )
-
         final_account_balances = defaultdict(lambda: 0)
 
         for ledger in balance_ledgers:

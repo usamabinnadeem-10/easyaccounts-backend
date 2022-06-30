@@ -121,3 +121,23 @@ class OpeningSaleData(BranchAwareModel):
     revenue = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     cogs = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     expense = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
+
+    class Meta:
+        verbose_name_plural = "Opening Sales Data"
+
+    @classmethod
+    def get_opening_profit(cls, branch, date=None):
+        date_filter = {"date__lte": date} if date else {}
+        return (
+            OpeningSaleData.objects.filter(branch=branch, **date_filter).aggregate(
+                total=Sum(F("revenue") - (F("cogs") + F("expense")))
+            )["total"]
+            or 0
+        )
+
+    @classmethod
+    def get_opening_sales_data(cls, branch, date=None):
+        date_filter = {"date__lte": date} if date else {}
+        return OpeningSaleData.objects.filter(branch=branch, **date_filter).aggregate(
+            revenue=Sum("revenue"), cogs=Sum("cogs"), expenses=Sum("expense")
+        )

@@ -2,7 +2,8 @@ from datetime import date
 from functools import reduce
 
 from authentication.models import UserAwareModel
-from cheques.choices import ChequeStatusChoices
+from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
+from cheques.models import ExternalChequeHistory, PersonalCheque
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel
 from core.utils import get_cheque_account
@@ -12,6 +13,7 @@ from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 from essentials.choices import PersonChoices
 from essentials.models import AccountType, Person
+from expenses.models import ExpenseDetail
 
 
 class TransactionChoices(models.TextChoices):
@@ -92,20 +94,35 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
     @classmethod
     def get_account_payable_receivable(cls, branch, date=None):
         """calculate total payable and receivable"""
-        date_filter = {"date": date} if date is not None else {}
-
-        data = (
-            Ledger.objects.values("nature")
+        date_filter = {"date__lte": date} if date is not None else {}
+        balances = (
+            Ledger.objects.values("nature", "person__name")
             .order_by("nature")
             .filter(person__branch=branch, **date_filter)
             .exclude(person__person_type=PersonChoices.EQUITY)
-            .annotate(total=Sum("amount"))
+            .annotate(balance=Sum("amount"))
         )
-        payable = list(filter(lambda x: x["nature"] == "C", data))
-        receivable = list(filter(lambda x: x["nature"] == "D", data))
+        data = {}
+        for b in balances:
+            person = b["person__name"]
+            amount = b["balance"]
+            nature = b["nature"]
+            if not person in data:
+                data[person] = amount if nature == "C" else -amount
+            else:
+                data[person] += amount if nature == "C" else -amount
+
+        payable = 0
+        receivable = 0
+        for key, value in data.items():
+            if value <= 0.0:
+                receivable += abs(value)
+            else:
+                payable += abs(value)
+
         return {
-            "payable": payable[0]["total"] if len(payable) else 0,
-            "receivable": receivable[0]["total"] if len(receivable) else 0,
+            "payable": payable,
+            "receivable": receivable,
         }
 
     @classmethod
@@ -123,6 +140,22 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
             .exclude(**exclude_filter)
             .annotate(total=Sum("amount"))
         )
+        personal_cheques = (
+            PersonalCheque.objects.filter(
+                status=PersonalChequeStatusChoices.CLEARED,
+                person__branch=branch,
+                **date_filter,
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
+        cheques_history = (
+            ExternalChequeHistory.objects.filter(
+                return_cheque__isnull=True,
+                parent_cheque__person__branch=branch,
+                **date_filter,
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
         if exclude_cheque:
             account_balances = (
                 AccountType.objects.exclude(id=cheque_account.id).aggregate(
@@ -134,12 +167,23 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
             account_balances = (
                 AccountType.objects.aggregate(total=Sum("opening_balance"))["total"] or 0
             )
+
+        expenses = reduce(
+            lambda prev, curr: prev + curr["total"],
+            ExpenseDetail.calculate_total_expenses_with_category(branch, None, date),
+            0,
+        )
+
         credits = list(filter(lambda x: x["nature"] == "C", balances))
         debits = list(filter(lambda x: x["nature"] == "D", balances))
 
         return {
-            "credit": (credits[0]["total"] if len(credits) else 0) + account_balances,
-            "debit": debits[0]["total"] if len(debits) else 0,
+            "credit": (credits[0]["total"] if len(credits) else 0)
+            + account_balances
+            + cheques_history,
+            "debit": (debits[0]["total"] if len(debits) else 0)
+            + personal_cheques
+            + expenses,
         }
 
     @classmethod
@@ -152,7 +196,7 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
             .filter(
                 person__person_type=PersonChoices.EQUITY,
                 person__branch=branch,
-                **date_filter
+                **date_filter,
             )
             .annotate(total=Sum("amount"))
         )
