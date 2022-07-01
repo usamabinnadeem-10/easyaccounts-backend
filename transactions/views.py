@@ -432,15 +432,29 @@ class ViewAllStock(TransactionQuery, generics.ListAPIView):
     }
 
     def list(self, request, *args, **kwargs):
+        qp_pop_list = [
+            "quantity",
+            "quantity__gte",
+            "quantity__lte",
+        ]
         qpDict = dict(request.GET.lists())
         qps = convert_qp_dict_to_qp(qpDict)
         outcut = qps.pop("outcut", None)
         date = qps.pop("date", None)
+        quantity = qps.pop("quantity", None)
+        quantity__gte = qps.pop("quantity__gte", None)
+        quantity__lte = qps.pop("quantity__lte", None)
         stock = Transaction.get_all_stock(request.branch, date, None, None, **qps)
         if outcut:
             stock = filter(
                 lambda x: x["yards_per_piece"] != 44 and x["yards_per_piece"] != 66, stock
             )
+        if quantity:
+            stock = filter(lambda x: x["quantity"] == quantity, stock)
+        if quantity__gte:
+            stock = filter(lambda x: x["quantity"] >= quantity__gte, stock)
+        if quantity__lte:
+            stock = filter(lambda x: x["quantity"] <= quantity__lte, stock)
 
         serializer = self.get_serializer(stock, many=True)
         return Response(serializer.data)

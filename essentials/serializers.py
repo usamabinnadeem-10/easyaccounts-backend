@@ -178,12 +178,6 @@ class StockSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Opening stock exists for this product", status.HTTP_400_BAD_REQUEST
             )
-        if TransactionDetail.is_rate_invalid(
-            "D", validated_data["product"], validated_data["opening_stock_rate"]
-        ):
-            raise serializers.ValidationError(
-                "Rate too low for this product", status.HTTP_400_BAD_REQUEST
-            )
         instance = super().create(validated_data)
         return instance
 

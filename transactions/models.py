@@ -87,13 +87,12 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         """complete current stock, accepts kwrags for filtering transaction detail"""
         date = date if date else datetime.now()
         opening = Stock.objects.values(
-            "product", "warehouse", "yards_per_piece", "opening_stock"
-        ).filter(product__category__branch=branch)
+            "product", "warehouse", "yards_per_piece", quantity=F("opening_stock")
+        ).filter(product__category__branch=branch, **kwargs)
         opening = list(
             map(
                 lambda x: {
                     **x,
-                    "quantity": x["opening_stock"],
                     "transaction__nature": "C",
                 },
                 opening,
@@ -101,9 +100,12 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         )
         transfers = (
             StockTransferDetail.objects.values(
-                "product", "to_warehouse", "yards_per_piece", "transfer__from_warehouse"
+                "product",
+                "yards_per_piece",
+                "transfer__from_warehouse",
+                warehouse=F("to_warehouse"),
             )
-            # .filter(transfer__date__lte=date)
+            .filter(transfer__branch=branch, **kwargs)
             .annotate(quantity=Sum("quantity"))
         )
         for t in transfers:
