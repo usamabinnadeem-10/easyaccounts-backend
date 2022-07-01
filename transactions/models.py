@@ -406,8 +406,7 @@ class TransactionDetail(ID):
         )
 
         return {
-            "inventory": (per_yard_cost * yards_data["remaining"])
-            + Stock.get_total_opening_inventory(branch),
+            "inventory": (per_yard_cost * yards_data["remaining"]),
             "profit": ((per_yard_selling - per_yard_cost) * yards_data["yards_out"]),
         }
 
