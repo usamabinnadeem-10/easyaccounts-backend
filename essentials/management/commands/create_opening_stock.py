@@ -32,7 +32,7 @@ class Command(BaseCommand):
         path = os.path.dirname(os.path.abspath(__file__)) + f"/data/{file}.csv"
 
         try:
-            with open(path) as file:
+            with open(path, mode="r", encoding="utf-8-sig") as file:
                 reader = csv.reader(file, delimiter=",")
                 product = None
                 warehouse = None
