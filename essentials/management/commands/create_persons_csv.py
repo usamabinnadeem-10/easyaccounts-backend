@@ -5,7 +5,7 @@ from datetime import datetime
 from authentication.models import Branch
 from django.core.management.base import BaseCommand, CommandError
 from essentials.models import Area, Person
-from ledgers.models import Ledger
+from ledgers.models import Ledger, LedgerAndDetail
 
 
 class Command(BaseCommand):
@@ -29,6 +29,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         persons = []
         ledgers = []
+        ledgers_and_details = []
         branch_name = options["branch_name"]
         file = options["file"]
         opening_date = datetime.strptime(
@@ -40,7 +41,7 @@ class Command(BaseCommand):
         except Branch.DoesNotExist:
             raise CommandError(f"Branch {branch_name} does not exist")
         try:
-            with open(path) as file:
+            with open(path, mode="r", encoding="utf-8-sig") as file:
                 reader = csv.reader(file, delimiter=",")
                 for row in reader:
                     data = {
@@ -48,7 +49,6 @@ class Command(BaseCommand):
                         "person_type": self._data_or_null(row[4]),
                         "address": self._data_or_null(row[1]),
                         "phone_number": self._clean_phone_number(row[3]),
-                        "opening_balance": self._data_or_null(row[2]) or 0.0,
                         "branch": branch,
                     }
                     AREA = self._data_or_null(row[5])
@@ -59,18 +59,21 @@ class Command(BaseCommand):
                         data.update({"area": AREA})
                     person = Person(**data)
                     persons.append(person)
-                    balance = person.opening_balance
-                    if abs(balance) > 0.0:
-                        ledgers.append(
-                            Ledger(
-                                amount=balance,
-                                person=person,
-                                nature="C" if balance > 0.0 else "D",
-                                date=opening_date,
-                            )
+                    balance = self._data_or_null(row[2])
+                    if balance and abs(balance) > 0.0:
+                        ledger = Ledger(
+                            amount=abs(balance),
+                            person=person,
+                            nature="C" if balance > 0.0 else "D",
+                            date=opening_date,
+                        )
+                        ledgers.append(ledger)
+                        ledgers_and_details.append(
+                            LedgerAndDetail(ledger_entry=ledger, detail="Opening Balance")
                         )
         except IOError:
             raise CommandError(f"{file}.csv does not exist")
         Person.objects.bulk_create(persons)
         Ledger.objects.bulk_create(ledgers)
+        LedgerAndDetail.objects.bulk_create(ledgers_and_details)
         self.stdout.write(self.style.SUCCESS(f"Persons created"))
