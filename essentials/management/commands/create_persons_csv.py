@@ -60,17 +60,21 @@ class Command(BaseCommand):
                     person = Person(**data)
                     persons.append(person)
                     balance = self._data_or_null(row[2])
-                    if balance and abs(float(balance)) > 0.0:
-                        ledger = Ledger(
-                            amount=abs(balance),
-                            person=person,
-                            nature="C" if balance > 0.0 else "D",
-                            date=opening_date,
-                        )
-                        ledgers.append(ledger)
-                        ledgers_and_details.append(
-                            LedgerAndDetail(ledger_entry=ledger, detail="Opening Balance")
-                        )
+                    if balance is not None:
+                        balance = float(balance)
+                        if abs(balance) > 0.0:
+                            ledger = Ledger(
+                                amount=abs(balance),
+                                person=person,
+                                nature="C" if balance > 0.0 else "D",
+                                date=opening_date,
+                            )
+                            ledgers.append(ledger)
+                            ledgers_and_details.append(
+                                LedgerAndDetail(
+                                    ledger_entry=ledger, detail="Opening Balance"
+                                )
+                            )
         except IOError:
             raise CommandError(f"{file}.csv does not exist")
         Person.objects.bulk_create(persons)
