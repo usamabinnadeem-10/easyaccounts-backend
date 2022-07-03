@@ -1,10 +1,9 @@
 from datetime import datetime
 
-from ledgers.models import Ledger
+from ledgers.models import Ledger, LedgerAndDetail
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 from rest_framework import serializers, status
-from transactions.models import TransactionDetail
 
 from .models import *
 
@@ -22,7 +21,7 @@ class CreateLogEntry:
 class PersonSerializer(CreateLogEntry, serializers.ModelSerializer):
 
     category = ActivityCategory.PERSON
-
+    opening_balance = serializers.FloatField(default=0.0, write_only=True)
     opening_balance_date = serializers.DateTimeField(
         default=datetime.now, write_only=True
     )
@@ -61,11 +60,14 @@ class PersonSerializer(CreateLogEntry, serializers.ModelSerializer):
         #     request,
         # )
         if person.opening_balance != 0:
-            Ledger.objects.create(
+            ledger_entry = Ledger.objects.create(
                 person=person,
                 nature=nature,
                 date=opening_balance_date,
                 amount=abs(person.opening_balance),
+            )
+            LedgerAndDetail.objects.create(
+                ledger_entry=ledger_entry, detail="Opening Balance"
             )
         return person
 
