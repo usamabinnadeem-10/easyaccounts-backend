@@ -33,7 +33,6 @@ class Command(BaseCommand):
                         Product(
                             name=row[0],
                             category=category,
-                            minimum_rate=row[2],
                         )
                     )
         except IOError:
