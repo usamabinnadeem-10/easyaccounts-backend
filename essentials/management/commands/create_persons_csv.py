@@ -60,7 +60,7 @@ class Command(BaseCommand):
                     person = Person(**data)
                     persons.append(person)
                     balance = self._data_or_null(row[2])
-                    if balance and abs(balance) > 0.0:
+                    if balance and abs(float(balance)) > 0.0:
                         ledger = Ledger(
                             amount=abs(balance),
                             person=person,
