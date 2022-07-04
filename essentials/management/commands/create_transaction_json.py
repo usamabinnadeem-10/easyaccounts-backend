@@ -2,6 +2,7 @@ import json
 import os
 
 from django.core.management.base import BaseCommand, CommandError
+from essentials.models import Person, Product, Warehouse
 from transactions.models import Transaction, TransactionDetail
 
 
@@ -19,10 +20,22 @@ class Command(BaseCommand):
             with open(path, "r") as f:
                 data = json.load(f)
                 detail = data.pop("transaction_detail")
+                person = data.pop("person")
+                person = Person.objects.get(id=person)
                 transaction = Transaction.objects.create(**data)
                 detail_records = []
                 for d in detail:
-                    detail_records.append(TransactionDetail(transaction=transaction, **d))
+                    product = Product.objects.get(id=d["product"])
+                    warehouse = Warehouse.objects.get(id=d["warehouse"])
+                    detail_records.append(
+                        TransactionDetail(
+                            transaction=transaction,
+                            product=product,
+                            warehouse=warehouse,
+                            yards_per_piece=d["yards_per_piece"],
+                            rate=d["rate"],
+                        )
+                    )
                 TransactionDetail.objects.bulk_create(detail_records)
         except IOError:
             raise CommandError(f"{file}.json does not exist")
