@@ -34,6 +34,7 @@ class Command(BaseCommand):
                             warehouse=warehouse,
                             yards_per_piece=d["yards_per_piece"],
                             rate=d["rate"],
+                            quantity=d["quantity"],
                         )
                     )
                 TransactionDetail.objects.bulk_create(detail_records)
