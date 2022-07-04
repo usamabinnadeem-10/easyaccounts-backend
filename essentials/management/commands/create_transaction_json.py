@@ -22,7 +22,7 @@ class Command(BaseCommand):
                 detail = data.pop("transaction_detail")
                 person = data.pop("person")
                 person = Person.objects.get(id=person)
-                transaction = Transaction.objects.create(**data)
+                transaction = Transaction.objects.create(person=person, **data)
                 detail_records = []
                 for d in detail:
                     product = Product.objects.get(id=d["product"])
