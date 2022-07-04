@@ -1,0 +1,549 @@
+{
+  "nature": "C",
+  "person": "1a2262c2-d089-4a6c-8308-605f7724cd79",
+  "discount": 0,
+  "type": "purchase",
+  "detail": null,
+  "serial_type": "SUP",
+  "manual_serial": null,
+  "requires_action": false,
+  "date": "2022-07-01T22:52:25",
+  "paid": false,
+  "paid_amount": 0,
+  "builty": null,
+  "serial": 3,
+  "transaction_detail": [
+    {
+      "product": "893581c7-b3cc-402c-acd5-ae544f8072a3",
+      "yards_per_piece": 44,
+      "quantity": 10,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "65e8a1aa-3b36-4e0d-9ccd-e79bb163e03b",
+      "yards_per_piece": 44,
+      "quantity": 2,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "02476358-1f34-46ce-bb86-c95bee297b54",
+      "yards_per_piece": 44,
+      "quantity": 11,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "f60c8799-7975-4b44-9add-12d2e3ba0baa",
+      "yards_per_piece": 44,
+      "quantity": 6,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "9d2596c6-5938-4baf-b06c-d2c44dd83399",
+      "yards_per_piece": 44,
+      "quantity": 5,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "7efdf7f4-f947-4e3d-9db7-d8800fbc3aca",
+      "yards_per_piece": 44,
+      "quantity": 45,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "dd06f2bf-7c6f-4546-90ac-edb5757bf5d5",
+      "yards_per_piece": 44,
+      "quantity": 8,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "f77d7d53-c3b7-476f-92cd-940040fb5b73",
+      "yards_per_piece": 44,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "6d0a0255-7d77-48a2-a94c-f9738d1464ec",
+      "yards_per_piece": 44,
+      "quantity": 23,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "933a85af-f03a-4a67-b54a-bd057f751348",
+      "yards_per_piece": 44,
+      "quantity": 16,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "0b7aff66-0e6a-4ec7-9ee2-a1e319047662",
+      "yards_per_piece": 44,
+      "quantity": 5,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "77ec535a-d5f5-44a2-a7b2-488bfe72e4ff",
+      "yards_per_piece": 44,
+      "quantity": 11,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "30a2e37b-23e6-4994-a976-d5b485554894",
+      "yards_per_piece": 44,
+      "quantity": 10,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "795ff6e6-177e-4d69-a20c-34e1a85bb17b",
+      "yards_per_piece": 44,
+      "quantity": 10,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "fa8381f6-cd16-4013-b766-19491a8d22b8",
+      "yards_per_piece": 44,
+      "quantity": 20,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "1f10d40b-f17d-4ff9-90ce-77e3d1495b99",
+      "yards_per_piece": 44,
+      "quantity": 8,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "62597265-0452-40fe-873e-3350973f2960",
+      "yards_per_piece": 44,
+      "quantity": 8,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "be9e0676-d11f-4027-8e0c-586c37e892ce",
+      "yards_per_piece": 44,
+      "quantity": 18,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "03b3678c-f5a1-4b88-bb84-93b561e34515",
+      "yards_per_piece": 44,
+      "quantity": 9,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "61ffcd65-8184-450a-acfe-476f3da8a1a2",
+      "yards_per_piece": 32,
+      "quantity": 4,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "61ffcd65-8184-450a-acfe-476f3da8a1a2",
+      "yards_per_piece": 36,
+      "quantity": 8,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "15428e87-b8a3-4345-b45e-544fcef2aafa",
+      "yards_per_piece": 44,
+      "quantity": 2,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "c68d3ba2-a670-4bca-8b0d-3f7d44286b08",
+      "yards_per_piece": 44,
+      "quantity": 13,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "b09b6a29-9aa2-413d-a8a2-538404144a6c",
+      "yards_per_piece": 44,
+      "quantity": 9,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "0e9e4dbe-7dcc-48d5-a5c4-82e97a34607c",
+      "yards_per_piece": 44,
+      "quantity": 5,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "2eda2f4c-7f3a-4ee2-af4c-3ca2c0637dad",
+      "yards_per_piece": 44,
+      "quantity": 16,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "3837daf6-1c7f-4059-9efc-c42854dda612",
+      "yards_per_piece": 44,
+      "quantity": 34,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "e634505f-3544-473d-b725-eefd94386c7d",
+      "yards_per_piece": 44,
+      "quantity": 5,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "430e43bf-a4f7-4204-8ce9-8dd766e98831",
+      "yards_per_piece": 44,
+      "quantity": 4,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "765c5d96-919f-4816-9366-e0f2b574395f",
+      "yards_per_piece": 44,
+      "quantity": 3,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "9c1a6ca0-ee06-4c11-a15e-2f844670774a",
+      "yards_per_piece": 44,
+      "quantity": 3,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "ed351be4-fc15-4f70-89f5-0d109f57b976",
+      "yards_per_piece": 44,
+      "quantity": 41,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "26747b82-1c0f-48a4-9190-71450be4bd80",
+      "yards_per_piece": 44,
+      "quantity": 10,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "61ffcd65-8184-450a-acfe-476f3da8a1a2",
+      "yards_per_piece": 44,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "bd50dd7f-4ea9-4028-994a-17aafde2b630",
+      "yards_per_piece": 44,
+      "quantity": 48,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "0ecbc7f5-b4ce-4553-837d-e10dc598f381",
+      "yards_per_piece": 44,
+      "quantity": 16,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "e46a8d68-325b-4a18-94c0-5997aeee7665",
+      "yards_per_piece": 44,
+      "quantity": 2,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "13887a52-6119-42db-954e-0b7699b8b30e",
+      "yards_per_piece": 44,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "af4d77e1-65b9-44fe-bf56-5719120b83cd",
+      "yards_per_piece": 44,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "5be5ce7e-86f7-4205-8310-f7873486bbd7",
+      "yards_per_piece": 44,
+      "quantity": 9,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "a127fcba-0f12-4fd3-b42f-6ed4ff5bdd01",
+      "yards_per_piece": 44,
+      "quantity": 2,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "6bc91a94-793a-4151-87f9-981bea4c0320",
+      "yards_per_piece": 44,
+      "quantity": 84,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "7fb54230-c0d6-4b92-b8f9-592cf5bf5e23",
+      "yards_per_piece": 44,
+      "quantity": 46,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "96c0d60a-cdad-4ce6-a05d-477f2615a960",
+      "yards_per_piece": 44,
+      "quantity": 9,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "61a1dfc1-5e5e-45a0-b65b-d70330d342fd",
+      "yards_per_piece": 44,
+      "quantity": 13,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "3837daf6-1c7f-4059-9efc-c42854dda612",
+      "yards_per_piece": 66,
+      "quantity": 27,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "7fb54230-c0d6-4b92-b8f9-592cf5bf5e23",
+      "yards_per_piece": 66,
+      "quantity": 62,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "02476358-1f34-46ce-bb86-c95bee297b54",
+      "yards_per_piece": 66,
+      "quantity": 10,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "5e0fa94c-8cb7-40f9-be46-d293e2e35549",
+      "yards_per_piece": 66,
+      "quantity": 10,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "6d0a0255-7d77-48a2-a94c-f9738d1464ec",
+      "yards_per_piece": 66,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "30a2e37b-23e6-4994-a976-d5b485554894",
+      "yards_per_piece": 66,
+      "quantity": 28,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "7c4ebb58-2f46-4e17-93d9-1a53ce9e8bc8",
+      "yards_per_piece": 66,
+      "quantity": 34,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "d4cbcddb-e9b6-4c00-bfac-b80df41a7221",
+      "yards_per_piece": 66,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "c68d3ba2-a670-4bca-8b0d-3f7d44286b08",
+      "yards_per_piece": 66,
+      "quantity": 2,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "6bc91a94-793a-4151-87f9-981bea4c0320",
+      "yards_per_piece": 66,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "96c0d60a-cdad-4ce6-a05d-477f2615a960",
+      "yards_per_piece": 66,
+      "quantity": 18,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "7efdf7f4-f947-4e3d-9db7-d8800fbc3aca",
+      "yards_per_piece": 66,
+      "quantity": 17,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "61a1dfc1-5e5e-45a0-b65b-d70330d342fd",
+      "yards_per_piece": 66,
+      "quantity": 13,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "5be5ce7e-86f7-4205-8310-f7873486bbd7",
+      "yards_per_piece": 66,
+      "quantity": 13,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "77ec535a-d5f5-44a2-a7b2-488bfe72e4ff",
+      "yards_per_piece": 66,
+      "quantity": 7,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "933a85af-f03a-4a67-b54a-bd057f751348",
+      "yards_per_piece": 66,
+      "quantity": 5,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "a5aca1cd-73a0-4e17-be31-2905f34bc86f",
+      "yards_per_piece": 66,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "f2a9b0cc-f915-43ff-abcb-6cd1759d567a",
+      "yards_per_piece": 66,
+      "quantity": 1,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "1f10d40b-f17d-4ff9-90ce-77e3d1495b99",
+      "yards_per_piece": 66,
+      "quantity": 34,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "0b7aff66-0e6a-4ec7-9ee2-a1e319047662",
+      "yards_per_piece": 66,
+      "quantity": 3,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "893581c7-b3cc-402c-acd5-ae544f8072a3",
+      "yards_per_piece": 66,
+      "quantity": 9,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "26747b82-1c0f-48a4-9190-71450be4bd80",
+      "yards_per_piece": 66,
+      "quantity": 5,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "0ecbc7f5-b4ce-4553-837d-e10dc598f381",
+      "yards_per_piece": 66,
+      "quantity": 10,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "bd50dd7f-4ea9-4028-994a-17aafde2b630",
+      "yards_per_piece": 66,
+      "quantity": 28,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "b09b6a29-9aa2-413d-a8a2-538404144a6c",
+      "yards_per_piece": 66,
+      "quantity": 18,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "03b3678c-f5a1-4b88-bb84-93b561e34515",
+      "yards_per_piece": 66,
+      "quantity": 28,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "fa8381f6-cd16-4013-b766-19491a8d22b8",
+      "yards_per_piece": 66,
+      "quantity": 29,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "0454fb30-d976-4f7c-b092-802e086f7e58",
+      "yards_per_piece": 44,
+      "quantity": 9,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "2835ef14-e786-4837-879e-596c24f49968",
+      "yards_per_piece": 44,
+      "quantity": 12,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "795ff6e6-177e-4d69-a20c-34e1a85bb17b",
+      "yards_per_piece": 66,
+      "quantity": 27,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    },
+    {
+      "product": "17f3468c-48b2-4d32-bacc-5564e8cdaf66",
+      "yards_per_piece": 66,
+      "quantity": 16,
+      "rate": 88,
+      "warehouse": "ac5f2fca-5491-43a2-b168-b21e8507c874"
+    }
+  ]
+}
