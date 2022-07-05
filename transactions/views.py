@@ -110,7 +110,7 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return queryset.order_by("-date")
+        return queryset.order_by("serial_type", "serial", "-date")
 
 
 class ProductPerformanceHistory(APIView):
