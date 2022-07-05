@@ -213,12 +213,15 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             ]:
                 Transaction.check_average_selling_rates(data["date"], transaction_details)
             if old:
+                old_serial = old.serial
                 old.delete()
 
             transaction = Transaction.objects.create(
                 user=user,
                 **data,
-                serial=Transaction.get_next_serial(
+                serial=old_serial
+                if old is not None
+                else Transaction.get_next_serial(
                     "serial",
                     serial_type=data["serial_type"],
                     person__branch=branch,

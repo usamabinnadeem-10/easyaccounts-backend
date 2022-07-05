@@ -151,6 +151,7 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "warehouse",
         ]
         read_only_fields = ["id", "transaction"]
+        ordering = ["product__name"]
 
 
 class TransactionSerializer(
