@@ -43,28 +43,24 @@ class PersonSerializer(CreateLogEntry, serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def create(self, validated_data):
-        request = self.context["request"]
+
         opening_balance_date = validated_data.pop("opening_balance_date")
         nature = validated_data.pop("nature")
-        data_for_person = validated_data
-        data_for_person["opening_balance"] = (
-            abs(data_for_person["opening_balance"])
-            if nature == "C"
-            else -abs(data_for_person["opening_balance"])
-        )
-        data_for_person["branch"] = request.branch
-        person = Person.objects.create(**data_for_person)
+        opening_balance = validated_data.pop("opening_balance")
+        validated_data["branch"] = self.context["request"].branch
+        person = Person.objects.create(**validated_data)
+
         # self.create_log(
         #     self.category,
         #     f'{person.get_person_type_display()} "{person.name}" with opening balance {person.opening_balance}',
         #     request,
         # )
-        if person.opening_balance != 0:
+        if opening_balance != 0:
             ledger_entry = Ledger.objects.create(
                 person=person,
                 nature=nature,
                 date=opening_balance_date,
-                amount=abs(person.opening_balance),
+                amount=abs(float(opening_balance)),
             )
             LedgerAndDetail.objects.create(
                 ledger_entry=ledger_entry, detail="Opening Balance"

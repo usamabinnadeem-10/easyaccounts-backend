@@ -385,7 +385,7 @@ class TransferStockSerializer(serializers.ModelSerializer):
             "serial",
             "transfer_detail",
             "from_warehouse",
-            # "manual_invoice_serial",
+            "manual_serial",
         ]
         read_only_fields = ["id", "serial"]
 
@@ -399,6 +399,14 @@ class TransferStockSerializer(serializers.ModelSerializer):
                     "You are trying to transfer to same warehouse product is in",
                     status.HTTP_400_BAD_REQUEST,
                 )
+
+        if StockTransfer.objects.filter(
+            manual_serial=data["manual_serial"],
+            from_warehouse__branch=branch,
+            from_warehouse=data["from_warehouse"],
+        ).exists():
+            raise serializers.ValidationError(f"Serial # {data['manual_serial']} exists")
+
         # next_manual = StockTransfer.get_next_serial(
         #     "manual_invoice_serial", from_warehouse=data["from_warehouse"], branch=branch
         # )
@@ -464,7 +472,7 @@ class ViewTransfersSerializer(serializers.ModelSerializer):
             "id",
             "date",
             "serial",
-            # "manual_invoice_serial",
+            "manual_serial",
             "from_warehouse",
             "transfer_detail",
         ]

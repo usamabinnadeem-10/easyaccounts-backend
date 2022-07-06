@@ -287,7 +287,7 @@ class DeleteTransferStock(TransferQuery, generics.DestroyAPIView):
         Log.create_log(
             ActivityTypes.DELETED,
             ActivityCategory.STOCK_TRANSFER,
-            f"serial # {instance.manual_invoice_serial} of {instance.from_warehouse.name}",
+            f"serial # {instance.manual_serial} of {instance.from_warehouse.name}",
             self.request,
         )
 
@@ -303,7 +303,7 @@ class ViewTransfers(TransferQuery, generics.ListAPIView):
         "transfer_detail__yards_per_piece": ["exact", "gte", "lte"],
         "from_warehouse": ["exact"],
         "serial": ["gte", "lte", "exact"],
-        "manual_invoice_serial": ["exact", "gte", "lte"],
+        "manual_serial": ["gte", "lte", "exact"],
         "transfer_detail__to_warehouse": ["exact"],
         "transfer_detail__quantity": ["exact", "gte", "lte"],
     }

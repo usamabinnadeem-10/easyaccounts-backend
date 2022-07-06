@@ -123,7 +123,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             )
             opening.append(
                 {
-                    "warehouse": t["to_warehouse"],
+                    "warehouse": t["warehouse"],
                     "transaction__nature": "C",
                     **product,
                 }
@@ -443,6 +443,7 @@ class StockTransfer(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSe
     from_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name="from_warehouse", default=None
     )
+    manual_serial = models.PositiveBigIntegerField()
 
     class Meta:
         unique_together = ["serial", "from_warehouse"]
