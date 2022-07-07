@@ -20,7 +20,7 @@ class ProductCategory(BranchAwareModel):
         unique_together = ["name", "branch"]
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.branch.name}"
 
 
 class Product(ID):
