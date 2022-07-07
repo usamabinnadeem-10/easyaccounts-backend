@@ -13,15 +13,24 @@ class AccountTypeAdmin(admin.ModelAdmin):
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ["id", "name"]
-    list_filter = ["category"]
+    list_filter = ["category__branch__name", "category"]
+    search_fields = ["name"]
 
 
 class WarehouseAdmin(admin.ModelAdmin):
     list_display = ["id", "name"]
+    list_filter = ["branch__name", "name"]
+    search_fields = ["name"]
 
 
 class StockAdmin(admin.ModelAdmin):
     list_display = ["id", "product", "warehouse"]
+    list_filter = [
+        "warehouse__branch__name",
+        "product__category__name",
+        "warehouse",
+    ]
+    search_fields = ["product"]
 
 
 class ProductCategoryAdmin(admin.ModelAdmin):
