@@ -6,3 +6,4 @@ class RoleChoices(models.TextChoices):
     ADMIN = "admin", "Admin"
     SALEMAN = "saleman", "Saleman"
     PURCHASER = "purchaser", "Purchaser"
+    STOCKIST = "stockist", "Stockist"
