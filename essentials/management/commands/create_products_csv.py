@@ -23,15 +23,15 @@ class Command(BaseCommand):
         except Branch.DoesNotExist:
             raise CommandError(f"Branch {branch_name} does not exist")
         try:
-            with open(path) as file:
+            with open(path, mode="r", encoding="utf-8-sig") as file:
                 reader = csv.reader(file, delimiter=",")
                 for row in reader:
                     category, created = ProductCategory.objects.get_or_create(
-                        name=row[1], branch_id=branch.id
+                        name=row[1].strip(), branch_id=branch.id
                     )
                     products.append(
                         Product(
-                            name=row[0],
+                            name=row[0].strip(),
                             category=category,
                         )
                     )
