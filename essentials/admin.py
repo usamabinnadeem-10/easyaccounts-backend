@@ -5,6 +5,8 @@ from .models import *
 
 class PersonAdmin(admin.ModelAdmin):
     list_display = ["id", "name", "person_type"]
+    list_filter = ["branch__name", "name", "person_type"]
+    search_fields = ["name", "phone_number"]
 
 
 class AccountTypeAdmin(admin.ModelAdmin):
