@@ -10,6 +10,7 @@ class Command(BaseCommand):
     help = "Creates opening stock"
 
     def add_arguments(self, parser):
+        parser.add_argument("branch", type=str)
         parser.add_argument("file", type=str)
         parser.add_argument(
             "--delete",
@@ -32,16 +33,17 @@ class Command(BaseCommand):
         path = os.path.dirname(os.path.abspath(__file__)) + f"/data/{file}.csv"
 
         try:
+            try:
+                branch = Branch.objects.get(name=branch)
+            except Branch.DoesNotExist:
+                raise CommandError(f"Branch {branch} does not exist")
+
             with open(path, mode="r", encoding="utf-8-sig") as file:
                 reader = csv.reader(file, delimiter=",")
                 product = None
                 warehouse = None
                 if delete:
-                    try:
-                        branch = Branch.objects.get(name=branch)
-                        Stock.objects.filter(warehouse__branch=branch).delete()
-                    except Branch.DoesNotExist:
-                        raise CommandError(f"Branch {branch} does not exist")
+                    Stock.objects.filter(warehouse__branch=branch).delete()
 
                 for row in reader:
                     CURR_PROD = row[0]
