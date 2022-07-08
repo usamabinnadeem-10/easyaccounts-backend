@@ -13,6 +13,13 @@ class Command(BaseCommand):
         parser.add_argument("branch", type=str)
         parser.add_argument("file", type=str)
         parser.add_argument(
+            "--add",
+            action="store_true",
+            dest="add",
+            default=False,
+            help="Adds to previous stock if exists",
+        )
+        parser.add_argument(
             "--delete",
             action="store_true",
             dest="delete",
@@ -28,6 +35,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         file = options["file"]
+        add = options["add"]
         delete = options["delete"]
         branch = options["branch"]
         path = os.path.dirname(os.path.abspath(__file__)) + f"/data/{file}.csv"
@@ -71,8 +79,13 @@ class Command(BaseCommand):
                     stock, created = Stock.objects.get_or_create(
                         product=product, warehouse=warehouse, yards_per_piece=row[2]
                     )
-                    stock.opening_stock = row[3]
-                    stock.opening_stock_rate = row[4]
+                    if add:
+                        stock.opening_stock = stock.opening_stock + row[3]
+                        stock.opening_stock_rate = stock.opening_stock_rate + row[4]
+                    else:
+                        stock.opening_stock = row[3]
+                        stock.opening_stock_rate = row[4]
+
                     stock.save()
         except IOError:
             raise CommandError(f"{file}.csv does not exist")
