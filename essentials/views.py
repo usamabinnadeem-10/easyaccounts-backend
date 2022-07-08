@@ -222,7 +222,11 @@ class DayBook(APIView):
 
         balance_external_cheques = (
             ExternalCheque.objects.values("status")
-            .filter(status=ChequeStatusChoices.PENDING, **filters, person__branch=branch)
+            .filter(
+                status=ChequeStatusChoices.PENDING,
+                date__lte=today_end,
+                person__branch=branch,
+            )
             .aggregate(total=Sum("amount"))
         )
         balance_external_cheques = balance_external_cheques.get("total", 0)
@@ -233,8 +237,8 @@ class DayBook(APIView):
             )
             .filter(
                 return_cheque__isnull=True,
-                **filters,
-                parent_cheque__person__branch=branch
+                date__lte=today_end,
+                parent_cheque__person__branch=branch,
             )
             .annotate(total=Sum("amount"))
         )
@@ -243,8 +247,8 @@ class DayBook(APIView):
             PersonalCheque.objects.values("account_type__name")
             .filter(
                 status=PersonalChequeStatusChoices.CLEARED,
-                **filters,
-                person__branch=branch
+                date__lte=today_end,
+                person__branch=branch,
             )
             .annotate(total=Sum("amount"))
         )
