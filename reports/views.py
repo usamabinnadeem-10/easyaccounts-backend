@@ -1,6 +1,7 @@
 from assets.models import Asset
 from core.utils import convert_date_to_datetime
 from django.db.models import Avg, Count, Sum
+from essentials.choices import PersonChoices
 from essentials.models import OpeningSaleData
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
@@ -70,8 +71,17 @@ class IncomeStatement(APIView):
                 branch, date__gte, date__lte
             )
         )
+        advance_expenses = (
+            Ledger.objects.filter(
+                person_type=PersonChoices.EXPENSE_ADVANCE, nature="D"
+            ).aggregate(total="amount")["total"]
+            or 0
+        )
         expenses.append(
             {"expense__type": "Opening Expense", "total": opening_sale_data["expenses"]}
+        )
+        expenses.append(
+            {"expense__type": "Advance Paid Expenses", "total": advance_expenses}
         )
         final_data = {
             "revenue": revenue + (opening_sale_data["revenue"] or 0),

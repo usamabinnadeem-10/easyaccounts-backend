@@ -51,7 +51,7 @@ class Person(BranchAwareModel):
     """Supplier or Customer Account"""
 
     name = models.CharField(max_length=100)
-    person_type = models.CharField(max_length=1, choices=PersonChoices.choices)
+    person_type = models.CharField(max_length=3, choices=PersonChoices.choices)
     # business_name = models.CharField(max_length=100, null=True)
     address = models.CharField(max_length=300, null=True)
     phone_number = models.CharField(
