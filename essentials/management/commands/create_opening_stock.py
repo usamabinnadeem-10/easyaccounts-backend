@@ -49,16 +49,24 @@ class Command(BaseCommand):
                     CURR_PROD = row[0]
                     CURR_WAREHOUSE = row[1]
                     if product is None:
-                        product = Product.objects.get(name=CURR_PROD)
+                        product = Product.objects.get(
+                            name=CURR_PROD, category__branch=branch
+                        )
                     else:
                         if product.name != CURR_PROD:
-                            product = Product.objects.get(name=CURR_PROD)
+                            product = Product.objects.get(
+                                name=CURR_PROD, category__branch=branch
+                            )
 
                     if warehouse is None:
-                        warehouse = Warehouse.objects.get(name=CURR_WAREHOUSE)
+                        warehouse = Warehouse.objects.get(
+                            name=CURR_WAREHOUSE, branch=branch
+                        )
                     else:
                         if warehouse.name != CURR_WAREHOUSE:
-                            warehouse = Warehouse.objects.get(name=CURR_WAREHOUSE)
+                            warehouse = Warehouse.objects.get(
+                                name=CURR_WAREHOUSE, branch=branch
+                            )
 
                     stock, created = Stock.objects.get_or_create(
                         product=product, warehouse=warehouse, yards_per_piece=row[2]
