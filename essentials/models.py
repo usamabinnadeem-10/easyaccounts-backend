@@ -63,7 +63,6 @@ class Person(BranchAwareModel):
                 code="nomatch",
             ),
         ],
-        unique=True,
         null=True,
     )
     # city = models.IntegerField(null=True)
@@ -71,6 +70,9 @@ class Person(BranchAwareModel):
 
     def __str__(self) -> str:
         return self.name + ": " + self.person_type
+
+    class Meta:
+        unique_together = ("branch", "phone_number")
 
 
 class AccountType(BranchAwareModel):
