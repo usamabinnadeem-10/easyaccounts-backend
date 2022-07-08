@@ -73,8 +73,8 @@ class IncomeStatement(APIView):
         )
         advance_expenses = (
             Ledger.objects.filter(
-                person_type=PersonChoices.EXPENSE_ADVANCE, nature="D"
-            ).aggregate(total="amount")["total"]
+                person__person_type=PersonChoices.EXPENSE_ADVANCE, nature="D"
+            ).aggregate(total=Sum("amount"))["total"]
             or 0
         )
         expenses.append(
