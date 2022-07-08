@@ -175,14 +175,14 @@ class GetAllBalances(APIView):
 
         balances = (
             Ledger.objects.filter(**filters)
-            .values("nature", name=F("person__name"))
+            .values("nature", "person")
             .order_by("nature")
             .annotate(balance=Sum("amount"))
         )
 
         data = {}
         for b in balances:
-            name = b["name"]
+            name = str(b["person"])
             amount = b["balance"]
             nature = b["nature"]
             if not name in data:
