@@ -79,12 +79,14 @@ class Command(BaseCommand):
                     stock, created = Stock.objects.get_or_create(
                         product=product, warehouse=warehouse, yards_per_piece=row[2]
                     )
+                    qty = float(row[3])
+                    rate = float(row[4])
                     if add:
-                        stock.opening_stock = stock.opening_stock + row[3]
-                        stock.opening_stock_rate = stock.opening_stock_rate + row[4]
+                        stock.opening_stock = stock.opening_stock + qty
+                        stock.opening_stock_rate = stock.opening_stock_rate + rate
                     else:
-                        stock.opening_stock = row[3]
-                        stock.opening_stock_rate = row[4]
+                        stock.opening_stock = qty
+                        stock.opening_stock_rate = rate
 
                     stock.save()
         except IOError:
