@@ -440,7 +440,7 @@ class TransactionDetail(ID):
                 revenue += d["total"]
             elif d["serial"] == TransactionSerialTypes.MWC:
                 revenue -= d["total"]
-        print(revenue)
+
         total_discounts = Transaction.calculate_total_discounts(
             branch, end_date, start_date
         )
@@ -484,6 +484,15 @@ class TransactionDetail(ID):
             if zero:
                 return 0
 
+        opening = Stock.objects.filter(warehouse__branch=branch)
+        opening = opening[0] if len(opening) else None
+
+        opening_value = 0.0
+        opening_gazaana = 0.0
+        if opening:
+            opening_gazaana = opening.yards_per_piece * opening.opening_stock
+            opening_value = opening_gazaana * opening.opening_stock_rate
+
         inventory = (
             TransactionDetail.objects.values(serial_type=F("transaction__serial_type"))
             .filter(
@@ -496,9 +505,9 @@ class TransactionDetail(ID):
             )
         )
 
-        total = 0.0
-        gazaana = 0.0
-        purchase_balance = 0.0
+        total = opening_value
+        gazaana = opening_gazaana
+        purchase_balance = opening_gazaana
         for i in inventory:
             val = i["value"]
             gaz = i["gazaana"]
