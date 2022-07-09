@@ -1,6 +1,5 @@
 from collections import defaultdict
 from datetime import datetime
-from functools import reduce
 from math import inf
 
 from authentication.models import BranchAwareModel, UserAwareModel
@@ -390,7 +389,7 @@ class TransactionDetail(ID):
                 return 0
 
         opening = (
-            Stock.objects.values(branch=F("warehouse__branch"))
+            Stock.objects.values("product", branch=F("warehouse__branch"))
             .filter(warehouse__branch=branch)
             .annotate(
                 opening_gazaana=Sum(F("yards_per_piece") * F("opening_stock")),
@@ -400,14 +399,23 @@ class TransactionDetail(ID):
             )
         )
 
-        opening_value = 0.0
-        opening_gazaana = 0.0
-        if len(opening):
-            opening_gazaana = opening[0]["opening_gazaana"]
-            opening_value = opening[0]["opening_value"]
+        cogs = defaultdict(lambda: {"value": 0.0, "gazaana": 0.0, "purchases": 0.0})
+
+        for o in opening:
+            cogs[str(o["product"])]["value"] = (
+                cogs[str(o["product"])]["value"] + o["opening_value"]
+            )
+            cogs[str(o["product"])]["gazaana"] = (
+                cogs[str(o["product"])]["gazaana"] + o["opening_gazaana"]
+            )
+            cogs[str(o["product"])]["purchases"] = (
+                cogs[str(o["product"])]["purchases"] + o["opening_gazaana"]
+            )
 
         inventory = (
-            TransactionDetail.objects.values(serial_type=F("transaction__serial_type"))
+            TransactionDetail.objects.values(
+                "product", serial_type=F("transaction__serial_type")
+            )
             .filter(
                 transaction__person__branch=branch,
                 **date_filter,
@@ -418,26 +426,44 @@ class TransactionDetail(ID):
             )
         )
 
-        total = opening_value
-        gazaana = opening_gazaana
-        purchase_balance = opening_gazaana
         for i in inventory:
             val = i["value"]
             gaz = i["gazaana"]
             if i["serial_type"] == TransactionSerialTypes.SUP:
-                total += val
-                gazaana += gaz
-                purchase_balance += gaz
+                cogs[str(i["product"])]["value"] = cogs[str(i["product"])]["value"] + val
+                cogs[str(i["product"])]["gazaana"] = (
+                    cogs[str(i["product"])]["gazaana"] + gaz
+                )
+                cogs[str(i["product"])]["purchases"] = (
+                    cogs[str(i["product"])]["purchases"] + gaz
+                )
             elif i["serial_type"] == TransactionSerialTypes.MWS:
-                total -= val
-                gazaana -= gaz
-                purchase_balance -= gaz
+                cogs[str(i["product"])]["value"] = cogs[str(i["product"])]["value"] - val
+                cogs[str(i["product"])]["gazaana"] = (
+                    cogs[str(i["product"])]["gazaana"] - gaz
+                )
+                cogs[str(i["product"])]["purchases"] = (
+                    cogs[str(i["product"])]["purchases"] - gaz
+                )
             elif i["serial_type"] == TransactionSerialTypes.INV:
-                gazaana -= gaz
+                cogs[str(i["product"])]["gazaana"] = (
+                    cogs[str(i["product"])]["gazaana"] - gaz
+                )
             elif i["serial_type"] == TransactionSerialTypes.MWC:
-                gazaana += gaz
+                cogs[str(i["product"])]["gazaana"] = (
+                    cogs[str(i["product"])]["gazaana"] + gaz
+                )
 
-        return (total / purchase_balance) * gazaana if purchase_balance else 0
+        total_cogs = 0.0
+        for key, obj in cogs.items():
+            curr_cog = (
+                obj["value"] / obj["purchases"] * obj["gazaana"]
+                if obj["purchases"]
+                else 0
+            )
+            total_cogs += curr_cog
+
+        return total_cogs
 
     @classmethod
     def calculate_total_purchases_of_period(cls, branch, start_date=None, end_date=None):

@@ -36,9 +36,9 @@ class ExpenseDetail(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             date_filter.update({"date__lte": end_date})
         return (
             ExpenseDetail.objects.values("expense__type")
-            .order_by("serial")
             .filter(expense__branch=branch, **date_filter)
             .annotate(total=Sum("amount"))
+            .order_by()
         )
 
     @classmethod
