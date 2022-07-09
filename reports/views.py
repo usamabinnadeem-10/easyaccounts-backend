@@ -1,8 +1,6 @@
 from assets.models import Asset
 from core.utils import convert_date_to_datetime
-from django.db.models import Avg, Count, Sum
-from essentials.choices import PersonChoices
-from essentials.models import OpeningSaleData
+from essentials.models import OpeningSaleData, Stock
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
 from rest_framework import status
@@ -25,7 +23,7 @@ class BalanceSheet(APIView):
         cogs = TransactionDetail.calculate_cogs(branch, None, date)
         inventory = TransactionDetail.calculate_previous_inventory(
             branch, date, False, True
-        )
+        ) + Stock.get_total_opening_inventory(branch)
         gross_profit = revenue - cogs
 
         return Response(
