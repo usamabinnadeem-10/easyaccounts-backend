@@ -100,7 +100,6 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
             .order_by("nature")
             .filter(person__branch=branch, **date_filter)
             .exclude(person__person_type=PersonChoices.EQUITY)
-            .exclude(person__person_type=PersonChoices.EXPENSE_ADVANCE)
             .annotate(balance=Sum("amount"))
         )
         data = {}

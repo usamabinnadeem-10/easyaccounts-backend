@@ -209,7 +209,6 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 )
             if data["serial_type"] in [
                 TransactionSerialTypes.INV,
-                TransactionSerialTypes.MWC,
             ]:
                 Transaction.check_average_selling_rates(data["date"], transaction_details)
             if old:
@@ -326,94 +325,100 @@ class TransactionDetail(ID):
     quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
 
-    @classmethod
-    def get_yards_balance(cls, branch, end_date=None, start_date=None):
-        date_filter = {"transaction__date__lte": end_date} if end_date is not None else {}
-        if start_date:
-            date_filter.update({"transaction__date__gte": start_date})
-        yards_data = (
-            TransactionDetail.objects.values(nature=F("transaction__nature"))
-            .filter(transaction__person__branch=branch, **date_filter)
-            .annotate(total=Sum(F("yards_per_piece") * F("quantity")))
-        )
-        opening_yards = (
-            Stock.objects.filter(warehouse__branch=branch).aggregate(
-                total=Sum(F("opening_stock") * F("yards_per_piece"))
-            )["total"]
-            or 0
-        )
-        yards_in = list(filter(lambda x: x["nature"] == "C", yards_data))
-        yards_in = yards_in[0]["total"] if len(yards_in) else 0
-        yards_out = list(filter(lambda x: x["nature"] == "D", yards_data))
-        yards_out = yards_out[0]["total"] if len(yards_out) else 0
+    # @classmethod
+    # def get_yards_balance(cls, branch, end_date=None, start_date=None):
+    #     date_filter = {"transaction__date__lte": end_date} if end_date is not None else {}
+    #     if start_date:
+    #         date_filter.update({"transaction__date__gte": start_date})
+    #     yards_data = (
+    #         TransactionDetail.objects.values(nature=F("transaction__nature"))
+    #         .filter(transaction__person__branch=branch, **date_filter)
+    #         .annotate(total=Sum(F("yards_per_piece") * F("quantity")))
+    #     )
+    #     opening_yards = (
+    #         Stock.objects.filter(warehouse__branch=branch).aggregate(
+    #             total=Sum(F("opening_stock") * F("yards_per_piece"))
+    #         )["total"]
+    #         or 0
+    #     )
+    #     yards_in = list(filter(lambda x: x["nature"] == "C", yards_data))
+    #     yards_in = yards_in[0]["total"] if len(yards_in) else 0
+    #     yards_out = list(filter(lambda x: x["nature"] == "D", yards_data))
+    #     yards_out = yards_out[0]["total"] if len(yards_out) else 0
 
-        return {
-            "yards_in": yards_in + opening_yards,
-            "yards_out": yards_out,
-            "remaining": (yards_in + opening_yards) - yards_out,
-        }
+    #     return {
+    #         "yards_in": yards_in + opening_yards,
+    #         "yards_out": yards_out,
+    #         "remaining": (yards_in + opening_yards) - yards_out,
+    #     }
 
-    @classmethod
-    def calculate_per_yard_cost(cls, branch, total_yards, end_date=None, start_date=None):
-        """calculates per-yard cost of buying"""
+    # @classmethod
+    # def calculate_per_yard_cost(cls, branch, total_yards, end_date=None, start_date=None):
+    #     """calculates per-yard cost of buying"""
 
-        date_filter = {"transaction__date__lte": end_date} if end_date is not None else {}
-        if start_date:
-            date_filter.update({"transaction__date__gte": start_date})
-        data = (
-            TransactionDetail.objects.values(nature=F("transaction__nature"))
-            .filter(
-                transaction__person__branch=branch, transaction__nature="C", **date_filter
-            )
-            .aggregate(inventory=Sum(F("rate") * F("yards_per_piece") * F("quantity")))[
-                "inventory"
-            ]
-            or 0
-        )
+    #     date_filter = {"transaction__date__lte": end_date} if end_date is not None else {}
+    #     if start_date:
+    #         date_filter.update({"transaction__date__gte": start_date})
+    #     data = (
+    #         TransactionDetail.objects.values(nature=F("transaction__nature"))
+    #         .filter(
+    #             transaction__person__branch=branch,
+    #             transaction__serial_type=TransactionSerialTypes.SUP,
+    #             **date_filter,
+    #         )
+    #         .aggregate(inventory=Sum(F("rate") * F("yards_per_piece") * F("quantity")))[
+    #             "inventory"
+    #         ]
+    #         or 0
+    #     )
 
-        opening = Stock.get_total_opening_inventory(branch)
+    #     opening = Stock.get_total_opening_inventory(branch)
 
-        return (data + opening) / total_yards if total_yards else 0
+    #     return (data + opening) / total_yards if total_yards else 0
 
-    @classmethod
-    def calculate_per_yard_selling_price(
-        cls, branch, yards_sold, end_date=None, start_date=None
-    ):
-        """calculates per-yard selling price"""
+    # @classmethod
+    # def calculate_per_yard_selling_price(
+    #     cls, branch, yards_sold, end_date=None, start_date=None
+    # ):
+    #     """calculates per-yard selling price"""
 
-        date_filter = {"transaction__date__lte": end_date} if end_date is not None else {}
-        if start_date:
-            date_filter.update({"transaction__date__gte": start_date})
-        gross_selling_price = (
-            TransactionDetail.objects.values(nature=F("transaction__nature"))
-            .filter(
-                transaction__person__branch=branch, transaction__nature="D", **date_filter
-            )
-            .aggregate(inventory=Sum(F("rate") * F("yards_per_piece") * F("quantity")))[
-                "inventory"
-            ]
-            or 0
-        )
-        discounts = Transaction.calculate_total_discounts(branch, end_date, start_date)
+    #     date_filter = {"transaction__date__lte": end_date} if end_date is not None else {}
+    #     if start_date:
+    #         date_filter.update({"transaction__date__gte": start_date})
+    #     gross_selling_price = (
+    #         TransactionDetail.objects.values(nature=F("transaction__nature"))
+    #         .filter(
+    #             transaction__person__branch=branch,
+    #             transaction__serial_type=TransactionSerialTypes.INV,
+    #             **date_filter,
+    #         )
+    #         .aggregate(inventory=Sum(F("rate") * F("yards_per_piece") * F("quantity")))[
+    #             "inventory"
+    #         ]
+    #         or 0
+    #     )
+    #     discounts = Transaction.calculate_total_discounts(branch, end_date, start_date)
 
-        return (gross_selling_price - discounts) / yards_sold if yards_sold else 0
+    #     return (gross_selling_price - discounts) / yards_sold if yards_sold else 0
 
-    @classmethod
-    def get_inventory_stats(cls, branch, end_date=None, start_date=None):
-        """calculates total inventory value in hand"""
-        yards_data = TransactionDetail.get_yards_balance(branch, end_date, start_date)
+    # @classmethod
+    # def get_inventory_stats(cls, branch, end_date=None, start_date=None):
+    #     """calculates total inventory value in hand"""
+    #     yards_data = TransactionDetail.get_yards_balance(branch, end_date, start_date)
 
-        per_yard_cost = TransactionDetail.calculate_per_yard_cost(
-            branch, yards_data["yards_in"], end_date, start_date
-        )
-        per_yard_selling = TransactionDetail.calculate_per_yard_selling_price(
-            branch, yards_data["yards_out"], end_date, start_date
-        )
+    #     per_yard_cost = TransactionDetail.calculate_per_yard_cost(
+    #         branch, yards_data["yards_in"], end_date, start_date
+    #     )
+    #     per_yard_selling = TransactionDetail.calculate_per_yard_selling_price(
+    #         branch, yards_data["yards_out"], end_date, start_date
+    #     )
 
-        return {
-            "inventory": (per_yard_cost * yards_data["remaining"]),
-            "profit": ((per_yard_selling - per_yard_cost) * yards_data["yards_out"]),
-        }
+    #     return {
+    #         "inventory": (per_yard_cost * yards_data["remaining"]),
+    #         "profit": ((per_yard_selling - per_yard_cost) * yards_data["yards_out"]),
+    #         "cogs": (per_yard_cost * yards_data["yards_in"])
+    #         - (per_yard_cost * yards_data["remaining"]),
+    #     }
 
     @classmethod
     def calculate_total_revenue(cls, branch, start_date=None, end_date=None):
@@ -423,19 +428,144 @@ class TransactionDetail(ID):
             date_filter.update({"transaction__date__gte": start_date})
         if end_date:
             date_filter.update({"transaction__date__lte": end_date})
-        gross_revenue = (
-            TransactionDetail.objects.filter(
-                transaction__person__branch=branch,
-                transaction__nature=TransactionChoices.DEBIT,
-            ).aggregate(total=Sum(F("rate") * F("quantity") * F("yards_per_piece")))[
-                "total"
-            ]
-            or 0
+        data = (
+            TransactionDetail.objects.values(serial=F("transaction__serial_type"))
+            .filter(transaction__person__branch=branch, **date_filter)
+            .annotate(total=Sum(F("rate") * F("quantity") * F("yards_per_piece")))
         )
+
+        revenue = 0.0
+        for d in data:
+            if d["serial"] == TransactionSerialTypes.INV:
+                revenue += d["total"]
+            elif d["serial"] == TransactionSerialTypes.MWC:
+                revenue -= d["total"]
+        print(revenue)
         total_discounts = Transaction.calculate_total_discounts(
             branch, end_date, start_date
         )
-        return gross_revenue - total_discounts
+
+        return revenue - total_discounts
+
+    @classmethod
+    def calculate_total_inventory(cls, branch, start_date=None, end_date=None):
+        """calculates total inventory value for a given period"""
+        date_filter = {}
+        if start_date:
+            date_filter.update({"transaction__date__gte": start_date})
+        if end_date:
+            date_filter.update({"transaction__date__lte": end_date})
+
+        return (
+            TransactionDetail.objects.values(nature=F("transaction__nature"))
+            .filter(
+                transaction__person__branch=branch,
+                transaction__serial_type=TransactionSerialTypes.SUP,
+                **date_filter,
+            )
+            .aggregate(inventory=Sum(F("rate") * F("yards_per_piece") * F("quantity")))[
+                "inventory"
+            ]
+            or 0
+        )
+
+    @classmethod
+    def calculate_previous_inventory(
+        cls, branch, end_date=None, zero=False, include_ending=False
+    ):
+        """calculates total inventory value less than end_date"""
+        date_filter = {}
+        if end_date:
+
+            date_filter.update(
+                {f"transaction__date__lt{'e' if include_ending else ''}": end_date}
+            )
+        else:
+            if zero:
+                return 0
+
+        inventory = (
+            TransactionDetail.objects.values(serial_type=F("transaction__serial_type"))
+            .filter(
+                transaction__person__branch=branch,
+                **date_filter,
+            )
+            .annotate(
+                value=Sum(F("rate") * F("yards_per_piece") * F("quantity")),
+                gazaana=Sum(F("yards_per_piece") * F("quantity")),
+            )
+        )
+
+        total = 0.0
+        gazaana = 0.0
+        purchase_balance = 0.0
+        for i in inventory:
+            val = i["value"]
+            gaz = i["gazaana"]
+            if i["serial_type"] == TransactionSerialTypes.SUP:
+                total += val
+                gazaana += gaz
+                purchase_balance += gaz
+            elif i["serial_type"] == TransactionSerialTypes.MWS:
+                total -= val
+                gazaana -= gaz
+                purchase_balance -= gaz
+            elif i["serial_type"] == TransactionSerialTypes.INV:
+                gazaana -= gaz
+            elif i["serial_type"] == TransactionSerialTypes.MWC:
+                gazaana += gaz
+
+        return (total / purchase_balance) * gazaana if purchase_balance else 0
+
+    @classmethod
+    def calculate_total_purchases_of_period(cls, branch, start_date=None, end_date=None):
+        date_filter = {}
+        if start_date:
+            date_filter.update({"transaction__date__gte": start_date})
+        if end_date:
+            date_filter.update({"transaction__date__lte": end_date})
+
+        purchases = (
+            TransactionDetail.objects.values(serial_type=F("transaction__serial_type"))
+            .filter(
+                transaction__person__branch=branch,
+                **date_filter,
+            )
+            .annotate(
+                value=Sum(F("rate") * F("yards_per_piece") * F("quantity")),
+            )
+        )
+
+        total = 0.0
+        for p in purchases:
+            if p["serial_type"] == TransactionSerialTypes.SUP:
+                total += p["value"]
+            elif p["serial_type"] == TransactionSerialTypes.MWS:
+                total -= p["value"]
+
+        return total
+
+    @classmethod
+    def calculate_cogs(cls, branch, start_date=None, end_date=None):
+        date_filter = {}
+        if start_date:
+            date_filter.update({"transaction__date__gte": start_date})
+        if end_date:
+            date_filter.update({"transaction__date__lte": end_date})
+
+        beginning_inventory = Stock.get_total_opening_inventory(
+            branch
+        ) + TransactionDetail.calculate_previous_inventory(branch, start_date, True)
+
+        purchases_period = TransactionDetail.calculate_total_purchases_of_period(
+            branch, start_date, end_date
+        )
+
+        ending_inventory = TransactionDetail.calculate_previous_inventory(
+            branch, end_date, False, True
+        )
+
+        return (beginning_inventory + purchases_period) - ending_inventory
 
 
 class StockTransfer(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):

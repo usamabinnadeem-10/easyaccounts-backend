@@ -20,12 +20,17 @@ class BalanceSheet(APIView):
         date = date.replace(hour=23, minute=59, second=59, microsecond=999999)
         pay_recv = Ledger.get_account_payable_receivable(branch, date)
         account_balances = Ledger.get_total_account_balance(branch, date, True)
-        transaction_stats = TransactionDetail.get_inventory_stats(branch, date)
+
+        revenue = TransactionDetail.calculate_total_revenue(branch, None, date)
+        cogs = TransactionDetail.calculate_cogs(branch, None, date)
+        inventory = TransactionDetail.calculate_total_inventory(branch, None, date)
+        gross_profit = revenue - cogs
+
         return Response(
             {
                 "assets": {
                     "receivable": pay_recv["receivable"],
-                    "inventory": transaction_stats["inventory"],
+                    "inventory": inventory,
                     "cash_and_equivalent": account_balances["credit"]
                     - account_balances["debit"],
                     "assets": Asset.get_total_assets(branch, date),
@@ -35,7 +40,7 @@ class BalanceSheet(APIView):
                 },
                 "equity": {
                     "equity": Ledger.get_total_owners_equity(branch, date)
-                    + transaction_stats["profit"]
+                    + gross_profit
                     + Asset.get_total_asset_profit(branch, date)
                     + OpeningSaleData.get_opening_profit(branch, date)
                     - ExpenseDetail.calculate_total_expenses(branch, None, date),
@@ -62,30 +67,19 @@ class IncomeStatement(APIView):
         date__lte = date__lte.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         revenue = TransactionDetail.calculate_total_revenue(branch, date__gte, date__lte)
-        inventory_stats = TransactionDetail.get_inventory_stats(
-            branch, date__lte, date__gte
-        )
+
         opening_sale_data = OpeningSaleData.get_opening_sales_data(branch, date__lte)
         expenses = list(
             ExpenseDetail.calculate_total_expenses_with_category(
                 branch, date__gte, date__lte
             )
         )
-        advance_expenses = (
-            Ledger.objects.filter(
-                person__person_type=PersonChoices.EXPENSE_ADVANCE, nature="D"
-            ).aggregate(total=Sum("amount"))["total"]
-            or 0
-        )
         expenses.append(
             {"expense__type": "Opening Expense", "total": opening_sale_data["expenses"]}
         )
-        expenses.append(
-            {"expense__type": "Advance Paid Expenses", "total": advance_expenses}
-        )
         final_data = {
             "revenue": revenue + (opening_sale_data["revenue"] or 0),
-            "cogs": (revenue - inventory_stats["profit"])
+            "cogs": TransactionDetail.calculate_cogs(branch, date__gte, date__lte)
             + (opening_sale_data["cogs"] or 0),
             "expenses": expenses,
             "asset_profit": Asset.get_total_asset_profit(branch, date__lte, date__gte),
