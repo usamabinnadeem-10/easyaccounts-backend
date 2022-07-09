@@ -484,14 +484,18 @@ class TransactionDetail(ID):
             if zero:
                 return 0
 
-        opening = Stock.objects.filter(warehouse__branch=branch)
-        opening = opening[0] if len(opening) else None
+        opening = Stock.objects.values(branch=F("warehouse__branch")).annotate(
+            opening_gazaana=Sum(F("yards_per_piece") * F("opening_stock")),
+            opening_value=Sum(
+                F("yards_per_piece") * F("opening_stock") * F("opening_stock_rate")
+            ),
+        )
 
         opening_value = 0.0
         opening_gazaana = 0.0
-        if opening:
-            opening_gazaana = opening.yards_per_piece * opening.opening_stock
-            opening_value = opening_gazaana * opening.opening_stock_rate
+        if len(opening):
+            opening_gazaana = opening[0]["opening_gazaana"]
+            opening_value = opening[0]["opening_value"]
 
         inventory = (
             TransactionDetail.objects.values(serial_type=F("transaction__serial_type"))
