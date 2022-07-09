@@ -23,7 +23,7 @@ class BalanceSheet(APIView):
         cogs = TransactionDetail.calculate_cogs(branch, None, date)
         inventory = TransactionDetail.calculate_previous_inventory(
             branch, date, False, True
-        ) + Stock.get_total_opening_inventory(branch)
+        )
         gross_profit = revenue - cogs
 
         return Response(
