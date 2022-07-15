@@ -87,7 +87,7 @@ class ListRawTransactions(RawTransactionQuery, generics.ListAPIView):
     filter_fields = {
         "person": ["exact"],
         "date": ["exact", "gte", "lte"],
-        "manual_invoice_serial": ["exact", "gte", "lte"],
+        # "manual_invoice_serial": ["exact", "gte", "lte"],
         "transaction_lot__lot_number": ["exact", "gte", "lte"],
         "transaction_lot__raw_product": ["exact", "gte", "lte"],
     }

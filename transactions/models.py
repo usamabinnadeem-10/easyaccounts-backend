@@ -374,20 +374,18 @@ class TransactionDetail(ID):
         )
 
     @classmethod
-    def calculate_previous_inventory(
-        cls, branch, end_date=None, zero=False, include_ending=False
-    ):
+    def calculate_previous_inventory(cls, branch, end_date=None, include_ending=False):
         """calculates total inventory value less than end_date"""
         date_filter = {}
         if end_date:
-
             date_filter.update(
                 {f"transaction__date__lt{'e' if include_ending else ''}": end_date}
             )
-        else:
-            if zero:
-                return 0
 
+        # dictionary that holds all the cogs
+        cogs = defaultdict(lambda: {"value": 0.0, "gazaana": 0.0, "purchases": 0.0})
+
+        # opening stock grouped by product and branch
         opening = (
             Stock.objects.values("product", branch=F("warehouse__branch"))
             .filter(warehouse__branch=branch)
@@ -399,8 +397,7 @@ class TransactionDetail(ID):
             )
         )
 
-        cogs = defaultdict(lambda: {"value": 0.0, "gazaana": 0.0, "purchases": 0.0})
-
+        # loop over opening stock and add to cogs
         for o in opening:
             cogs[str(o["product"])]["value"] = (
                 cogs[str(o["product"])]["value"] + o["opening_value"]
@@ -412,58 +409,66 @@ class TransactionDetail(ID):
                 cogs[str(o["product"])]["purchases"] + o["opening_gazaana"]
             )
 
-        inventory = (
-            TransactionDetail.objects.values(
-                "product", serial_type=F("transaction__serial_type")
-            )
-            .filter(
-                transaction__person__branch=branch,
-                **date_filter,
-            )
-            .annotate(
-                value=Sum(F("rate") * F("yards_per_piece") * F("quantity")),
-                gazaana=Sum(F("yards_per_piece") * F("quantity")),
-            )
-        )
+        # if an end date is provided then assume that there is no purchase/sale
+        if end_date:
 
-        for i in inventory:
-            val = i["value"]
-            gaz = i["gazaana"]
-            if i["serial_type"] == TransactionSerialTypes.SUP:
-                cogs[str(i["product"])]["value"] = cogs[str(i["product"])]["value"] + val
-                cogs[str(i["product"])]["gazaana"] = (
-                    cogs[str(i["product"])]["gazaana"] + gaz
+            inventory = (
+                TransactionDetail.objects.values(
+                    "product", serial_type=F("transaction__serial_type")
                 )
-                cogs[str(i["product"])]["purchases"] = (
-                    cogs[str(i["product"])]["purchases"] + gaz
+                .filter(
+                    transaction__person__branch=branch,
+                    **date_filter,
                 )
-            elif i["serial_type"] == TransactionSerialTypes.MWS:
-                cogs[str(i["product"])]["value"] = cogs[str(i["product"])]["value"] - val
-                cogs[str(i["product"])]["gazaana"] = (
-                    cogs[str(i["product"])]["gazaana"] - gaz
+                .annotate(
+                    value=Sum(F("rate") * F("yards_per_piece") * F("quantity")),
+                    gazaana=Sum(F("yards_per_piece") * F("quantity")),
                 )
-                cogs[str(i["product"])]["purchases"] = (
-                    cogs[str(i["product"])]["purchases"] - gaz
-                )
-            elif i["serial_type"] == TransactionSerialTypes.INV:
-                cogs[str(i["product"])]["gazaana"] = (
-                    cogs[str(i["product"])]["gazaana"] - gaz
-                )
-            elif i["serial_type"] == TransactionSerialTypes.MWC:
-                cogs[str(i["product"])]["gazaana"] = (
-                    cogs[str(i["product"])]["gazaana"] + gaz
-                )
+            )
 
-        total_cogs = 0.0
+            for i in inventory:
+                val = i["value"]
+                gaz = i["gazaana"]
+                if i["serial_type"] == TransactionSerialTypes.SUP:
+                    cogs[str(i["product"])]["value"] = (
+                        cogs[str(i["product"])]["value"] + val
+                    )
+                    cogs[str(i["product"])]["gazaana"] = (
+                        cogs[str(i["product"])]["gazaana"] + gaz
+                    )
+                    cogs[str(i["product"])]["purchases"] = (
+                        cogs[str(i["product"])]["purchases"] + gaz
+                    )
+                elif i["serial_type"] == TransactionSerialTypes.MWS:
+                    cogs[str(i["product"])]["value"] = (
+                        cogs[str(i["product"])]["value"] - val
+                    )
+                    cogs[str(i["product"])]["gazaana"] = (
+                        cogs[str(i["product"])]["gazaana"] - gaz
+                    )
+                    cogs[str(i["product"])]["purchases"] = (
+                        cogs[str(i["product"])]["purchases"] - gaz
+                    )
+                elif i["serial_type"] == TransactionSerialTypes.INV:
+                    cogs[str(i["product"])]["gazaana"] = (
+                        cogs[str(i["product"])]["gazaana"] - gaz
+                    )
+                elif i["serial_type"] == TransactionSerialTypes.MWC:
+                    cogs[str(i["product"])]["gazaana"] = (
+                        cogs[str(i["product"])]["gazaana"] + gaz
+                    )
+
+        # calculate final inventory in hand till end date
+        total_inventory = 0.0
         for key, obj in cogs.items():
-            curr_cog = (
+            curr_inventory = (
                 obj["value"] / obj["purchases"] * obj["gazaana"]
                 if obj["purchases"]
                 else 0
             )
-            total_cogs += curr_cog
+            total_inventory += curr_inventory
 
-        return total_cogs
+        return total_inventory
 
     @classmethod
     def calculate_total_purchases_of_period(cls, branch, start_date=None, end_date=None):
@@ -496,16 +501,17 @@ class TransactionDetail(ID):
     @classmethod
     def calculate_cogs(cls, branch, start_date=None, end_date=None):
 
-        beginning_inventory = Stock.get_total_opening_inventory(
-            branch
-        ) + TransactionDetail.calculate_previous_inventory(branch, start_date, True)
+        beginning_inventory = TransactionDetail.calculate_previous_inventory(
+            branch,
+            start_date,
+        )
 
         purchases_period = TransactionDetail.calculate_total_purchases_of_period(
             branch, start_date, end_date
         )
 
         ending_inventory = TransactionDetail.calculate_previous_inventory(
-            branch, end_date, False, True
+            branch, end_date, True
         )
 
         return (beginning_inventory + purchases_period) - ending_inventory

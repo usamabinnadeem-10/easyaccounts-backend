@@ -392,7 +392,7 @@ class ListRawTransactionSerializer(serializers.ModelSerializer):
         fields = fields = [
             "id",
             "person",
-            "manual_invoice_serial",
+            # "manual_invoice_serial",
             "date",
             "transaction_lot",
         ]

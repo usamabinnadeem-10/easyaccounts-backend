@@ -21,9 +21,7 @@ class BalanceSheet(APIView):
 
         revenue = TransactionDetail.calculate_total_revenue(branch, None, date)
         cogs = TransactionDetail.calculate_cogs(branch, None, date)
-        inventory = TransactionDetail.calculate_previous_inventory(
-            branch, date, False, True
-        )
+        inventory = TransactionDetail.calculate_previous_inventory(branch, date, True)
         gross_profit = revenue - cogs
 
         return Response(
