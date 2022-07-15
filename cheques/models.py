@@ -145,37 +145,43 @@ class ExternalChequeHistory(ID, UserAwareModel, DateTimeAwareModel):
     def get_remaining_amount(cls, external_cheque, cheque_account, branch):
         """Returns the remaining amount of an external cheque"""
         filter = {}
+        child = False
         # if parent cheque
         if external_cheque.parent_cheque.exists():
             filter.update({"parent_cheque": external_cheque})
         # if child cheque
         else:
+            child = True
             filter.update({"cheque": external_cheque})
 
+        # amount that has been received against the cheque (hard form)
         recovered_amount = (
             ExternalChequeHistory.objects.values("parent_cheque__id")
             .filter(parent_cheque__person__branch=branch, **filter)
             .exclude(account_type=cheque_account)
             .annotate(amount=Sum("amount"))
         )
-        passed_cheque_amount = (
-            ExternalChequeHistory.objects.values("parent_cheque__id")
-            .filter(
-                parent_cheque__person__branch=branch,
-                return_cheque__status__in=[
-                    ChequeStatusChoices.CLEARED,
-                    ChequeStatusChoices.COMPLETED_HISTORY,
-                ],
-                **filter,
+        passed_cheque_amount = None
+        if child:
+            passed_cheque_amount = (
+                ExternalChequeHistory.objects.values("parent_cheque__id")
+                .filter(
+                    parent_cheque__person__branch=branch,
+                    return_cheque__status__in=[
+                        ChequeStatusChoices.CLEARED,
+                        ChequeStatusChoices.COMPLETED_HISTORY,
+                    ],
+                    **filter,
+                )
+                .annotate(amount=Sum("amount"))
             )
-            .annotate(amount=Sum("amount"))
-        )
+
         final_amount = external_cheque.amount
         if len(recovered_amount):
             final_amount -= recovered_amount[0]["amount"]
-        if len(passed_cheque_amount):
+        if passed_cheque_amount and len(passed_cheque_amount):
             final_amount -= passed_cheque_amount[0]["amount"]
-        return final_amount if final_amount > 0 else 0
+        return final_amount
 
     @classmethod
     def get_amount_received(cls, parent_cheque, branch):
