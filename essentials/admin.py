@@ -32,7 +32,7 @@ class StockAdmin(admin.ModelAdmin):
         "product__category__name",
         "warehouse",
     ]
-    search_fields = ["product"]
+    search_fields = ["product__name"]
 
 
 class ProductCategoryAdmin(admin.ModelAdmin):

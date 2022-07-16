@@ -6,7 +6,7 @@ from core.utils import convert_qp_dict_to_qp
 from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from essentials.models import *
+from essentials.models import Stock
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
 from logs.choices import ActivityCategory, ActivityTypes
@@ -309,17 +309,28 @@ class ViewTransfers(TransferQuery, generics.ListAPIView):
     }
 
 
-# class CancelInvoice(CancelledInvoiceQuery, generics.ListCreateAPIView):
-
-#     serializer_class = CancelledInvoiceSerializer
-
-
 class DetailedStockView(APIView):
     def get(self, request):
         qp = request.query_params
         product = get_object_or_404(Product, id=qp.get("product"))
         opening_stock = 0.0
         branch = request.branch
+
+        initial_stock_filters = {"product": qp.get("product")}
+        if qp.get("warehouse"):
+            initial_stock_filters.update({"warehouse": qp.get("warehouse")})
+        if qp.get("yards_per_piece"):
+            initial_stock_filters.update({"yards_per_piece": qp.get("yards_per_piece")})
+
+        initial_stock = (
+            Stock.objects.filter(**initial_stock_filters).aggregate(
+                total=Sum("opening_stock")
+            )["total"]
+            or 0
+        )
+
+        opening_stock += initial_stock
+
         filters = {"product": product, "transaction__person__branch": branch}
         filters_transfers = {"product": product, "transfer__branch": branch}
         if qp.get("start"):
@@ -389,6 +400,7 @@ class DetailedStockView(APIView):
             "quantity",
             "id",
             "yards_per_piece",
+            "transfer__from_warehouse",
         ]
         if qp.get("warehouse"):
             transfers = StockTransferDetail.objects.filter(
@@ -411,13 +423,6 @@ class DetailedStockView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
-
-# class CancelStockTransferView(CancelStockTransferQuery, generics.CreateAPIView):
-
-#     serializer_class = CancelStockTransferSerializer
-
-import operator
 
 
 class ViewAllStock(TransactionQuery, generics.ListAPIView):
