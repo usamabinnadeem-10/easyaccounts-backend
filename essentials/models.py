@@ -53,7 +53,7 @@ class Person(BranchAwareModel):
     name = models.CharField(max_length=100)
     person_type = models.CharField(max_length=3, choices=PersonChoices.choices)
     # business_name = models.CharField(max_length=100, null=True)
-    address = models.CharField(max_length=300, null=True)
+    address = models.CharField(max_length=300, null=True, blank=True)
     phone_number = models.CharField(
         max_length=13,
         validators=[
@@ -64,9 +64,10 @@ class Person(BranchAwareModel):
             ),
         ],
         null=True,
+        blank=True,
     )
     # city = models.IntegerField(null=True)
-    area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True)
+    area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self) -> str:
         return self.name + ": " + self.person_type

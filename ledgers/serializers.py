@@ -69,11 +69,11 @@ class LedgerSerializer(serializers.ModelSerializer):
         if obj.ledger_transaction.exists():
             return obj.ledger_transaction.first().transaction.get_computer_serial()
         elif obj.ledger_external_cheque.exists():
-            return f"CH-E : {obj.ledger_external_cheque.first().external_cheque.serial}"
+            return f"CHE-{obj.ledger_external_cheque.first().external_cheque.serial}"
         elif obj.ledger_personal_cheque.exists():
-            return f"CH-P : {obj.ledger_personal_cheque.first().personal_cheque.serial}"
+            return f"CHP-{obj.ledger_personal_cheque.first().personal_cheque.serial}"
         elif obj.ledger_payment.exists():
-            return f"P : {obj.ledger_payment.first().payment.serial}"
+            return f"P-{obj.ledger_payment.first().payment.serial}"
         else:
             return "---"
 
