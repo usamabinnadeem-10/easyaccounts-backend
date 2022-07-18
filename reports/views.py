@@ -1,6 +1,10 @@
+from collections import defaultdict
+
 from assets.models import Asset
+from authentication.choices import RoleChoices
 from core.utils import convert_date_to_datetime
-from essentials.models import OpeningSaleData, Stock
+from django.db.models import Sum
+from essentials.models import OpeningSaleData
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
 from rest_framework import status
@@ -86,3 +90,77 @@ class IncomeStatement(APIView):
         }
 
         return Response(final_data, status=status.HTTP_200_OK)
+
+
+class GetAllBalances(APIView):
+    """
+    Get balances with filters
+    """
+
+    def get(self, request):
+        filters = {"person__branch": request.branch}
+
+        if request.query_params.get("person_type"):
+            filters.update(
+                {"person__person_type": request.query_params.get("person_type")}
+            )
+        if request.query_params.get("person_id"):
+            filters.update({"person": request.query_params.get("person_id")})
+
+        if request.role not in [RoleChoices.ADMIN]:
+            filters.update({"person__person_type": "C"})
+
+        balances = (
+            Ledger.objects.filter(**filters)
+            .values("nature", "person")
+            .order_by("nature")
+            .annotate(balance=Sum("amount"))
+        )
+
+        data = defaultdict(float)
+        for b in balances:
+            name = str(b["person"])
+            amount = b["balance"]
+            nature = b["nature"]
+            if nature == "C":
+                data[name] = data[name] + amount
+            else:
+                data[name] = data[name] - amount
+
+        balance_gte = request.query_params.get("balance__gte")
+        balance_lte = request.query_params.get("balance__lte")
+        balance_nature = request.query_params.get("balance_nature")
+
+        if balance_gte or balance_lte:
+            if not balance_nature:
+                return Response(
+                    {"error": "Please choose a balance nature"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            final_balances = {}
+            if balance_gte:
+                target_balance = float(balance_gte)
+                for person, balance in data.items():
+                    curr_balance = abs(balance) if balance_nature == "D" else balance
+                    if curr_balance >= target_balance:
+                        final_balances[person] = balance
+            if balance_lte:
+                target_balance = float(balance_lte)
+                for person, balance in data.items():
+                    curr_balance = abs(balance) if balance_nature == "D" else balance
+                    if curr_balance <= target_balance:
+                        final_balances[person] = balance
+
+            return Response(final_balances, status=status.HTTP_200_OK)
+        elif balance_nature:
+            final_balances = {}
+            for person, balance in data.items():
+                if balance_nature == "C":
+                    if balance >= 0.0:
+                        final_balances[person] = balance
+                else:
+                    if balance < 0.0:
+                        final_balances[person] = balance
+            return Response(final_balances, status=status.HTTP_200_OK)
+
+        return Response(data, status=status.HTTP_200_OK)
