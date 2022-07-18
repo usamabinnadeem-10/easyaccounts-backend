@@ -254,7 +254,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                         "amount": transaction.paid_amount,
                         "account_type": transaction.account_type,
                         "person": transaction.person,
-                        "detail": f"{transaction.detail} Bill # {transaction.manual_serial} {transaction.get_computer_serial()}",
+                        "detail": f"{transaction.detail or ''} Bill # {transaction.manual_serial} {transaction.get_computer_serial()}",
                     },
                 )
 

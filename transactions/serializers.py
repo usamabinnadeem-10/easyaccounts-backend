@@ -104,6 +104,12 @@ class ValidateTotal:
             raise serializers.ValidationError(
                 "Total is too low", status.HTTP_400_BAD_REQUEST
             )
+        if data["paid"]:
+            if data["paid_amount"] > total:
+                raise serializers.ValidationError(
+                    "Paid amount can not be greater than total",
+                    status.HTTP_400_BAD_REQUEST,
+                )
         return data
 
 
