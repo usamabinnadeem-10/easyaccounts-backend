@@ -25,6 +25,10 @@ class ExpenseTypes(models.TextChoices):
         "refreshments",
         "Refreshments",
     )
+    FOOD = (
+        "food",
+        "Food",
+    )
     SPECIAL = (
         "special",
         "Special",

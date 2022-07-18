@@ -245,17 +245,18 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 {"transaction": transaction, "detail": transaction_details}
             )
 
-            # if the transaction is paid then create a payment entry
-            # if paid:
-            #     Payment.make_payment(
-            #         request,
-            #         {
-            #             "nature": TransactionChoices.CREDIT,
-            #             "amount": transaction.paid_amount,
-            #             "account_type": transaction.account_type,
-            #             "person": transaction.person,
-            #         },
-            #     )
+            # if the transaction is new and paid then create a payment entry
+            if old is None and paid:
+                Payment.make_payment(
+                    request,
+                    {
+                        "nature": TransactionChoices.CREDIT,
+                        "amount": transaction.paid_amount,
+                        "account_type": transaction.account_type,
+                        "person": transaction.person,
+                        "detail": f"{transaction.detail} Bill # {transaction.manual_serial} {transaction.get_computer_serial()}",
+                    },
+                )
 
             return {"transaction": transaction, "detail": transactions}
         raise ValidationError(
