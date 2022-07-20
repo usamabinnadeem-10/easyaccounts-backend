@@ -181,6 +181,7 @@ class DayBook(APIView):
 
         ledger_details = LedgerAndDetail.objects.values(
             "detail",
+            amount=F("ledger_entry__amount"),
             date=F("ledger_entry__date"),
             person=F("ledger_entry__person"),
             nature=F("ledger_entry__nature"),
