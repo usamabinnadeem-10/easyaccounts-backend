@@ -179,6 +179,14 @@ class DayBook(APIView):
         )
         payments_serialized = PaymentAndImageListSerializer(payments, many=True).data
 
+        ledger_details = LedgerAndDetail.objects.values(
+            "detail",
+            date=F("ledger_entry__date"),
+            person=F("ledger_entry__person"),
+            nature=F("ledger_entry__nature"),
+            account_type=F("ledger_entry__account_type"),
+        ).filter(**filters, ledger_entry__person__branch=branch)
+
         external_cheques = ExternalCheque.objects.filter(**filters, person__branch=branch)
         external_cheques_serialized = ExternalChequeSerializer(
             external_cheques, many=True
@@ -287,6 +295,7 @@ class DayBook(APIView):
                 "external_cheques": external_cheques_serialized,
                 "external_cheques_history": external_cheques_history_serialized,
                 "personal_cheques": personal_cheques_serialized,
+                "ledger_details": ledger_details,
             },
             status=status.HTTP_200_OK,
         )
