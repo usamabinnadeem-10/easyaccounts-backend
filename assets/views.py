@@ -1,3 +1,4 @@
+from authentication.mixins import IsAdminPermissionMixin
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.generics import (
     CreateAPIView,
@@ -10,7 +11,7 @@ from .queries import AssetQuery
 from .serializers import AssetSerializer
 
 
-class CreateAsset(AssetQuery, CreateAPIView):
+class CreateAsset(IsAdminPermissionMixin, AssetQuery, CreateAPIView):
     """
     create Asset
     """
@@ -18,7 +19,7 @@ class CreateAsset(AssetQuery, CreateAPIView):
     serializer_class = AssetSerializer
 
 
-class ListAsset(AssetQuery, ListAPIView):
+class ListAsset(IsAdminPermissionMixin, AssetQuery, ListAPIView):
     """
     list Assets
     """
@@ -34,7 +35,7 @@ class ListAsset(AssetQuery, ListAPIView):
     }
 
 
-class EditAsset(AssetQuery, UpdateAPIView):
+class EditAsset(IsAdminPermissionMixin, AssetQuery, UpdateAPIView):
     """
     edit an Asset
     """
@@ -42,7 +43,7 @@ class EditAsset(AssetQuery, UpdateAPIView):
     serializer_class = AssetSerializer
 
 
-class DeleteAsset(AssetQuery, DestroyAPIView):
+class DeleteAsset(IsAdminPermissionMixin, AssetQuery, DestroyAPIView):
     """
     delete an Asset
     """
