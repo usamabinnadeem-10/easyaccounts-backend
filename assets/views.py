@@ -1,4 +1,7 @@
-from authentication.mixins import IsAdminPermissionMixin
+from authentication.mixins import (
+    IsAdminOrReadAdminPermissionMixin,
+    IsAdminPermissionMixin,
+)
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.generics import (
     CreateAPIView,
@@ -19,7 +22,7 @@ class CreateAsset(IsAdminPermissionMixin, AssetQuery, CreateAPIView):
     serializer_class = AssetSerializer
 
 
-class ListAsset(IsAdminPermissionMixin, AssetQuery, ListAPIView):
+class ListAsset(IsAdminOrReadAdminPermissionMixin, AssetQuery, ListAPIView):
     """
     list Assets
     """
