@@ -20,7 +20,7 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
-from ledgers.models import Ledger
+from ledgers.models import Ledger, LedgerAndDetail
 from payments.models import Payment
 from payments.serializers import PaymentAndImageListSerializer
 from rest_framework import status
@@ -349,24 +349,17 @@ class GetAccountHistory(
             branch = request.branch
             filters = {}
             date_filters = {}
+            ledger_detail_date_filter = {}
             start = convert_date_to_datetime(qp.get("start"), True)
             end = convert_date_to_datetime(qp.get("end"), True)
             if start:
-                date_filters.update(
-                    {
-                        "date__gte": start.replace(
-                            hour=0, minute=0, second=0, microsecond=0
-                        )
-                    }
-                )
+                start_date = start.replace(hour=0, minute=0, second=0, microsecond=0)
+                date_filters.update({"date__gte": start_date})
+                ledger_detail_date_filter.update({"ledger_entry__date__gte": start_date})
             if end:
-                date_filters.update(
-                    {
-                        "date__lte": end.replace(
-                            hour=23, minute=59, second=59, microsecond=999999
-                        )
-                    }
-                )
+                end_date = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+                date_filters.update({"date__lte": end_date})
+                ledger_detail_date_filter.update({"ledger_entry__date__lte": end_date})
 
             account = get_object_or_404(AccountType, id=account, branch=request.branch)
             cheque_account = get_cheque_account(branch).account
@@ -393,12 +386,12 @@ class GetAccountHistory(
                     ExternalCheque.objects.filter(
                         **date_filters, person__branch=branch
                     ).values("amount", "date", "id", "serial", "status"),
-                    "CH-E",
+                    "CHE",
                 )
 
             external_cheque_history = format_cheques_as_ledger(
                 ExternalChequeHistory.objects.filter(
-                    **filters, parent_cheque__person__branch=branch
+                    **filters, **date_filters, parent_cheque__person__branch=branch
                 )
                 .exclude(account_type=cheque_account)
                 .values(
@@ -408,25 +401,37 @@ class GetAccountHistory(
                     serial=F("parent_cheque__serial"),
                 ),
                 "C",
-                "CH-E-H",
+                "CHE-H",
             )
 
             personal_cheques = format_cheques_as_ledger(
                 PersonalCheque.objects.filter(
                     **filters,
+                    **date_filters,
                     status=PersonalChequeStatusChoices.CLEARED,
-                    person__branch=branch
+                    person__branch=branch,
                 ).values("amount", "date", "serial", "id"),
                 "D",
                 "CH-P",
             )
 
             expenses = format_cheques_as_ledger(
-                ExpenseDetail.objects.filter(**filters, expense__branch=branch).values(
-                    "amount", "date", "serial", "id"
-                ),
+                ExpenseDetail.objects.filter(
+                    **filters, **date_filters, expense__branch=branch
+                ).values("amount", "date", "serial", "id"),
                 "D",
                 "E",
+            )
+            ledger_details = LedgerAndDetail.objects.filter(
+                ledger_entry__person__branch=branch,
+                ledger_entry__account_type=account,
+                **ledger_detail_date_filter,
+            ).values(
+                "id",
+                amount=F("ledger_entry__amount"),
+                date=F("ledger_entry__date"),
+                nature=F("ledger_entry__nature"),
+                serial=F("ledger_entry__person__name"),
             )
 
             final_result = sorted(
@@ -436,6 +441,7 @@ class GetAccountHistory(
                     external_cheque_history,
                     personal_cheques,
                     expenses,
+                    ledger_details,
                 ),
                 key=lambda obj: obj["date"],
             )
