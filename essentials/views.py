@@ -169,7 +169,9 @@ class DayBook(IsAdminOrReadAdminOrAccountantMixin, APIView):
 
         cheque_account = get_cheque_account(request.branch).account
 
-        expenses = ExpenseDetail.objects.filter(**filters, expense__branch=branch)
+        expenses = ExpenseDetail.objects.filter(
+            **filters, expense__branch=branch
+        ).order_by("serial")
         expenses_serialized = ExpenseDetailSerializer(expenses, many=True)
 
         transactions = Transaction.objects.filter(
