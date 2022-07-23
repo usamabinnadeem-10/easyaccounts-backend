@@ -40,6 +40,7 @@ class ListExpenseDetail(ExpenseDetailQuery, generics.ListAPIView):
         "account_type": ["exact"],
         "expense__type": ["exact"],
         "detail": ["icontains"],
+        "expense": ["exact"],
     }
 
 
