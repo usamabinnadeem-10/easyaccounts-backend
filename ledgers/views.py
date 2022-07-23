@@ -2,7 +2,11 @@ from datetime import datetime, timedelta
 from functools import reduce
 
 from authentication.choices import RoleChoices
-from authentication.mixins import IsAdminOrAccountantMixin, IsAdminPermissionMixin
+from authentication.mixins import (
+    IsAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminPermissionMixin,
+)
 from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
 from core.pagination import LargePagination
@@ -21,7 +25,7 @@ from ledgers.serializers import LedgerAndDetailSerializer, LedgerSerializer
 from .queries import LedgerAndDetailQuery, LedgerQuery
 
 
-class ListLedger(LedgerQuery, IsAdminOrAccountantMixin, generics.ListAPIView):
+class ListLedger(LedgerQuery, IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView):
     """
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance
