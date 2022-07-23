@@ -56,16 +56,20 @@ class IsAccountantPermissionMixin:
 class IsAdminOrAccountantMixin:
     """To check if user is admin or accountant"""
 
-    permission_classes = [IsAdmin | IsAccountant, IsLoggedIn]
+    permission_classes = [IsAuthenticated, IsLoggedIn, IsAdmin | IsAccountant]
 
 
 class IsAdminOrReadAdminOrAccountantMixin:
     """To check if user is admin or read admin or accountant"""
 
-    permission_classes = [IsAdmin | IsAdminReadOnly | IsAccountant, IsLoggedIn]
+    permission_classes = [
+        IsAuthenticated,
+        IsLoggedIn,
+        IsAdmin | IsAdminReadOnly | IsAccountant,
+    ]
 
 
 class IsAdminOrReadAdminPermissionMixin:
     """To check if user is admin or read admin"""
 
-    permission_classes = [IsAdmin | IsAdminReadOnly, IsLoggedIn]
+    permission_classes = [IsAuthenticated, IsLoggedIn, IsAdmin | IsAdminReadOnly]
