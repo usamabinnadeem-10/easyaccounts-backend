@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from .permissions import (
     IsAccountant,
     IsAdmin,
+    IsAdminReadOnly,
     IsBranchMember,
     IsLoggedIn,
     IsPurchaser,
@@ -55,4 +56,16 @@ class IsAccountantPermissionMixin:
 class IsAdminOrAccountantMixin:
     """To check if user is admin or accountant"""
 
-    permission_classes = [IsAdmin | IsAccountant, IsLoggedIn, IsAccountant]
+    permission_classes = [IsAdmin | IsAccountant, IsLoggedIn]
+
+
+class IsAdminOrReadAdminOrAccountantMixin:
+    """To check if user is admin or read admin or accountant"""
+
+    permission_classes = [IsAdmin | IsAdminReadOnly | IsAccountant, IsLoggedIn]
+
+
+class IsAdminOrReadAdminPermissionMixin:
+    """To check if user is admin or read admin"""
+
+    permission_classes = [IsAdmin | IsAdminReadOnly, IsLoggedIn]

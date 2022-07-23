@@ -52,3 +52,10 @@ class IsAccountant(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.role == RoleChoices.ACCOUNTANT
+
+
+class IsAdminReadOnly(permissions.BasePermission):
+    """Permission class to check whether user is a read only admin"""
+
+    def has_permission(self, request, view):
+        return request.role == RoleChoices.ADMIN_VIEWER

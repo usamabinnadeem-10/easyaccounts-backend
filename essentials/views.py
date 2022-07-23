@@ -1,8 +1,11 @@
 from collections import defaultdict
-from datetime import datetime, timedelta
 from itertools import chain
 
 from authentication.choices import RoleChoices
+from authentication.mixins import (
+    IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminPermissionMixin,
+)
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeHistory, PersonalCheque
 from cheques.serializers import (
@@ -48,7 +51,7 @@ from .utils import (
 )
 
 
-class CreatePerson(PersonQuery, CreateAPIView):
+class CreatePerson(PersonQuery, IsAdminPermissionMixin, CreateAPIView):
     """
     create person
     """
@@ -56,7 +59,7 @@ class CreatePerson(PersonQuery, CreateAPIView):
     serializer_class = PersonSerializer
 
 
-class ListPerson(PersonQuery, ListAPIView):
+class ListPerson(PersonQuery, IsAdminOrReadAdminOrAccountantMixin, ListAPIView):
     """
     list persons with the option of filtering by person_type
     """
@@ -66,7 +69,7 @@ class ListPerson(PersonQuery, ListAPIView):
     filterset_fields = ["person_type"]
 
 
-class CreateWarehouse(WarehouseQuery, CreateAPIView):
+class CreateWarehouse(WarehouseQuery, IsAdminPermissionMixin, CreateAPIView):
     """
     create warehouse
     """
@@ -82,7 +85,7 @@ class ListWarehouse(WarehouseQuery, ListAPIView):
     serializer_class = WarehouseSerializer
 
 
-class CreateProduct(ProductQuery, CreateAPIView):
+class CreateProduct(ProductQuery, IsAdminPermissionMixin, CreateAPIView):
     """
     create product
     """
@@ -98,7 +101,7 @@ class ListProduct(ProductQuery, ListAPIView):
     serializer_class = ProductSerializer
 
 
-class CreateAccountType(AccountTypeQuery, CreateAPIView):
+class CreateAccountType(AccountTypeQuery, IsAdminPermissionMixin, CreateAPIView):
     """
     create account type
     """
@@ -146,7 +149,7 @@ class ListProductCategory(ProductCategoryQuery, ListAPIView):
     serializer_class = ProductCategorySerializer
 
 
-class DayBook(APIView):
+class DayBook(IsAdminOrReadAdminOrAccountantMixin, APIView):
     """
     get daybook for today or with a specific date
     """
@@ -161,7 +164,7 @@ class DayBook(APIView):
             "date__lte": today_end,
         }
         person_filter = {}
-        if request.role not in [RoleChoices.ADMIN]:
+        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
             person_filter = {"person__person_type": PersonChoices.CUSTOMER}
 
         cheque_account = get_cheque_account(request.branch).account
@@ -179,6 +182,11 @@ class DayBook(APIView):
         )
         payments_serialized = PaymentAndImageListSerializer(payments, many=True).data
 
+        person_filter_2 = {}
+        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+            person_filter_2 = {
+                "ledger_entry__person__person_type": PersonChoices.CUSTOMER
+            }
         ledger_details = LedgerAndDetail.objects.values(
             "detail",
             "id",
@@ -187,7 +195,7 @@ class DayBook(APIView):
             person=F("ledger_entry__person"),
             nature=F("ledger_entry__nature"),
             account_type=F("ledger_entry__account_type"),
-        ).filter(**filters, ledger_entry__person__branch=branch)
+        ).filter(**filters, **person_filter_2, ledger_entry__person__branch=branch)
 
         external_cheques = ExternalCheque.objects.filter(**filters, person__branch=branch)
         external_cheques_serialized = ExternalChequeSerializer(
@@ -204,7 +212,9 @@ class DayBook(APIView):
             external_cheques_history, many=True
         ).data
 
-        personal_cheques = PersonalCheque.objects.filter(**filters, person__branch=branch)
+        personal_cheques = PersonalCheque.objects.filter(
+            **filters, **person_filter, person__branch=branch
+        )
         personal_cheques_serialized = IssuePersonalChequeSerializer(
             personal_cheques, many=True
         ).data
@@ -323,7 +333,9 @@ class GetStockQuantity(StockQuery, ListAPIView):
         return queryset
 
 
-class GetAccountHistory(APIView, PaginationHandlerMixin):
+class GetAccountHistory(
+    APIView, IsAdminOrReadAdminOrAccountantMixin, PaginationHandlerMixin
+):
     """Get account history for a specific account type"""
 
     pagination_class = StandardPagination
@@ -437,6 +449,6 @@ class GetAccountHistory(APIView, PaginationHandlerMixin):
             )
 
 
-class CreateOpeningStock(StockQuery, CreateAPIView):
+class CreateOpeningStock(StockQuery, IsAdminPermissionMixin, CreateAPIView):
 
     serializer_class = StockSerializer

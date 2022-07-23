@@ -7,23 +7,13 @@ from .models import StockTransfer, Transaction
 class TransactionQuery:
     def get_queryset(self):
         customer_filter = {}
-        if self.request.role != RoleChoices.ADMIN:
+        if self.request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
             customer_filter["person__person_type"] = PersonChoices.CUSTOMER
         return Transaction.objects.filter(
             person__branch=self.request.branch, **customer_filter
         )
 
 
-# class CancelledInvoiceQuery:
-#     def get_queryset(self):
-#         return CancelledInvoice.objects.filter(branch=self.request.branch)
-
-
 class TransferQuery:
     def get_queryset(self):
         return StockTransfer.objects.filter(branch=self.request.branch)
-
-
-# class CancelStockTransferQuery:
-#     def get_queryset(self):
-#         return CancelStockTransfer.objects.filter(warehouse__branch=self.request.branch)

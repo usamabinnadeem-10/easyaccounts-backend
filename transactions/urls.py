@@ -3,7 +3,8 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
-    path("", GetOrCreateTransaction.as_view()),
+    path("create/", CreateTransaction.as_view()),
+    path("list/", GetTransaction.as_view()),
     path("<uuid:pk>/", EditUpdateDeleteTransaction.as_view()),
     path("search/", FilterTransactions.as_view()),
     path("product-performance-history/", ProductPerformanceHistory.as_view()),

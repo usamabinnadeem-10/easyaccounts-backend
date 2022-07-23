@@ -1,14 +1,16 @@
+from authentication.mixins import IsAdminOrAccountantMixin, IsAdminPermissionMixin
 from django_filters.rest_framework import DjangoFilterBackend
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 from rest_framework import generics
 
-from .models import ExpenseAccount, ExpenseDetail
 from .queries import ExpenseAccountQuery, ExpenseDetailQuery
 from .serializers import ExpenseAccountSerializer, ExpenseDetailSerializer
 
 
-class CreateExpenseAccount(ExpenseAccountQuery, generics.ListCreateAPIView):
+class CreateExpenseAccount(
+    ExpenseAccountQuery, IsAdminPermissionMixin, generics.ListCreateAPIView
+):
     """
     create expense account or list all expense accounts
     """
@@ -16,7 +18,9 @@ class CreateExpenseAccount(ExpenseAccountQuery, generics.ListCreateAPIView):
     serializer_class = ExpenseAccountSerializer
 
 
-class CreateExpenseDetail(ExpenseDetailQuery, generics.ListCreateAPIView):
+class CreateExpenseDetail(
+    ExpenseDetailQuery, IsAdminOrAccountantMixin, generics.ListCreateAPIView
+):
     """
     get expense details with optional filters
     """
@@ -34,7 +38,7 @@ class CreateExpenseDetail(ExpenseDetailQuery, generics.ListCreateAPIView):
 
 
 class EditUpdateDeleteExpenseDetail(
-    ExpenseDetailQuery, generics.RetrieveUpdateDestroyAPIView
+    ExpenseDetailQuery, IsAdminPermissionMixin, generics.RetrieveUpdateDestroyAPIView
 ):
     """
     Edit / Update / Delete an expense record

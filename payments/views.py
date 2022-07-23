@@ -1,3 +1,8 @@
+from authentication.mixins import (
+    IsAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminPermissionMixin,
+)
 from core.pagination import StandardPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.generics import (
@@ -20,7 +25,7 @@ from .serializers import (
 )
 
 
-class ListPaymentView(PaymentQuery, ListAPIView):
+class ListPaymentView(PaymentQuery, IsAdminOrReadAdminOrAccountantMixin, ListAPIView):
     """
     list and filter payments
     """
@@ -39,29 +44,31 @@ class ListPaymentView(PaymentQuery, ListAPIView):
     }
 
 
-class CreatePaymentView(PaymentQuery, CreateAPIView, UpdateAPIView):
+class CreatePaymentView(
+    PaymentQuery, IsAdminOrAccountantMixin, CreateAPIView, UpdateAPIView
+):
     """create payments"""
 
     serializer_class = PaymentSerializer
 
 
-class UpdatePaymentView(PaymentQuery, UpdateAPIView):
+class UpdatePaymentView(PaymentQuery, IsAdminPermissionMixin, UpdateAPIView):
     """update payments"""
 
     serializer_class = PaymentSerializer
 
 
-class DeletePaymentView(PaymentQuery, DestroyAPIView):
+class DeletePaymentView(PaymentQuery, IsAdminPermissionMixin, DestroyAPIView):
     """delete payments"""
 
     pass
 
 
-class AddImageView(PaymentImageQuery, CreateAPIView):
+class AddImageView(PaymentImageQuery, IsAdminOrAccountantMixin, CreateAPIView):
     """add images only"""
 
     serializer_class = UploadImageSerializer
 
 
-class DeletePictureView(PaymentImageQuery, DestroyAPIView):
+class DeletePictureView(PaymentImageQuery, IsAdminPermissionMixin, DestroyAPIView):
     pass

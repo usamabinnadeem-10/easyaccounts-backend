@@ -2,6 +2,10 @@ from collections import defaultdict
 
 from assets.models import Asset
 from authentication.choices import RoleChoices
+from authentication.mixins import (
+    IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminOrReadAdminPermissionMixin,
+)
 from core.utils import convert_date_to_datetime
 from django.db.models import Sum
 from essentials.models import OpeningSaleData
@@ -13,7 +17,7 @@ from rest_framework.views import APIView
 from transactions.models import TransactionDetail
 
 
-class BalanceSheet(APIView):
+class BalanceSheet(IsAdminOrReadAdminPermissionMixin, APIView):
     """Balance sheet with date"""
 
     def get(self, request):
@@ -53,7 +57,7 @@ class BalanceSheet(APIView):
         )
 
 
-class IncomeStatement(APIView):
+class IncomeStatement(IsAdminOrReadAdminPermissionMixin, APIView):
     """Income statement with start and end date"""
 
     def get(self, request):
@@ -92,7 +96,7 @@ class IncomeStatement(APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class GetAllBalances(APIView):
+class GetAllBalances(IsAdminOrReadAdminOrAccountantMixin, APIView):
     """
     Get balances with filters
     """
@@ -107,7 +111,7 @@ class GetAllBalances(APIView):
         if request.query_params.get("person_id"):
             filters.update({"person": request.query_params.get("person_id")})
 
-        if request.role not in [RoleChoices.ADMIN]:
+        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
             filters.update({"person__person_type": "C"})
 
         balances = (

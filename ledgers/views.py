@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from functools import reduce
 
+from authentication.choices import RoleChoices
+from authentication.mixins import IsAdminOrAccountantMixin, IsAdminPermissionMixin
 from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
 from core.pagination import LargePagination
@@ -19,7 +21,7 @@ from ledgers.serializers import LedgerAndDetailSerializer, LedgerSerializer
 from .queries import LedgerAndDetailQuery, LedgerQuery
 
 
-class ListLedger(LedgerQuery, generics.ListAPIView):
+class ListLedger(LedgerQuery, IsAdminOrAccountantMixin, generics.ListAPIView):
     """
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance
@@ -30,21 +32,22 @@ class ListLedger(LedgerQuery, generics.ListAPIView):
     pagination_class = LargePagination
 
     def filter_queryset(self):
-        if self.request.method == "POST":
-            return self.get_queryset()
-        elif self.request.method == "GET":
-            qp = self.request.query_params
-            person = qp.get("person")
-            endDate = (
-                convert_date_to_datetime(qp.get("end"), True)
-                or Ledger.objects.aggregate(date_max=Max("date"))["date_max"]
-                or datetime.now()
-            )
-            return Ledger.objects.select_related("person", "account_type",).filter(
-                person__branch=self.request.branch,
-                person=person,
-                date__lte=endDate,
-            )
+        qp = self.request.query_params
+        person = qp.get("person")
+        endDate = (
+            convert_date_to_datetime(qp.get("end"), True)
+            or Ledger.objects.aggregate(date_max=Max("date"))["date_max"]
+            or datetime.now()
+        )
+        filter = {}
+        if self.request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+            filter.update({"person__person_type": "C"})
+        return Ledger.objects.select_related("person", "account_type",).filter(
+            person__branch=self.request.branch,
+            person=person,
+            date__lte=endDate,
+            **filter,
+        )
 
     def list(self, request, *args, **kwargs):
         qp = self.request.query_params
@@ -130,9 +133,9 @@ class ListLedger(LedgerQuery, generics.ListAPIView):
         return Response(page.data, status=status.HTTP_200_OK)
 
 
-class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.DestroyAPIView):
+class DeleteLedgerDetail(LedgerQuery, IsAdminPermissionMixin, generics.DestroyAPIView):
     """
-    Edit / Update / Delete a ledger record
+    Delete a ledger record (only admin can delete)
     """
 
     serializer_class = LedgerSerializer
@@ -158,7 +161,7 @@ class EditUpdateDeleteLedgerDetail(LedgerQuery, generics.DestroyAPIView):
     #     )
 
 
-class GetAllBalances(APIView):
+class GetAllBalances(IsAdminOrAccountantMixin, APIView):
     """
     Get all balances
     Expects a query parameter person (S or C)
@@ -167,6 +170,9 @@ class GetAllBalances(APIView):
 
     def get(self, request):
         filters = {"person__branch": request.branch}
+
+        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+            filters.update({"person__person_type": "C"})
 
         if request.query_params.get("person"):
             filters.update({"person__person_type": request.query_params.get("person")})
@@ -228,7 +234,16 @@ class FilterLedger(LedgerQuery, generics.ListAPIView):
 
 class LedgerAndDetailEntry(
     LedgerAndDetailQuery,
+    IsAdminOrAccountantMixin,
     generics.CreateAPIView,
+):
+
+    serializer_class = LedgerAndDetailSerializer
+
+
+class UpdateLedgerAndDetailEntry(
+    LedgerAndDetailQuery,
+    IsAdminPermissionMixin,
     generics.UpdateAPIView,
 ):
 

@@ -1,6 +1,12 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
+from authentication.choices import RoleChoices
+from authentication.mixins import (
+    IsAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminPermissionMixin,
+)
 from core.pagination import StandardPagination
 from core.utils import convert_qp_dict_to_qp
 from django.db.models import Avg, Count, Max, Min, Q, Sum
@@ -30,7 +36,7 @@ from .serializers import (  # CancelledInvoiceSerializer,; CancelStockTransferSe
 )
 
 
-class GetOrCreateTransaction(generics.ListCreateAPIView):
+class CreateTransaction(IsAdminOrAccountantMixin, generics.CreateAPIView):
     """
     get transactions with a time frame (optional), requires person to be passed
     """
@@ -39,6 +45,21 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
     pagination_class = StandardPagination
 
     def get_queryset(self):
+        return Transaction.objects.filter(branch=self.request.branch)
+
+
+class GetTransaction(IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView):
+    """
+    get transactions with a time frame (optional), requires person to be passed
+    """
+
+    serializer_class = TransactionSerializer
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        person_filter = {}
+        if self.request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+            person_filter = {"person__person_type": "C"}
         transactions = (
             Transaction.objects.select_related("person", "account_type")
             .prefetch_related(
@@ -46,7 +67,7 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
                 "transaction_detail__product",
                 "transaction_detail__warehouse",
             )
-            .filter(branch=self.request.branch)
+            .filter(**person_filter, branch=self.request.branch)
         )
         qp = self.request.query_params
         person = qp.get("person")
@@ -67,7 +88,7 @@ class GetOrCreateTransaction(generics.ListCreateAPIView):
 
 
 class EditUpdateDeleteTransaction(
-    TransactionQuery, generics.RetrieveUpdateDestroyAPIView
+    TransactionQuery, IsAdminPermissionMixin, generics.RetrieveUpdateDestroyAPIView
 ):
     """
     Edit / Update / Delete a transaction
@@ -96,7 +117,7 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
     filter_fields = {
         "date": ["gte", "lte"],
         "account_type": ["exact"],
-        "detail": ["contains"],
+        "detail": ["icontains"],
         "person": ["exact"],
         "serial": ["exact", "gte", "lte"],
         "manual_serial": ["exact", "gte", "lte"],
@@ -121,7 +142,7 @@ class ProductPerformanceHistory(APIView):
 
     def get(self, request):
         filters = {
-            "branch": request.branch,
+            "transaction__person__branch": request.branch,
             "transaction__nature": "D",
             "transaction__person__person_type": "C",
         }
@@ -179,7 +200,7 @@ class BusinessPerformanceHistory(APIView):
 
         stats = (
             TransactionDetail.objects.values("transaction__nature")
-            .filter(**filters, **branch_filter)
+            .filter(**filters, transaction__person__branch=branch)
             .annotate(
                 quantity=Sum("quantity"),
                 number_of_transactions=Count("transaction__id"),
@@ -272,13 +293,13 @@ class BusinessPerformanceHistory(APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class TransferStock(generics.CreateAPIView):
+class TransferStock(IsAdminOrAccountantMixin, generics.CreateAPIView):
     """Transfer stock from one warehouse to another"""
 
     serializer_class = TransferStockSerializer
 
 
-class DeleteTransferStock(TransferQuery, generics.DestroyAPIView):
+class DeleteTransferStock(TransferQuery, IsAdminPermissionMixin, generics.DestroyAPIView):
     """Delete transfer stock"""
 
     def perform_destroy(self, instance):
@@ -292,7 +313,9 @@ class DeleteTransferStock(TransferQuery, generics.DestroyAPIView):
         )
 
 
-class ViewTransfers(TransferQuery, generics.ListAPIView):
+class ViewTransfers(
+    TransferQuery, IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView
+):
     """View for listing transfers"""
 
     serializer_class = ViewTransfersSerializer
@@ -309,7 +332,7 @@ class ViewTransfers(TransferQuery, generics.ListAPIView):
     }
 
 
-class DetailedStockView(APIView):
+class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
     def get(self, request):
         qp = request.query_params
         product = get_object_or_404(Product, id=qp.get("product"))
