@@ -8,8 +8,16 @@ from .queries import ExpenseAccountQuery, ExpenseDetailQuery
 from .serializers import ExpenseAccountSerializer, ExpenseDetailSerializer
 
 
+class ListExpenseAccount(ExpenseAccountQuery, generics.ListAPIView):
+    """
+    create expense account or list all expense accounts
+    """
+
+    serializer_class = ExpenseAccountSerializer
+
+
 class CreateExpenseAccount(
-    ExpenseAccountQuery, IsAdminPermissionMixin, generics.ListCreateAPIView
+    ExpenseAccountQuery, IsAdminPermissionMixin, generics.CreateAPIView
 ):
     """
     create expense account or list all expense accounts
@@ -18,9 +26,7 @@ class CreateExpenseAccount(
     serializer_class = ExpenseAccountSerializer
 
 
-class CreateExpenseDetail(
-    ExpenseDetailQuery, IsAdminOrAccountantMixin, generics.ListCreateAPIView
-):
+class ListExpenseDetail(ExpenseDetailQuery, generics.ListAPIView):
     """
     get expense details with optional filters
     """
@@ -35,6 +41,16 @@ class CreateExpenseDetail(
         "expense__type": ["exact"],
         "detail": ["icontains"],
     }
+
+
+class CreateExpenseDetail(
+    ExpenseDetailQuery, IsAdminOrAccountantMixin, generics.CreateAPIView
+):
+    """
+    get expense details with optional filters
+    """
+
+    serializer_class = ExpenseDetailSerializer
 
 
 class EditUpdateDeleteExpenseDetail(
