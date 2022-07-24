@@ -4,74 +4,8 @@ from cheques.utils import get_cheque_account
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 from rest_framework import serializers, status
-from rest_framework.exceptions import NotAcceptable
 
-from .models import (  # CancelledInvoice,; CancelStockTransfer,
-    StockTransfer,
-    StockTransferDetail,
-    Transaction,
-    TransactionDetail,
-)
-
-# class ValidateTransactionSerial:
-#     """Validates the serial numbers for transactions"""
-
-#     last_serial_num = 0
-#     cancelled = None
-
-#     def validate_serial(self, data):
-#         branch = self.context["request"].branch
-#         branch_filter = {"branch": branch}
-#         manual_serial_type = data["manual_serial_type"]
-#         manual_invoice_serial = data["manual_invoice_serial"]
-
-#         if Transaction.objects.filter(
-#             person__branch=branch,
-#             manual_invoice_serial=manual_invoice_serial,
-#             manual_serial_type=manual_serial_type,
-#         ).exists():
-#             raise serializers.ValidationError(
-#                 "Invoice with that book number exists.", status.HTTP_400_BAD_REQUEST
-#             )
-
-#         self.last_serial_num = Transaction.get_next_serial(
-#             "serial", manual_serial_type=manual_serial_type, person__branch=branch
-#         )
-
-#         max_from_cancelled = CancelledInvoice.get_next_serial(
-#             "manual_invoice_serial",
-#             manual_serial_type=manual_serial_type,
-#             branch=branch,
-#         )
-#         max_from_transactions = Transaction.get_next_serial(
-#             "manual_invoice_serial",
-#             manual_serial_type=manual_serial_type,
-#             person__branch=branch,
-#         )
-#         max_final = (
-#             max_from_cancelled
-#             if max_from_cancelled > max_from_transactions
-#             else max_from_transactions
-#         )
-
-#         if abs(max_final - manual_invoice_serial) > 1:
-#             raise NotAcceptable(f"Please use serial # {max_final}")
-
-#         try:
-#             self.cancelled = CancelledInvoice.objects.get(
-#                 **branch_filter,
-#                 manual_invoice_serial=manual_invoice_serial,
-#                 manual_serial_type=manual_serial_type,
-#             )
-#         except Exception:
-#             pass
-
-#         if self.cancelled:
-#             raise NotAcceptable(
-#                 f"Serial # {self.cancelled.manual_serial_type}-{self.cancelled.manual_invoice_serial} is cancelled"
-#             )
-
-#         return data
+from .models import StockTransfer, StockTransferDetail, Transaction, TransactionDetail
 
 
 class ValidateSerial:
@@ -302,69 +236,6 @@ class UpdateTransactionSerializer(
         return validated_data
 
 
-# class CancelledInvoiceSerializer(
-#     # ValidateTransactionSerial,
-#     serializers.ModelSerializer):
-
-#     request = None
-#     type = ActivityTypes.CREATED
-#     category = ActivityCategory.CANCELLED_TRANSACTION
-
-#     class Meta:
-#         model = CancelledInvoice
-#         fields = [
-#             "id",
-#             # "manual_invoice_serial",
-#             # "manual_serial_type",
-#             "serial_type",
-#             "comment",
-#         ]
-#         read_only_fields = ["id"]
-
-#     def validate(self, data):
-#         self.request = self.context["request"]
-#         if CancelledInvoice.objects.filter(
-#             branch=self.request.branch,
-#             manual_invoice_serial=data["manual_invoice_serial"],
-#             manual_serial_type=data["manual_serial_type"],
-#         ).exists():
-#             raise serializers.ValidationError(
-#                 "Invoice with that book number is already cancelled.", 400
-#             )
-#         data = super().validate(data)
-#         return data
-
-#     def create(self, validated_data):
-#         serial = None
-#         branch = self.request.branch
-#         user = self.request.user
-#         try:
-#             serial = Transaction.objects.get(
-#                 person__branch=branch,
-#                 manual_invoice_serial=validated_data["manual_invoice_serial"],
-#                 manual_serial_type=validated_data["manual_serial_type"],
-#             )
-#         except Exception:
-#             pass
-
-#         if not serial:
-#             validated_data["branch"] = branch
-#             validated_data["user"] = user
-#             instance = super().create(validated_data)
-#             Log.create_log(
-#                 self.type,
-#                 self.category,
-#                 f"{instance.get_manual_serial()}",
-#                 self.request,
-#             )
-#             return instance
-#         else:
-#             raise NotAcceptable(
-#                 f"{serial.manual_invoice_serial} is already used in transaction ID # {serial.serial}",
-#                 400,
-#             )
-
-
 class TransferStockDetail(serializers.ModelSerializer):
     class Meta:
         model = StockTransferDetail
@@ -413,54 +284,85 @@ class TransferStockSerializer(serializers.ModelSerializer):
         ).exists():
             raise serializers.ValidationError(f"Serial # {data['manual_serial']} exists")
 
-        # next_manual = StockTransfer.get_next_serial(
-        #     "manual_invoice_serial", from_warehouse=data["from_warehouse"], branch=branch
-        # )
-        # next_cancel = CancelStockTransfer.get_next_serial(
-        #     "manual_invoice_serial",
-        #     warehouse=data["from_warehouse"],
-        #     warehouse__branch=branch,
-        # )
-        # final_serial = max(next_manual, next_cancel)
-        # if data["manual_invoice_serial"] != final_serial:
-        #     raise serializers.ValidationError(f"Please use receipt # {final_serial}")
         return data
 
     def create(self, validated_data):
-        branch = self.request.branch
-        user = self.request.user
-        transfer_detail = validated_data.pop("transfer_detail")
-        from_warehouse = validated_data["from_warehouse"]
-        transfer_instance = StockTransfer.objects.create(
-            **validated_data,
-            user=user,
-            serial=StockTransfer.get_next_serial(
-                "serial", from_warehouse=from_warehouse, branch=branch
-            ),
-            branch=branch,
-        )
-        detail_entries = []
-        total_quantity = reduce(
-            lambda prev, curr: prev + curr["quantity"], transfer_detail, 0
-        )
-        for detail in transfer_detail:
-            detail_entries.append(
-                StockTransferDetail(
-                    transfer=transfer_instance,
-                    **detail,
-                )
-            )
-        StockTransferDetail.objects.bulk_create(detail_entries)
-        Transaction.check_stock(branch, None)
+        data = StockTransfer.make_transfer(validated_data, self.request)
+        transfer_detail = data["transfer_detail"]
+        transfer_instance = data["transfer"]
+        validated_data["transfer_detail"] = transfer_detail
+        validated_data["serial"] = transfer_instance.serial
+        validated_data["id"] = transfer_instance.id
+        validated_data["date"] = transfer_instance.date
 
         Log.create_log(
             self.type,
             self.category,
-            f"{total_quantity} thaan from {transfer_instance.from_warehouse.name}, serial # {transfer_instance.serial}",
+            f"{data['total']} thaan from {transfer_instance.from_warehouse.name}, serial # {transfer_instance.serial}",
             self.request,
         )
 
+        return validated_data
+
+
+class UpdateTransferStockSerializer(serializers.ModelSerializer):
+    request = None
+    type = ActivityTypes.EDITED
+    category = ActivityCategory.STOCK_TRANSFER
+    transfer_detail = TransferStockDetail(many=True, required=True)
+
+    class Meta:
+        model = StockTransfer
+        fields = [
+            "id",
+            "date",
+            "serial",
+            "transfer_detail",
+            "from_warehouse",
+            "manual_serial",
+        ]
+        read_only_fields = ["id", "serial"]
+
+    def validate(self, data):
+        self.request = self.context["request"]
+        from_warehouse = data["from_warehouse"]
+        for row in data["transfer_detail"]:
+            if from_warehouse == row["to_warehouse"]:
+                raise serializers.ValidationError(
+                    "You are trying to transfer to same warehouse product is in",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+        return data
+
+    def update(self, instance, validated_data):
+
+        if instance.manual_serial != validated_data["manual_serial"]:
+            if StockTransfer.objects.filter(
+                from_warehouse__branch=self.request.branch,
+                from_warehouse=validated_data["from_warehouse"],
+                manual_serial=validated_data["manual_serial"],
+            ).exists():
+                raise serializers.ValidationError(
+                    f"Serial {validated_data['manual_serial']} already exists",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+        data = StockTransfer.make_transfer(validated_data, self.request, instance)
+        transfer_detail = data["transfer_detail"]
+        transfer_instance = data["transfer"]
+
         validated_data["transfer_detail"] = transfer_detail
+        validated_data["serial"] = transfer_instance.serial
+        validated_data["id"] = transfer_instance.id
+        validated_data["date"] = transfer_instance.date
+
+        Log.create_log(
+            self.type,
+            self.category,
+            f"{data['total']} thaan from {transfer_instance.from_warehouse.name}, serial # {transfer_instance.serial}",
+            self.request,
+        )
+
         return validated_data
 
 
@@ -482,68 +384,6 @@ class ViewTransfersSerializer(serializers.ModelSerializer):
             "from_warehouse",
             "transfer_detail",
         ]
-
-
-# class CancelStockTransferSerializer(serializers.ModelSerializer):
-
-#     request = None
-#     type = ActivityTypes.CREATED
-#     category = ActivityCategory.CANCELLED_STOCK_TRANSFER
-
-#     class Meta:
-#         model = CancelStockTransfer
-#         fields = ["id", "warehouse", "manual_invoice_serial"]
-#         read_only_fields = ["id"]
-
-#     def validate(self, data):
-#         self.request = self.context["request"]
-#         branch = self.request.branch
-#         from_warehouse = data["warehouse"]
-#         serial = data["manual_invoice_serial"]
-#         if StockTransfer.objects.filter(
-#             branch=branch,
-#             from_warehouse=from_warehouse,
-#             manual_invoice_serial=serial,
-#         ).exists():
-#             raise serializers.ValidationError(
-#                 "This serial is already in use", status.HTTP_400_BAD_REQUEST
-#             )
-
-#         if CancelStockTransfer.objects.filter(
-#             warehouse__branch=branch,
-#             warehouse=from_warehouse,
-#             manual_invoice_serial=serial,
-#         ).exists():
-#             raise serializers.ValidationError(
-#                 "This serial is already cancelled", status.HTTP_400_BAD_REQUEST
-#             )
-
-#         next_serial = StockTransfer.get_next_serial(
-#             "manual_invoice_serial", from_warehouse=from_warehouse, branch=branch
-#         )
-#         next_cancel = CancelStockTransfer.get_next_serial(
-#             "manual_invoice_serial", warehouse=from_warehouse, warehouse__branch=branch
-#         )
-#         final_serial = max(next_serial, next_cancel)
-#         if serial > final_serial:
-#             raise serializers.ValidationError(
-#                 "You can not cancel future serial", status.HTTP_400_BAD_REQUEST
-#             )
-
-#         return data
-
-#     def create(self, validated_data):
-#         validated_data["branch"] = self.request.branch
-#         instance = super().create(validated_data)
-
-#         Log.create_log(
-#             self.type,
-#             self.category,
-#             f"serial # {instance.manual_invoice_serial} of {instance.warehouse.name}",
-#             self.request,
-#         )
-
-#         return instance
 
 
 class GetAllStockSerializer(serializers.Serializer):

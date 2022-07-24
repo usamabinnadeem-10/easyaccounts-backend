@@ -32,6 +32,7 @@ from .serializers import (  # CancelledInvoiceSerializer,; CancelStockTransferSe
     TransactionSerializer,
     TransferStockSerializer,
     UpdateTransactionSerializer,
+    UpdateTransferStockSerializer,
     ViewTransfersSerializer,
 )
 
@@ -313,6 +314,12 @@ class DeleteTransferStock(TransferQuery, IsAdminPermissionMixin, generics.Destro
         )
 
 
+class EditTransferStock(TransferQuery, IsAdminPermissionMixin, generics.UpdateAPIView):
+    """Edit stock transfer"""
+
+    serializer_class = UpdateTransferStockSerializer
+
+
 class ViewTransfers(
     TransferQuery, IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView
 ):
@@ -355,7 +362,10 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
         opening_stock += initial_stock
 
         filters = {"product": product, "transaction__person__branch": branch}
-        filters_transfers = {"product": product, "transfer__branch": branch}
+        filters_transfers = {
+            "product": product,
+            "transfer__from_warehouse__branch": branch,
+        }
         if qp.get("start"):
             start = datetime.strptime(qp.get("start"), "%Y-%m-%d %H:%M:%S")
             filters.update({"transaction__date__gte": start})
@@ -394,7 +404,7 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
                 qp.get("product"),
                 {
                     "transfer__date__lte": startDateMinusOne,
-                    "transfer__branch": branch,
+                    "transfer__from_warehouse__branch": branch,
                 },
             )
             opening_stock += old_transfer_quantity

@@ -9,7 +9,7 @@ from core.models import ID, DateTimeAwareModel, NextSerial
 # from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Avg, F, Sum
+from django.db.models import F, Sum
 from essentials.models import AccountType, Person, Product, Stock, Warehouse
 from ledgers.models import Ledger
 from payments.models import Payment
@@ -41,44 +41,16 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         return f"{self.serial_type}-{self.serial}"
 
     @classmethod
-    def check_average_selling_rates(cls, date, t_detail):
+    def check_average_selling_rates(cls, date, t_detail, branch):
         """check if selling rate is more than buying"""
         date = date if date else datetime.now()
-        averages = (
-            TransactionDetail.objects.values("product")
-            .filter(
-                transaction__date__lte=date, transaction__nature=TransactionChoices.CREDIT
-            )
-            .annotate(avg_buying=Avg("rate"))
+        inventory = TransactionDetail.calculate_previous_inventory(
+            branch, date, return_list=True
         )
-        averages_opening = Stock.objects.values("product", rate=F("opening_stock_rate"))
         for d in t_detail:
-            curr_avg = list(
-                filter(lambda x: str(x["product"]) == str(d["product"].id), averages)
-            )
-            curr_opening_avg = list(
-                filter(
-                    lambda x: str(x["product"]) == str(d["product"].id), averages_opening
-                )
-            )
-
-            curr_exists = len(curr_avg) > 0
-            opening_exits = len(curr_opening_avg) > 0
-
-            # if there is no purchase and no opening stock for the
-            # product then ignore selling rate
-            if not curr_exists and not opening_exits:
-                return
-            AVG = inf
-            if curr_exists and opening_exits:
-                AVG = (curr_avg[0]["avg_buying"] + curr_opening_avg[0]["rate"]) / 2
-            else:
-                AVG = (
-                    curr_avg[0]["avg_buying"]
-                    if curr_exists
-                    else curr_opening_avg[0]["rate"]
-                )
-            if d["rate"] <= AVG:
+            curr = inventory[str(d["product"].id)]
+            rate = curr["value"] / curr["purchases"] if curr["purchases"] else inf
+            if d["rate"] <= rate:
                 raise ValidationError(f"Rate too low for {d['product']}", 400)
 
     @classmethod
@@ -104,7 +76,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 "transfer__from_warehouse",
                 warehouse=F("to_warehouse"),
             )
-            .filter(transfer__branch=branch, **kwargs)
+            .filter(transfer__from_warehouse__branch=branch, **kwargs)
             .annotate(quantity=Sum("quantity"))
         )
         for t in transfers:
@@ -209,16 +181,19 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             if data["serial_type"] in [
                 TransactionSerialTypes.INV,
             ]:
-                Transaction.check_average_selling_rates(data["date"], transaction_details)
+                Transaction.check_average_selling_rates(
+                    data["date"], transaction_details, branch
+                )
             if old:
                 old_serial = old.serial
+                old_serial_type = old.serial_type
                 old.delete()
 
             transaction = Transaction.objects.create(
                 user=user,
                 **data,
                 serial=old_serial
-                if old is not None
+                if old is not None and old_serial_type == data["serial_type"]
                 else Transaction.get_next_serial(
                     "serial",
                     serial_type=data["serial_type"],
@@ -375,7 +350,9 @@ class TransactionDetail(ID):
         )
 
     @classmethod
-    def calculate_previous_inventory(cls, branch, end_date=None, include_ending=False):
+    def calculate_previous_inventory(
+        cls, branch, end_date=None, include_ending=False, **kwargs
+    ):
         """calculates total inventory value less than end_date"""
         date_filter = {}
         if end_date:
@@ -459,6 +436,9 @@ class TransactionDetail(ID):
                         cogs[str(i["product"])]["gazaana"] + gaz
                     )
 
+        if kwargs.get("return_list"):
+            return cogs
+
         # calculate final inventory in hand till end date
         total_inventory = 0.0
         for key, obj in cogs.items():
@@ -518,7 +498,7 @@ class TransactionDetail(ID):
         return (beginning_inventory + purchases_period) - ending_inventory
 
 
-class StockTransfer(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSerial):
+class StockTransfer(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial = models.PositiveBigIntegerField()
     from_warehouse = models.ForeignKey(
         Warehouse, on_delete=models.CASCADE, related_name="from_warehouse", default=None
@@ -530,6 +510,44 @@ class StockTransfer(BranchAwareModel, UserAwareModel, DateTimeAwareModel, NextSe
 
     class Meta:
         verbose_name_plural = "Stock transfers"
+
+    @classmethod
+    def make_transfer(cls, data, request, old=None):
+        branch = request.branch
+        user = request.user
+        transfer_detail = data.pop("transfer_detail")
+
+        if old is not None:
+            old_serial = old.serial
+            old_warehouse = old.from_warehouse
+            old.delete()
+
+        transfer_instance = StockTransfer.objects.create(
+            **data,
+            user=user,
+            serial=old_serial
+            if old is not None and old_warehouse == data["from_warehouse"]
+            else StockTransfer.get_next_serial("serial", from_warehouse__branch=branch),
+        )
+        detail_entries = []
+        total = 0
+        for detail in transfer_detail:
+            total += detail["quantity"]
+            detail_entries.append(
+                StockTransferDetail(
+                    transfer=transfer_instance,
+                    **detail,
+                )
+            )
+        detail_entries = StockTransferDetail.objects.bulk_create(detail_entries)
+        Transaction.check_stock(branch, None)
+
+        data["transfer_detail"] = transfer_detail
+        return {
+            "transfer": transfer_instance,
+            "transfer_detail": detail_entries,
+            "total": total,
+        }
 
 
 class StockTransferDetail(ID):
