@@ -527,7 +527,11 @@ class StockTransfer(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             user=user,
             serial=old_serial
             if old is not None and old_warehouse == data["from_warehouse"]
-            else StockTransfer.get_next_serial("serial", from_warehouse__branch=branch),
+            else StockTransfer.get_next_serial(
+                "serial",
+                from_warehouse=data["from_warehouse"],
+                from_warehouse__branch=branch,
+            ),
         )
         detail_entries = []
         total = 0
