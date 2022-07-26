@@ -138,6 +138,11 @@ class PassExternalChequeView(IsAdminOrAccountantMixin, APIView):
         data = request.data
         branch = request.branch
         account_type = AccountType.objects.get(id=data["account_type"], branch=branch)
+        date = data["date"]
+        if date:
+            date = {"date": date}
+        else:
+            date = {}
         cheque = get_object_or_404(
             ExternalCheque, id=data["cheque"], person__branch=branch
         )
@@ -190,6 +195,8 @@ class PassExternalChequeView(IsAdminOrAccountantMixin, APIView):
                 cheque=cheque,
                 account_type=account_type,
                 amount=cheque.amount,
+                user=request.user,
+                **date,
             )
 
         cheque.status = ChequeStatusChoices.CLEARED
