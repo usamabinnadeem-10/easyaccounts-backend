@@ -61,3 +61,5 @@ class ExpenseTypes(models.TextChoices):
         "other",
         "Other",
     )
+    NAGH_MAZDOORI = ("nagh_mazdoori", "Nagh Mazdoori")
+    CONSTRUCTION = ("construction", "Construction")
