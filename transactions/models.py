@@ -230,6 +230,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 Payment.make_payment(
                     request,
                     {
+                        "date": transaction.date,
                         "nature": TransactionChoices.CREDIT,
                         "amount": transaction.paid_amount,
                         "account_type": transaction.account_type,
