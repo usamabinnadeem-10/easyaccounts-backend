@@ -2,7 +2,8 @@ from collections import defaultdict
 from datetime import datetime
 from math import inf
 
-from authentication.models import BranchAwareModel, UserAwareModel
+from authentication.choices import RoleChoices
+from authentication.models import UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
 
@@ -178,9 +179,13 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                     "Please enter a valid paid amount",
                     400,
                 )
-            if data["serial_type"] in [
-                TransactionSerialTypes.INV,
-            ]:
+            if (
+                data["serial_type"]
+                in [
+                    TransactionSerialTypes.INV,
+                ]
+                and request.role != RoleChoices.ADMIN
+            ):
                 Transaction.check_average_selling_rates(
                     data["date"], transaction_details, branch
                 )
