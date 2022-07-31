@@ -16,6 +16,7 @@ class ValidateSerial:
             if Transaction.objects.filter(
                 manual_serial=data["manual_serial"],
                 person__branch=self.context["request"].branch,
+                serial_type=data["serial_type"],
             ).exists():
                 raise serializers.ValidationError(
                     "This serial already exists", status.HTTP_400_BAD_REQUEST
