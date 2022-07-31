@@ -165,7 +165,10 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
             )
         else:
             account_balances = (
-                AccountType.objects.aggregate(total=Sum("opening_balance"))["total"] or 0
+                AccountType.objects.filter(branch=branch).aggregate(
+                    total=Sum("opening_balance")
+                )["total"]
+                or 0
             )
 
         expenses = reduce(
