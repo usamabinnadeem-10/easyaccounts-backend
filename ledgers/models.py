@@ -158,9 +158,9 @@ class Ledger(ID, UserAwareModel, DateTimeAwareModel):
         )
         if exclude_cheque:
             account_balances = (
-                AccountType.objects.exclude(id=cheque_account.id).aggregate(
-                    total=Sum("opening_balance")
-                )["total"]
+                AccountType.objects.filter(branch=branch)
+                .exclude(id=cheque_account.id)
+                .aggregate(total=Sum("opening_balance"))["total"]
                 or 0
             )
         else:
