@@ -10,7 +10,7 @@ from core.models import ID, DateTimeAwareModel, NextSerial
 # from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import F, Sum
+from django.db.models import F, Q, Sum
 from essentials.models import AccountType, Person, Product, Stock, Warehouse
 from ledgers.models import Ledger
 from payments.models import Payment
@@ -70,6 +70,14 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 opening,
             )
         )
+        transfer_kwargs = {**kwargs}
+        or_condition = []
+        if transfer_kwargs.get("warehouse"):
+            warehouse = transfer_kwargs.get("warehouse")
+            or_condition.append(
+                Q(to_warehouse=warehouse) | Q(transfer__from_warehouse=warehouse)
+            )
+            transfer_kwargs.pop("warehouse")
         transfers = (
             StockTransferDetail.objects.values(
                 "product",
@@ -77,7 +85,9 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 "transfer__from_warehouse",
                 warehouse=F("to_warehouse"),
             )
-            .filter(transfer__from_warehouse__branch=branch, **kwargs)
+            .filter(
+                *or_condition, transfer__from_warehouse__branch=branch, **transfer_kwargs
+            )
             .annotate(quantity=Sum("quantity"))
         )
         for t in transfers:
