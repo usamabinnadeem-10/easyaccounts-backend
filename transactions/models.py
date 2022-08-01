@@ -41,6 +41,9 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     def get_computer_serial(self):
         return f"{self.serial_type}-{self.serial}"
 
+    def get_computer_and_bill_serial(self):
+        return f"{self.get_computer_serial()}{f' Book # {self.manual_serial}' or ''}"
+
     @classmethod
     def check_average_selling_rates(cls, date, t_detail, branch):
         """check if selling rate is more than buying"""
@@ -278,12 +281,15 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         elif serial_type == TransactionSerialTypes.MWS:
             string += "Sale return : "
         # string += f" {serial_num} : "
+        total = 0.0
         for d in details:
+            total += float(d.quantity)
             string += (
                 f"{float(d.quantity)} thaan "
                 f"{d.product.name} ({d.yards_per_piece} Yards) "
                 f"@ PKR {str(d.rate)} per yard\n"
             )
+        string += f"\nTotal thaan = {total}"
         return string
 
     @classmethod

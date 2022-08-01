@@ -67,7 +67,7 @@ class LedgerSerializer(serializers.ModelSerializer):
     def get_serial(self, obj):
         """serial number"""
         if obj.ledger_transaction.exists():
-            return obj.ledger_transaction.first().transaction.get_computer_serial()
+            return f"{obj.ledger_transaction.first().transaction.get_computer_and_bill_serial()} "
         elif obj.ledger_external_cheque.exists():
             return f"CHE-{obj.ledger_external_cheque.first().external_cheque.serial}"
         elif obj.ledger_personal_cheque.exists():
