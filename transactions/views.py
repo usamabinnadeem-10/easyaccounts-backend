@@ -1,5 +1,5 @@
-from collections import defaultdict
 from datetime import date, datetime, timedelta
+from itertools import chain
 
 from authentication.choices import RoleChoices
 from authentication.mixins import (
@@ -9,7 +9,7 @@ from authentication.mixins import (
 )
 from core.pagination import StandardPagination
 from core.utils import convert_qp_dict_to_qp
-from django.db.models import Avg, Count, Max, Min, Q, Sum
+from django.db.models import Avg, Count, F, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from essentials.models import Stock
@@ -413,7 +413,6 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
             TransactionDetail.objects.values(
                 "transaction__nature",
                 "transaction_id",
-                "transaction__date",
                 "transaction__serial",
                 "transaction__manual_serial",
                 "transaction__serial_type",
@@ -421,38 +420,47 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
                 "warehouse",
                 "yards_per_piece",
                 "transaction__type",
+                date=F("transaction__date"),
             )
             .filter(**filters)
             .annotate(quantity=Sum("quantity"))
-            .order_by("transaction__date")
+            .order_by("date")
         )
 
         transfer_values = [
-            "transfer__date",
             "to_warehouse",
             "quantity",
             "id",
             "yards_per_piece",
             "transfer__from_warehouse",
+            "transfer__serial",
         ]
         if qp.get("warehouse"):
-            transfers = StockTransferDetail.objects.filter(
-                Q(transfer__from_warehouse=qp.get("warehouse"))
-                | Q(to_warehouse=qp.get("warehouse")),
-                **filters_transfers,
-            ).values(*transfer_values)
+            transfers = (
+                StockTransferDetail.objects.filter(
+                    Q(transfer__from_warehouse=qp.get("warehouse"))
+                    | Q(to_warehouse=qp.get("warehouse")),
+                    **filters_transfers,
+                )
+                .values(*transfer_values, date=F("transfer__date"))
+                .order_by("transfer__date")
+            )
         else:
-            transfers = StockTransferDetail.objects.filter(**filters_transfers).values(
-                *transfer_values
+            transfers = (
+                StockTransferDetail.objects.filter(**filters_transfers)
+                .values(*transfer_values, date=F("transfer__date"))
+                .order_by("transfer__date")
             )
 
-        transfers = map(lambda x: {**x, "date": x["transfer__date"]}, transfers)
+        chained_data = sorted(
+            chain(stock, transfers),
+            key=lambda obj: obj["date"],
+        )
 
         return Response(
             {
-                "data": stock,
+                "data": chained_data,
                 "opening_stock": opening_stock,
-                "transfers": transfers,
             },
             status=status.HTTP_200_OK,
         )
