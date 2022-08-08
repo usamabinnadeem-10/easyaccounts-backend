@@ -10,7 +10,7 @@ class Log(BranchAwareModel, UserAwareModel):
     time_stamp = models.DateTimeField(default=datetime.now)
     type = models.CharField(max_length=1, choices=ActivityTypes.choices)
     category = models.CharField(max_length=32, choices=ActivityCategory.choices)
-    detail = models.CharField(max_length=256)
+    detail = models.TextField(max_length=1000)
 
     @classmethod
     def create_log(cls, type, category, detail, request):

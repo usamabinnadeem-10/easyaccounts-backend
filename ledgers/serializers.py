@@ -1,3 +1,4 @@
+from cheques.utils import get_cheque_account
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 from rest_framework import serializers
@@ -106,11 +107,34 @@ class LedgerAndDetailSerializer(serializers.ModelSerializer):
         fields = ["id", "ledger_entry", "detail"]
         read_only_fields = ["id"]
 
+    def validate(self, data):
+        curr_account = data["ledger_entry"].get("account_type", None)
+        if curr_account:
+            if (
+                get_cheque_account(self.context["request"].branch).account.id
+                == curr_account.id
+            ):
+                raise serializers.ValidationError("Please use another account type", 400)
+        return data
+
     def create(self, validated_data):
         detail = validated_data.pop("detail")
         ledger_entry = Ledger.objects.create(**validated_data["ledger_entry"])
         LedgerAndDetail.objects.create(ledger_entry=ledger_entry, detail=detail)
         validated_data["detail"] = detail
+
+        log_string = (
+            f"""{ledger_entry.amount}/= {ledger_entry.get_nature_display()}"""
+            f""" for {ledger_entry.person.name} {ledger_entry.date}"""
+        )
+
+        Log.create_log(
+            ActivityTypes.CREATED,
+            ActivityCategory.LEDGER_ENTRY,
+            log_string,
+            self.context["request"],
+        )
+
         return validated_data
 
     def update(self, instance, validated_data):
@@ -122,4 +146,19 @@ class LedgerAndDetailSerializer(serializers.ModelSerializer):
         instance.detail = detail
         instance.save()
         validated_data["detail"] = detail
+
+        log_string = (
+            f"""{instance.ledger_entry.amount}/= {instance.ledger_entry.get_nature_display()}"""
+            f""" for {instance.ledger_entry.person.name} {instance.ledger_entry.date} --> \n"""
+            f"""{ledger_entry.amount}/= {ledger_entry.get_nature_display()}"""
+            f""" for {ledger_entry.person.name} {ledger_entry.date}"""
+        )
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.LEDGER_ENTRY,
+            log_string,
+            self.context["request"],
+        )
+
         return validated_data

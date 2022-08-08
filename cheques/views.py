@@ -8,6 +8,8 @@ from authentication.mixins import (
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from essentials.models import AccountType
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import status
 from rest_framework.generics import (
     CreateAPIView,
@@ -190,7 +192,7 @@ class PassExternalChequeView(IsAdminOrAccountantMixin, APIView):
             else:
                 parent = cheque
 
-            ExternalChequeHistory.objects.create(
+            history = ExternalChequeHistory.objects.create(
                 parent_cheque=parent,
                 cheque=cheque,
                 account_type=account_type,
@@ -198,6 +200,13 @@ class PassExternalChequeView(IsAdminOrAccountantMixin, APIView):
                 user=request.user,
                 **date,
             )
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            f"CHE-{parent.serial} passed on {history.date}",
+            request,
+        )
 
         cheque.status = ChequeStatusChoices.CLEARED
         if remaining_amount == 0:
@@ -240,6 +249,10 @@ class ReturnExternalTransferredCheque(IsAdminOrAccountantMixin, APIView):
             cheque=cheque, person__branch=branch
         )
 
+        log_string = (
+            f"CHE-{transfer.cheque.serial} transferred back from {transfer.person.name}"
+        )
+
         # create a credit entry in the ledger of the person the cheque is being returned from
         create_ledger_entry_for_cheque(
             cheque, "C", True, transfer.person, **{"date": data["date"]}
@@ -251,6 +264,13 @@ class ReturnExternalTransferredCheque(IsAdminOrAccountantMixin, APIView):
 
         # delete the transfer entry
         transfer.delete()
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            log_string,
+            request,
+        )
 
         return Response(
             {"message": "Cheque returned successfully"}, status=status.HTTP_201_CREATED
@@ -283,6 +303,13 @@ class ReturnExternalCheque(IsAdminOrAccountantMixin, APIView):
         create_ledger_entry_for_cheque(cheque, "D", **{"date": data["date"]})
         cheque.status = ChequeStatusChoices.RETURNED
         cheque.save()
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            f"CHE-{cheque.serial} returned to {cheque.person.name}",
+            request,
+        )
 
         return Response(
             {"message": "Cheque returned successfully"}, status=status.HTTP_201_CREATED
@@ -323,6 +350,13 @@ class CompleteExternalChequeWithHistory(IsAdminOrAccountantMixin, APIView):
 
         cheque.status = ChequeStatusChoices.COMPLETED_HISTORY
         cheque.save()
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            f"CHE-{cheque.serial} history completed",
+            request,
+        )
 
         return Response(
             {"message": "Cheque history completed"}, status=status.HTTP_201_CREATED
@@ -399,6 +433,17 @@ class DeleteExternalChequeView(
 
     serializer_class = ExternalChequeSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        log_string = f"CHE-{instance.serial} deleted"
+        self.perform_destroy(instance)
+
+        Log.create_log(
+            ActivityTypes.DELETED, ActivityCategory.EXTERNAL_CHEQUE, log_string, request
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class DeletePersonalChequeView(
     IsAdminPermissionMixin, PersonalChequeQuery, DestroyAPIView
@@ -406,3 +451,14 @@ class DeletePersonalChequeView(
     """delete personal cheque"""
 
     serializer_class = IssuePersonalChequeSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        log_string = f"CHP-{instance.serial} deleted"
+        self.perform_destroy(instance)
+
+        Log.create_log(
+            ActivityTypes.DELETED, ActivityCategory.EXTERNAL_CHEQUE, log_string, request
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -30,6 +30,12 @@ class AbstractCheque(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         unique_together = ("bank", "cheque_number")
         ordering = ["serial", "due_date"]
 
+    def get_log_string(self):
+        return (
+            f"""{self.cheque_number} {self.get_bank_display()} due on {self.due_date}"""
+            f""" for {self.amount}/= {self.date}"""
+        )
+
 
 class ExternalCheque(AbstractCheque):
     status = models.CharField(
@@ -140,6 +146,13 @@ class ExternalChequeHistory(ID, UserAwareModel, DateTimeAwareModel):
 
     class Meta:
         verbose_name_plural = "External cheque history"
+
+    def get_log_string(self):
+        return (
+            f"""Against CHE-{self.parent_cheque.serial}:\n"""
+            f"""Received {f"cheque {self.return_cheque.cheque_number} {self.return_cheque.get_bank_display()}" if self.return_cheque else f"payment in {self.account_type.name}"}"""
+            f""" for {self.amount}/= on {self.date}"""
+        )
 
     @classmethod
     def get_remaining_amount(cls, external_cheque, cheque_account, branch):

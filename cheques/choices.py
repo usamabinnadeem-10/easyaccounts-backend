@@ -36,5 +36,5 @@ class BankChoices(models.TextChoices):
     MCB = "mcb", "MCB Bank Limited"
     MCB_ISLAMIC = "mcb_islamic", "MCB Islamic Bank Limited"
     NATIONAL = "national", "National Bank of Pakistan"
-    UBL = "ubl", "ubl"
+    UBL = "ubl", "UBL"
     UBANK = "ubank", "U Microfinance Bank"

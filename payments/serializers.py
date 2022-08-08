@@ -1,5 +1,7 @@
 from cheques.utils import get_cheque_account
 from ledgers.models import LedgerAndPayment
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import serializers, status
 
 from .models import Payment, PaymentAndImage, PaymentImage
@@ -139,6 +141,20 @@ class PaymentSerializer(
         self.link_images(images, payment_instance)
         validated_data["image_urls"] = self.image_urls_final
         validated_data["serial"] = payment_instance.serial
+
+        log_string = (
+            f"""{payment_instance.amount}/= {payment_instance.get_nature_display()} """
+            f"""{payment_instance.person.name} {payment_instance.date}"""
+            f"""{f" on {payment_instance.account_type.name}" if payment_instance.account_type else ""}"""
+        )
+
+        Log.create_log(
+            ActivityTypes.CREATED,
+            ActivityCategory.PAYMENT,
+            log_string,
+            self.context["request"],
+        )
+
         return validated_data
 
     def update(self, instance, validated_data):
@@ -147,10 +163,30 @@ class PaymentSerializer(
         # delete the older instance in the ledger
         LedgerAndPayment.objects.get(payment=instance).delete()
 
+        log_string = (
+            f"""{instance.amount}/= {instance.get_nature_display()} """
+            f"""{instance.person.name} {instance.date}"""
+            f"""{f" on {instance.account_type.name}" if instance.account_type else ""} -->\n"""
+        )
+
         new_payment = super().update(instance, validated_data)
         LedgerAndPayment.create_ledger_entry(new_payment)
         validated_data["image_urls"] = self.image_urls_final
         validated_data["serial"] = new_payment.serial
+
+        log_string += (
+            f"""{new_payment.amount}/= {new_payment.get_nature_display()} """
+            f"""{new_payment.person.name} {new_payment.date}"""
+            f"""{f" on {new_payment.account_type.name}" if new_payment.account_type else ""}"""
+        )
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.PAYMENT,
+            log_string,
+            self.context["request"],
+        )
+
         return validated_data
 
 

@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from essentials.models import Person
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 from rest_framework import serializers
 
 from .choices import ChequeStatusChoices, PersonalChequeStatusChoices
@@ -113,6 +114,14 @@ class ExternalChequeHistorySerializer(serializers.ModelSerializer):
                 "user": user,
             }
         )
+
+        Log.create_log(
+            ActivityTypes.CREATED,
+            ActivityCategory.EXTERNAL_CHEQUE_HISTORY,
+            external_cheque.get_log_string(),
+            self.context["request"],
+        )
+
         return external_cheque
 
 
@@ -143,9 +152,17 @@ class CreateExternalChequeEntrySerializer(serializers.ModelSerializer):
             "serial": ExternalCheque.get_next_serial("serial", person__branch=branch),
             "user": user,
         }
-        cheque_obj = ExternalCheque.objects.create(**data_for_cheque)
-        create_ledger_entry_for_cheque(cheque_obj)
-        return cheque_obj
+        external_cheque_obj = ExternalCheque.objects.create(**data_for_cheque)
+        create_ledger_entry_for_cheque(external_cheque_obj)
+
+        Log.create_log(
+            ActivityTypes.CREATED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            external_cheque_obj.get_log_string(),
+            self.context["request"],
+        )
+
+        return external_cheque_obj
 
 
 class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
@@ -199,7 +216,16 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
                 }
             ),
         }
-        ExternalChequeHistory.objects.create(**data_for_cheque_history)
+        external_cheque_obj = ExternalChequeHistory.objects.create(
+            **data_for_cheque_history
+        )
+
+        Log.create_log(
+            ActivityTypes.CREATED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            external_cheque_obj.get_log_string(),
+            self.context["request"],
+        )
 
         validated_data["cheque_data"] = cheque_obj
         return validated_data
@@ -262,6 +288,13 @@ class TransferExternalChequeSerializer(serializers.ModelSerializer):
         cheque.status = ChequeStatusChoices.TRANSFERRED
         cheque.save()
 
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            f"CHE-{transfer.cheque.serial} transferred to {transfer.person.name}",
+            self.context["request"],
+        )
+
         return validated_data
 
 
@@ -278,6 +311,14 @@ class CompleteExternalTransferChequeSerializer(serializers.ModelSerializer):
             )
         instance.status = ChequeStatusChoices.COMPLETED_TRANSFER
         instance.save()
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.EXTERNAL_CHEQUE,
+            f"CHE-{instance.serial} transferred cheque completed",
+            self.context["request"],
+        )
+
         return instance
 
 
@@ -313,6 +354,14 @@ class IssuePersonalChequeSerializer(serializers.ModelSerializer):
         create_ledger_entry_for_cheque(
             personal_cheque, "D", **{"cheque_type": "personal"}
         )
+
+        Log.create_log(
+            ActivityTypes.CREATED,
+            ActivityCategory.PERSONAL_CHEQUE,
+            personal_cheque.get_log_string(),
+            self.context["request"],
+        )
+
         return validated_data
 
 
@@ -336,6 +385,13 @@ class ReturnPersonalChequeSerializer(serializers.Serializer):
 
         create_ledger_entry_for_cheque(
             cheque, "C", **{"cheque_type": "personal"}, **{"date": date}
+        )
+
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.PERSONAL_CHEQUE,
+            f"CHP-{cheque.serial} returned back from {cheque.person.name}",
+            self.context["request"],
         )
 
         return validated_data
@@ -366,6 +422,13 @@ class ReIssuePersonalChequeFromReturnedSerializer(serializers.Serializer):
             cheque, "D", **{"cheque_type": "personal"}, **{"date": date}
         )
 
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.PERSONAL_CHEQUE,
+            f"CHP-{cheque.serial} issued back to {cheque.person.name}",
+            self.context["request"],
+        )
+
         return validated_data
 
 
@@ -378,6 +441,14 @@ class PassPersonalChequeSerializer(serializers.ModelSerializer):
         if instance.status == PersonalChequeStatusChoices.PENDING:
             instance.status = PersonalChequeStatusChoices.CLEARED
             instance.save()
+
+            Log.create_log(
+                ActivityTypes.EDITED,
+                ActivityCategory.PERSONAL_CHEQUE,
+                f"CHP-{instance.serial} passed",
+                self.context["request"],
+            )
+
             return instance
         raise serializers.ValidationError(f"Cheque is already {instance.status}")
 
@@ -391,5 +462,13 @@ class CancelPersonalChequeSerializer(serializers.ModelSerializer):
         if instance.status == PersonalChequeStatusChoices.RETURNED:
             instance.status = PersonalChequeStatusChoices.CANCELLED
             instance.save()
+
+            Log.create_log(
+                ActivityTypes.EDITED,
+                ActivityCategory.PERSONAL_CHEQUE,
+                f"CHP-{instance.serial} cancelled",
+                self.context["request"],
+            )
+
             return instance
         raise serializers.ValidationError(f"Cheque is already {instance.status}")
