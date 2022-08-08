@@ -299,7 +299,7 @@ class TransferStockSerializer(serializers.ModelSerializer):
         Log.create_log(
             self.type,
             self.category,
-            f"{data['total']} thaan from {transfer_instance.from_warehouse.name}, serial # {transfer_instance.serial}",
+            f"T-{transfer_instance.serial}:\n{data['total']} thaan from {transfer_instance.from_warehouse.name} on {transfer_instance.date}",
             self.request,
         )
 
@@ -360,7 +360,7 @@ class UpdateTransferStockSerializer(serializers.ModelSerializer):
         Log.create_log(
             self.type,
             self.category,
-            f"{data['total']} thaan from {transfer_instance.from_warehouse.name}, serial # {transfer_instance.serial}",
+            f"T-{transfer_instance.serial}:\n{data['total']} thaan from {transfer_instance.from_warehouse.name} on {transfer_instance.date}",
             self.request,
         )
 

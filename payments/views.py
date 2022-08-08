@@ -62,6 +62,7 @@ class DeletePaymentView(PaymentQuery, IsAdminPermissionMixin, DestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         log_string = (
+            f"""P-{instance.serial}:\n"""
             f"""{instance.amount}/= {instance.get_nature_display()} """
             f"""{instance.person.name} {instance.date}"""
             f"""{f" on {instance.account_type.name}" if instance.account_type else ""}"""

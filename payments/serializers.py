@@ -143,6 +143,7 @@ class PaymentSerializer(
         validated_data["serial"] = payment_instance.serial
 
         log_string = (
+            f"""P-{payment_instance.serial}:\n"""
             f"""{payment_instance.amount}/= {payment_instance.get_nature_display()} """
             f"""{payment_instance.person.name} {payment_instance.date}"""
             f"""{f" on {payment_instance.account_type.name}" if payment_instance.account_type else ""}"""
@@ -164,6 +165,7 @@ class PaymentSerializer(
         LedgerAndPayment.objects.get(payment=instance).delete()
 
         log_string = (
+            f"""P-{instance.serial}"""
             f"""{instance.amount}/= {instance.get_nature_display()} """
             f"""{instance.person.name} {instance.date}"""
             f"""{f" on {instance.account_type.name}" if instance.account_type else ""} -->\n"""

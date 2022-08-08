@@ -58,7 +58,7 @@ class ExpenseDetailSerializer(ValidateAccountType, serializers.ModelSerializer):
         Log.create_log(
             ActivityTypes.CREATED,
             ActivityCategory.EXPENSE,
-            f"'{instance.account_type.name}' for {instance.amount}",
+            f"E-{instance.serial}: {instance.account_type.name} for {instance.amount}",
             self.request,
         )
         return instance

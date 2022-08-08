@@ -155,10 +155,14 @@ class CreateExternalChequeEntrySerializer(serializers.ModelSerializer):
         external_cheque_obj = ExternalCheque.objects.create(**data_for_cheque)
         create_ledger_entry_for_cheque(external_cheque_obj)
 
+        log_string = (
+            f"CHE-{external_cheque_obj.serial} " + external_cheque_obj.get_log_string()
+        )
+
         Log.create_log(
             ActivityTypes.CREATED,
             ActivityCategory.EXTERNAL_CHEQUE,
-            external_cheque_obj.get_log_string(),
+            log_string,
             self.context["request"],
         )
 
@@ -354,11 +358,11 @@ class IssuePersonalChequeSerializer(serializers.ModelSerializer):
         create_ledger_entry_for_cheque(
             personal_cheque, "D", **{"cheque_type": "personal"}
         )
-
+        log_string = f"CHP-{personal_cheque.serial} " + personal_cheque.get_log_string()
         Log.create_log(
             ActivityTypes.CREATED,
             ActivityCategory.PERSONAL_CHEQUE,
-            personal_cheque.get_log_string(),
+            log_string,
             self.context["request"],
         )
 
