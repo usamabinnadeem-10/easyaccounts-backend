@@ -6,7 +6,7 @@ class RawProductTypes(models.TextChoices):
     STANDARD = "Standard", "Standard"
 
 
-class RawDebitTypes(models.TextChoices):
-    SALE = "Sale", "Sale"
-    RETURN = "Return", "Return"
-    TRANSFER = "Transfer", "Transfer"
+class RawSaleAndReturnTypes(models.TextChoices):
+    RINV = "RINV", "Raw Sale"
+    RMWC = "RMWC", "Return Customer"
+    RMWS = "RMWS", "Return Supplier"

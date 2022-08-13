@@ -5,8 +5,8 @@ from .models import (
     LedgerAndExternalCheque,
     LedgerAndPayment,
     LedgerAndPersonalCheque,
-    LedgerAndRawDebit,
-    LedgerAndRawTransaction,
+    LedgerAndRawPurchase,
+    LedgerAndRawSaleAndReturn,
     LedgerAndTransaction,
 )
 
@@ -38,7 +38,7 @@ def delete_ledger_entry_for_personal_cheque(sender, instance, **kwargs):
         pass
 
 
-@receiver(post_delete, sender=LedgerAndRawTransaction)
+@receiver(post_delete, sender=LedgerAndRawPurchase)
 def delete_ledger_entry_for_raw_transaction(sender, instance, **kwargs):
     try:
         if instance.ledger_entry:
@@ -47,7 +47,7 @@ def delete_ledger_entry_for_raw_transaction(sender, instance, **kwargs):
         pass
 
 
-@receiver(post_delete, sender=LedgerAndRawDebit)
+@receiver(post_delete, sender=LedgerAndRawSaleAndReturn)
 def delete_ledger_entry_for_raw_debit(sender, instance, **kwargs):
     try:
         if instance.ledger_entry:

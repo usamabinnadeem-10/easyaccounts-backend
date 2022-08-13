@@ -8,10 +8,10 @@ from transactions.choices import TransactionChoices
 
 from .queries import (
     FormulaQuery,
-    RawDebitQuery,
     RawProductQuery,
-    RawTransactionLotQuery,
-    RawTransactionQuery,
+    RawPurchaseLotQuery,
+    RawPurchaseQuery,
+    RawSaleAndReturnQuery,
 )
 from .serializers import (
     CreateRawTransactionSerializer,
@@ -42,7 +42,7 @@ class ListRawProducts(RawProductQuery, generics.ListAPIView):
     }
 
 
-class CreateRawTransaction(RawTransactionQuery, generics.CreateAPIView):
+class CreateRawTransaction(RawPurchaseQuery, generics.CreateAPIView):
 
     serializer_class = CreateRawTransactionSerializer
 
@@ -57,18 +57,18 @@ class CreateFormula(FormulaQuery, generics.CreateAPIView):
     serializer_class = FormulaSerializer
 
 
-class RawDebitView(generics.CreateAPIView):
+class RawSaleAndReturnView(generics.CreateAPIView):
 
     serializer_class = RawDebitSerializer
 
 
-class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
+class ListLotNumberAndIdView(RawPurchaseLotQuery, generics.ListAPIView):
 
     serializer_class = RawLotNumberAndIdSerializer
     filter_backends = [DjangoFilterBackend]
     pagination_class = StandardPagination
     filter_fields = {
-        "raw_transaction__person": ["exact"],
+        "raw_purchase__person": ["exact"],
     }
 
     def get_queryset(self):
@@ -80,14 +80,14 @@ class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
         return super().get_queryset()
 
 
-class ListRawTransactions(RawTransactionQuery, generics.ListAPIView):
+class ListRawTransactions(RawPurchaseQuery, generics.ListAPIView):
 
     serializer_class = ListRawTransactionSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
         "person": ["exact"],
         "date": ["exact", "gte", "lte"],
-        # "manual_invoice_serial": ["exact", "gte", "lte"],
+        "manual_serial": ["exact", "gte", "lte"],
         "transaction_lot__lot_number": ["exact", "gte", "lte"],
         "transaction_lot__raw_product": ["exact", "gte", "lte"],
     }
@@ -129,6 +129,6 @@ class ViewAllStock(generics.ListAPIView):
         return stock
 
 
-class TransferRawStockView(RawDebitQuery, generics.CreateAPIView):
+class TransferRawStockView(RawSaleAndReturnQuery, generics.CreateAPIView):
 
     serializer_class = RawStockTransferSerializer

@@ -1,4 +1,4 @@
-from rawtransactions.models import RawLotDetail
+from rawtransactions.models import RawPurchaseLotDetail
 from rawtransactions.serializers import StockCheck, UniqueLotNumbers
 from rest_framework import serializers
 
@@ -53,7 +53,9 @@ class DyingIssueLotSerializer(serializers.ModelSerializer):
 
     def get_auto_issued_detail(self, obj):
         if obj.lot_number.issued:
-            return RawLotDetail.objects.filter(lot_number=obj.lot_number.id).values()
+            return RawPurchaseLotDetail.objects.filter(
+                lot_number=obj.lot_number.id
+            ).values()
         else:
             return []
 

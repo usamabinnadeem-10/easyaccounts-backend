@@ -287,34 +287,36 @@ class LedgerAndPersonalCheque(ID):
     )
 
 
-class LedgerAndRawTransaction(ID):
+class LedgerAndRawPurchase(ID):
     ledger_entry = models.ForeignKey(
-        Ledger, on_delete=models.CASCADE, related_name="ledger_raw_transaction"
+        Ledger, on_delete=models.CASCADE, related_name="ledger_raw_purchase"
     )
-    raw_transaction = models.ForeignKey(
-        "rawtransactions.RawTransaction",
+    raw_purchase = models.ForeignKey(
+        "rawtransactions.RawPurchase",
         on_delete=models.CASCADE,
     )
 
     @classmethod
-    def create_ledger_entry(cls, raw_transaction, amount):
+    def create_ledger_entry(cls, raw_purchase, amount):
         ledger_instance = Ledger.objects.create(
             nature="C",
-            person=raw_transaction.person,
-            date=raw_transaction.date,
+            person=raw_purchase.person,
+            date=raw_purchase.date,
             amount=amount,
         )
-        LedgerAndRawTransaction.objects.create(
-            ledger_entry=ledger_instance, raw_transaction=raw_transaction
+        LedgerAndRawPurchase.objects.create(
+            ledger_entry=ledger_instance, raw_purchase=raw_purchase
         )
         pass
 
 
-class LedgerAndRawDebit(ID):
+class LedgerAndRawSaleAndReturn(ID):
     ledger_entry = models.ForeignKey(
-        Ledger, on_delete=models.CASCADE, related_name="ledger_raw_debit"
+        Ledger, on_delete=models.CASCADE, related_name="ledger_raw_sale_and_return"
     )
-    raw_debit = models.ForeignKey("rawtransactions.RawDebit", on_delete=models.CASCADE)
+    raw_sale_and_return = models.ForeignKey(
+        "rawtransactions.RawSaleAndReturn", on_delete=models.CASCADE
+    )
 
 
 class LedgerAndPayment(ID):

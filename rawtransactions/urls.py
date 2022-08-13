@@ -8,7 +8,7 @@ from .views import (
     ListLotNumberAndIdView,
     ListRawProducts,
     ListRawTransactions,
-    RawDebitView,
+    RawSaleAndReturnView,
     TransferRawStockView,
     ViewAllStock,
 )
@@ -16,7 +16,7 @@ from .views import (
 urlpatterns = [
     # -----------------Raw Transaction--------------------- #
     path("transaction/create/", CreateRawTransaction.as_view()),
-    path("transaction/debit/", RawDebitView.as_view()),
+    path("transaction/sale-or-return/", RawSaleAndReturnView.as_view()),
     path("transaction/transfer/", TransferRawStockView.as_view()),
     path("transaction/list/", ListRawTransactions.as_view()),
     path("lot-numbers/list/", ListLotNumberAndIdView.as_view()),

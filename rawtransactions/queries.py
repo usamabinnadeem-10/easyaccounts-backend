@@ -1,4 +1,4 @@
-from .models import Formula, RawDebit, RawProduct, RawTransaction, RawTransactionLot
+from .models import Formula, RawProduct, RawPurchase, RawPurchaseLot, RawSaleAndReturn
 
 
 class RawProductQuery:
@@ -6,9 +6,9 @@ class RawProductQuery:
         return RawProduct.objects.filter(person__branch=self.request.branch)
 
 
-class RawTransactionQuery:
+class RawPurchaseQuery:
     def get_queryset(self):
-        return RawTransaction.objects.filter(person__branch=self.request.branch)
+        return RawPurchase.objects.filter(person__branch=self.request.branch)
 
 
 class FormulaQuery:
@@ -16,13 +16,13 @@ class FormulaQuery:
         return Formula.objects.filter(branch=self.request.branch)
 
 
-class RawTransactionLotQuery:
+class RawPurchaseLotQuery:
     def get_queryset(self):
-        return RawTransactionLot.objects.filter(
-            raw_transaction__person__branch=self.request.branch
+        return RawPurchaseLot.objects.filter(
+            raw_purchase__person__branch=self.request.branch
         ).order_by("-lot_number")
 
 
-class RawDebitQuery:
+class RawSaleAndReturnQuery:
     def get_queryset(self):
-        return RawDebit.objects.filter(person__branch=self.request.branch)
+        return RawSaleAndReturn.objects.filter(person__branch=self.request.branch)

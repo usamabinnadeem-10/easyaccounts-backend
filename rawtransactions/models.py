@@ -1,15 +1,12 @@
-from datetime import date
-
 from authentication.models import BranchAwareModel, UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Max
 from essentials.models import Person, Warehouse
 from transactions.choices import TransactionChoices
 
-from .choices import RawDebitTypes, RawProductTypes
+from .choices import RawProductTypes, RawSaleAndReturnTypes
 
 
 class Formula(BranchAwareModel):
@@ -51,63 +48,67 @@ class RawProduct(ID):
         return f"{self.name} - {self.person} - {self.type}"
 
 
-class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
+class RawPurchase(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw transaction"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
-    # manual_invoice_serial = models.PositiveBigIntegerField()
+    manual_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
 
     def __str__(self):
         return f"{self.serial} - {self.person}"
 
 
-class RawTransactionLot(ID, NextSerial):
+class RawPurchaseLot(ID, NextSerial):
     """Lot for raw transaction"""
 
-    raw_transaction = models.ForeignKey(
-        RawTransaction, on_delete=models.CASCADE, related_name="transaction_lot"
+    raw_purchase = models.ForeignKey(
+        RawPurchase, on_delete=models.CASCADE, related_name="raw_purchase_transaction"
     )
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT)
     lot_number = models.PositiveBigIntegerField()
     issued = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.raw_transaction} - {self.lot_number}"
+        return f"{self.raw_purchase} - {self.lot_number}"
 
 
-class RawLotDetail(AbstractRawLotDetail):
-    """Detail for raw transaction lot"""
+class RawPurchaseLotDetail(AbstractRawLotDetail):
+    """Detail for raw purchase transaction lot"""
 
-    lot_number = models.ForeignKey(
-        RawTransactionLot, on_delete=models.CASCADE, related_name="raw_lot_detail"
+    purchase_lot_number = models.ForeignKey(
+        RawPurchaseLot, on_delete=models.CASCADE, related_name="raw_purchase_lot"
     )
 
 
-class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
+class RawSaleAndReturn(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw return or sale"""
 
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
-    # manual_invoice_serial = models.PositiveBigIntegerField()
+    manual_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
-    debit_type = models.CharField(max_length=10, choices=RawDebitTypes.choices)
+    transaction_type = models.CharField(
+        max_length=10, choices=RawSaleAndReturnTypes.choices
+    )
 
     @classmethod
     def is_serial_unique(cls, **kwargs):
-        return not RawDebit.objects.filter(**kwargs).exists()
+        return not RawSaleAndReturn.objects.filter(**kwargs).exists()
 
 
-class RawDebitLot(ID):
-    """Raw debit and lot relation"""
+class RawSaleAndReturnWithPurchaseLotRelation(ID):
+    """Raw sale/return and lot relation"""
 
-    bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+    sale_and_return = models.ForeignKey(RawSaleAndReturn, on_delete=models.CASCADE)
+    purchase_lot_number = models.ForeignKey(RawPurchaseLot, on_delete=models.CASCADE)
 
 
-class RawDebitLotDetail(AbstractRawLotDetail):
-    """Raw debit detail for each lot"""
+class RawSaleAndReturnLotDetail(AbstractRawLotDetail):
+    """Raw sale/return detail for each lot"""
 
-    return_lot = models.ForeignKey(RawDebitLot, on_delete=models.CASCADE)
+    sale_and_return_id = models.ForeignKey(
+        RawSaleAndReturnWithPurchaseLotRelation, on_delete=models.CASCADE
+    )
     nature = models.CharField(
         max_length=1, choices=TransactionChoices.choices, default=TransactionChoices.DEBIT
     )

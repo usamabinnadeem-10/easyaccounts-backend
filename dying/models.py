@@ -4,7 +4,7 @@ from authentication.models import BranchAwareModel, UserAwareModel
 from core.models import ID, DateTimeAwareModel, NextSerial
 from django.db import models
 from essentials.models import Product, Warehouse
-from rawtransactions.models import AbstractRawLotDetail, Formula, RawTransactionLot
+from rawtransactions.models import AbstractRawLotDetail, Formula, RawPurchaseLot
 
 
 class DyingUnit(BranchAwareModel):
@@ -40,7 +40,7 @@ class DyingIssueLot(ID):
     dying_lot = models.ForeignKey(
         DyingIssue, on_delete=models.CASCADE, related_name="dying_issue_lot"
     )
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+    purchase_lot_number = models.ForeignKey(RawPurchaseLot, on_delete=models.CASCADE)
 
 
 class DyingIssueDetail(ID):
