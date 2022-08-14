@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
 from transactions.choices import TransactionChoices
 
+from .calculate_stock import get_all_raw_stock
 from .queries import (
     FormulaQuery,
     RawProductQuery,
@@ -24,7 +25,6 @@ from .serializers import (
     RawStockTransferSerializer,
     ViewAllStockSerializer,
 )
-from .utils import get_all_raw_stock
 
 
 class CreateRawProduct(RawProductQuery, generics.CreateAPIView):
@@ -107,27 +107,7 @@ class ViewAllStock(generics.ListAPIView):
     serializer_class = ViewAllStockSerializer
 
     def get_queryset(self):
-        stock_array = get_all_raw_stock(self.request.branch)
-        d = defaultdict(lambda: defaultdict(int))
-
-        group_keys = [
-            "actual_gazaana",
-            "expected_gazaana",
-            "raw_product",
-            "warehouse",
-            "formula",
-        ]
-        sum_keys = ["quantity"]
-
-        for item in stock_array:
-            for key in sum_keys:
-                if item["nature"] == TransactionChoices.CREDIT:
-                    d[itemgetter(*group_keys)(item)][key] += item[key]
-                else:
-                    d[itemgetter(*group_keys)(item)][key] -= item[key]
-
-        stock = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
-        return stock
+        return get_all_raw_stock(self.request.branch)
 
 
 class TransferRawStockView(RawStockTransferQuery, generics.CreateAPIView):

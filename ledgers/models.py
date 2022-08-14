@@ -310,6 +310,9 @@ class LedgerAndRawPurchase(ID):
         pass
 
 
+from rawtransactions.choices import RawSaleAndReturnTypes
+
+
 class LedgerAndRawSaleAndReturn(ID):
     ledger_entry = models.ForeignKey(
         Ledger, on_delete=models.CASCADE, related_name="ledger_raw_sale_and_return"
@@ -317,6 +320,24 @@ class LedgerAndRawSaleAndReturn(ID):
     raw_sale_and_return = models.ForeignKey(
         "rawtransactions.RawSaleAndReturn", on_delete=models.CASCADE
     )
+
+    NATURES = {
+        RawSaleAndReturnTypes.RINV: "D",
+        RawSaleAndReturnTypes.RMWC: "C",
+        RawSaleAndReturnTypes.RMWS: "C",
+    }
+
+    @classmethod
+    def create_ledger_entry(cls, raw_sale_and_return, amount):
+        ledger_instance = Ledger.objects.create(
+            nature=cls.NATURES[raw_sale_and_return.transaction_type],
+            amount=amount,
+            person=raw_sale_and_return.person,
+        )
+        LedgerAndRawSaleAndReturn.objects.create(
+            ledger_entry=ledger_instance, raw_sale_and_return=raw_sale_and_return
+        )
+        pass
 
 
 class LedgerAndPayment(ID):

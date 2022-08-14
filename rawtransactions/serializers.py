@@ -8,6 +8,7 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from transactions.choices import TransactionChoices
 
+from .calculate_stock import get_all_raw_stock
 from .choices import RawSaleAndReturnTypes
 from .models import (
     Formula,
@@ -22,7 +23,7 @@ from .models import (
     RawStockTransferAndLotRelation,
     RawStockTransferLotDetail,
 )
-from .utils import calculate_amount, get_all_raw_stock, is_array_unique
+from .utils import calculate_amount, is_array_unique
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -129,101 +130,38 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "serial"]
 
-    # def validate(self, data):
-    #     branch = self.context["request"].branch
-    #     # if RawPurchase.objects.filter(
-    #     #     person__branch=branch, manual_invoice_serial=data["manual_invoice_serial"]
-    #     # ).exists():
-    #     #     raise serializers.ValidationError(
-    #     #         "This book number exists", status.HTTP_400_BAD_REQUEST
-    #     #     )
-    #     # next_serial = RawPurchase.get_next_serial(
-    #     #     "manual_invoice_serial", person__branch=branch
-    #     # )
-    #     # if data["manual_invoice_serial"] != next_serial:
-    #     #     raise serializers.ValidationError(
-    #     #         f"Please use book number {next_serial}", status.HTTP_400_BAD_REQUEST
-    #     #     )
+    def validate(self, data):
+        branch = self.context["request"].branch
+        if RawPurchase.objects.filter(
+            person__branch=branch, manual_serial=data["manual_serial"]
+        ).exists():
+            raise serializers.ValidationError(
+                f"Serial {data['manual_serial']} exists", status.HTTP_400_BAD_REQUEST
+            )
 
-    #     return data
+        # ensure that warehouse is added if lot is not for issue
+        # also ensure that the product belongs to the person
+        for idx, lot in enumerate(data["lots"]):
+            is_issued = lot["issued"]
+            for lot_det in lot["lot_detail"]:
+                if not is_issued and not lot_det["warehouse"]:
+                    raise serializers.ValidationError(
+                        f"Add warehouse for lot # {idx + 1}",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+                if lot["raw_product"].person != data["person"]:
+                    raise serializers.ValidationError(
+                        f"The product in lot # {idx + 1} does not belong to this supplier",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+
+        return data
 
     def create(self, validated_data):
-        lots = validated_data.pop("lots")
-        branch = self.context["request"].branch
-        user = self.context["request"].user
-        transaction = RawPurchase.objects.create(
-            **validated_data,
-            serial=RawPurchase.get_next_serial("serial", person__branch=branch),
-            user=user,
+        data = RawPurchase.make_transaction(
+            validated_data, self.context["request"].branch, self.context["request"].user
         )
-        amount = 0
-        for lot in lots:
-            current_lot = RawPurchaseLot.objects.create(
-                raw_purchase=transaction,
-                issued=lot["issued"],
-                raw_product=lot["raw_product"],
-                lot_number=RawPurchaseLot.get_next_serial(
-                    "lot_number", raw_purchase__person__branch=branch
-                ),
-            )
-            if current_lot.issued:
-                try:
-                    DyingIssue.create_auto_issued_lot(
-                        branch=branch,
-                        dying_unit=lot["dying_unit"],
-                        lot_number=current_lot,
-                        date=transaction.date,
-                    )
-                except:
-                    raise serializers.ValidationError(
-                        "Please enter dying unit for issued lot"
-                    )
-
-            # ensure that warehouse is added if lot is not for issue
-            # also ensure that the product belongs to the person
-            for lot_detail in lot["lot_detail"]:
-                if not current_lot.issued and not lot_detail["warehouse"]:
-                    raise serializers.ValidationError(
-                        "Add warehouse for the non-issue lot",
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-                if current_lot.raw_product.person != transaction.person:
-                    raise serializers.ValidationError(
-                        "The product does not belong to the supplier",
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-            current_lot_detail = map(
-                lambda l: {
-                    **l,
-                    "warehouse": None if current_lot.issued else l["warehouse"],
-                },
-                lot["lot_detail"],
-            )
-
-            for detail in current_lot_detail:
-                current_detail = RawPurchaseLotDetail.objects.create(
-                    **detail, purchase_lot_number=current_lot
-                )
-                amount += (
-                    current_detail.quantity
-                    * current_detail.rate
-                    * current_detail.actual_gazaana
-                    * (
-                        current_detail.formula.numerator
-                        / current_detail.formula.denominator
-                    )
-                )
-        if transaction.person:
-            LedgerAndRawPurchase.create_ledger_entry(transaction, amount)
-
-        return {
-            "id": transaction.id,
-            "person": transaction.person,
-            "manual_serial": transaction.manual_serial,
-            "date": transaction.date,
-            "lots": lots,
-        }
+        return data
 
 
 class UniqueLotNumbers:
@@ -243,42 +181,15 @@ class StockCheck:
 
     branch = None
 
-    def check_stock(self, array, check_person=False, person=None):
+    def check_stock(self):
         self.branch = self.context["request"].branch
         stock = get_all_raw_stock(self.branch)
-        for data in array:
-            lot = data["purchase_lot_number"]
-            if check_person and lot.raw_purchase.person != person:
-                raise ValidationError(
-                    f"Lot {lot.lot_number} does not belong to this person"
+        for s in stock:
+            if s["quantity"] < 0:
+                product = RawProduct.objects.get(id=s["raw_product"])
+                raise serializers.ValidationError(
+                    f"Stock low for {product.name}", status.HTTP_400_BAD_REQUEST
                 )
-
-            for detail in data["detail"]:
-                lot_stock = list(
-                    filter(
-                        lambda val: val["purchase_lot_number"] == lot.id
-                        and val["actual_gazaana"] == detail["actual_gazaana"]
-                        and val["expected_gazaana"] == detail["expected_gazaana"]
-                        and val["formula"] == detail["formula"].id
-                        and val["warehouse"] == detail["warehouse"].id,
-                        stock,
-                    )
-                )
-                quantity = reduce(
-                    lambda prev, curr: prev
-                    + (
-                        curr["quantity"]
-                        if curr["nature"] == TransactionChoices.CREDIT
-                        else -curr["quantity"]
-                    ),
-                    lot_stock,
-                    0,
-                )
-                if quantity < detail["quantity"]:
-                    raise ValidationError(
-                        f"Stock for lot # {lot.lot_number} is low",
-                        status.HTTP_400_BAD_REQUEST,
-                    )
 
 
 class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
@@ -316,19 +227,20 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
         if not data["person"]:
             raise ValidationError("Please choose a person", status.HTTP_400_BAD_REQUEST)
 
+        if data["transaction_type"] == RawSaleAndReturnTypes.RMWS:
+            for d in data["data"]:
+                if d["purchase_lot_number"].raw_product.person != data["person"]:
+                    raise ValidationError(
+                        f"Lot # {d['purchase_lot_number'].serial} does not belong to {d['person'].name}"
+                    )
+
         return data
 
     def create(self, validated_data):
         data = validated_data.pop("data")
         user = self.context["request"].user
-        check_person = (
-            True
-            if validated_data["transaction_type"] == RawSaleAndReturnTypes.RMWS
-            else False
-        )
-        person = validated_data["person"] if check_person else None
 
-        self.check_stock(data, check_person, person)
+        self.check_stock(data)
 
         sale_and_return_instance = RawSaleAndReturn.objects.create(
             **validated_data,
@@ -359,16 +271,6 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
                 )
 
             RawSaleAndReturnLotDetail.objects.bulk_create(current_return_details)
-
-        Ledger.objects.create(
-            # raw_debit=debit_instance,
-            nature="D",
-            # detail="Kora maal wapsi"
-            # if debit_instance.debit_type == RawDebitTypes.RETURN
-            # else "Kora sale",
-            person=sale_and_return_instance.person,
-            amount=ledger_amount,
-        )
 
         validated_data["data"] = data
         return validated_data

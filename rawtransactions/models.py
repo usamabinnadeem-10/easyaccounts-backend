@@ -3,10 +3,14 @@ from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
 from django.core.validators import MinValueValidator
 from django.db import models
+from dying.models import DyingIssue
 from essentials.models import Person, Warehouse
+from ledgers.models import Ledger, LedgerAndRawPurchase, LedgerAndRawSaleAndReturn
+from rest_framework import serializers, status
 from transactions.choices import TransactionChoices
 
 from .choices import RawProductTypes, RawSaleAndReturnTypes
+from .utils import calculate_amount
 
 
 class Formula(BranchAwareModel):
@@ -60,6 +64,69 @@ class RawPurchase(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     def __str__(self):
         return f"{self.serial} - {self.person}"
 
+    @classmethod
+    def make_transaction(cls, data, branch, user, isEdit=False, editInstance=None):
+        lots = data.pop("lots")
+        transaction = RawPurchase.objects.create(
+            **data,
+            serial=RawPurchase.get_next_serial("serial", person__branch=branch),
+            user=user,
+        )
+        amount = 0
+        for lot in lots:
+            current_lot = RawPurchaseLot.objects.create(
+                raw_purchase=transaction,
+                issued=lot["issued"],
+                raw_product=lot["raw_product"],
+                lot_number=RawPurchaseLot.get_next_serial(
+                    "lot_number", raw_purchase__person__branch=branch
+                ),
+            )
+            if current_lot.issued:
+                try:
+                    DyingIssue.create_auto_issued_lot(
+                        branch=branch,
+                        dying_unit=lot["dying_unit"],
+                        lot_number=current_lot,
+                        date=transaction.date,
+                    )
+                except:
+                    raise serializers.ValidationError(
+                        "Please enter dying unit for issued lot"
+                    )
+
+            current_lot_detail = map(
+                lambda l: {
+                    **l,
+                    "warehouse": None if current_lot.issued else l["warehouse"],
+                },
+                lot["lot_detail"],
+            )
+
+            for detail in current_lot_detail:
+                current_detail = RawPurchaseLotDetail.objects.create(
+                    **detail, purchase_lot_number=current_lot
+                )
+                amount += (
+                    current_detail.quantity
+                    * current_detail.rate
+                    * current_detail.actual_gazaana
+                    * (
+                        current_detail.formula.numerator
+                        / current_detail.formula.denominator
+                    )
+                )
+
+        LedgerAndRawPurchase.create_ledger_entry(transaction, amount)
+
+        return {
+            "id": transaction.id,
+            "person": transaction.person,
+            "manual_serial": transaction.manual_serial,
+            "date": transaction.date,
+            "lots": lots,
+        }
+
 
 class RawPurchaseLot(ID, NextSerial):
     """Lot for raw transaction"""
@@ -96,6 +163,42 @@ class RawSaleAndReturn(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     @classmethod
     def is_serial_unique(cls, **kwargs):
         return not RawSaleAndReturn.objects.filter(**kwargs).exists()
+
+    @classmethod
+    def make_transaction(cls, data, user, branch, isEdit=False, editInstance=None):
+
+        sale_and_return_instance = RawSaleAndReturn.objects.create(
+            **data,
+            user=user,
+            serial=RawSaleAndReturn.get_next_serial(
+                "serial",
+                transaction_type=data["transaction_type"],
+                person__branch=branch,
+            ),
+        )
+        ledger_amount = 0
+        for lot in data:
+            ledger_amount += calculate_amount(lot["detail"])
+            raw_debit_lot_relation = (
+                RawSaleAndReturnWithPurchaseLotRelation.objects.create(
+                    purchase_lot_number=lot["purchase_lot_number"],
+                    sale_and_return=sale_and_return_instance,
+                )
+            )
+            current_return_details = []
+            for detail in lot["detail"]:
+                current_return_details.append(
+                    RawSaleAndReturnLotDetail(
+                        sale_and_return_id=raw_debit_lot_relation,
+                        **detail,
+                    )
+                )
+
+            RawSaleAndReturnLotDetail.objects.bulk_create(current_return_details)
+
+        LedgerAndRawSaleAndReturn.create_ledger_entry(
+            sale_and_return_instance, ledger_amount
+        )
 
 
 class RawSaleAndReturnWithPurchaseLotRelation(ID):

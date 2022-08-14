@@ -1,10 +1,7 @@
-from datetime import date
-
 from authentication.models import BranchAwareModel, UserAwareModel
 from core.models import ID, DateTimeAwareModel, NextSerial
 from django.db import models
-from essentials.models import Product, Warehouse
-from rawtransactions.models import AbstractRawLotDetail, Formula, RawPurchaseLot
+from essentials.models import Warehouse
 
 
 class DyingUnit(BranchAwareModel):
@@ -40,7 +37,9 @@ class DyingIssueLot(ID):
     dying_lot = models.ForeignKey(
         DyingIssue, on_delete=models.CASCADE, related_name="dying_issue_lot"
     )
-    purchase_lot_number = models.ForeignKey(RawPurchaseLot, on_delete=models.CASCADE)
+    purchase_lot_number = models.ForeignKey(
+        "rawtransactions.RawPurchaseLot", on_delete=models.CASCADE
+    )
 
 
 class DyingIssueDetail(ID):
@@ -51,7 +50,7 @@ class DyingIssueDetail(ID):
     quantity = models.PositiveIntegerField()
     actual_gazaana = models.FloatField()
     expected_gazaana = models.FloatField()
-    formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
+    formula = models.ForeignKey("rawtransactions.Formula", on_delete=models.PROTECT)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
 
 
