@@ -1,4 +1,11 @@
-from .models import Formula, RawProduct, RawPurchase, RawPurchaseLot, RawSaleAndReturn
+from .models import (
+    Formula,
+    RawProduct,
+    RawPurchase,
+    RawPurchaseLot,
+    RawSaleAndReturn,
+    RawStockTransfer,
+)
 
 
 class RawProductQuery:
@@ -26,3 +33,8 @@ class RawPurchaseLotQuery:
 class RawSaleAndReturnQuery:
     def get_queryset(self):
         return RawSaleAndReturn.objects.filter(person__branch=self.request.branch)
+
+
+class RawStockTransferQuery:
+    def get_queryset(self):
+        return RawStockTransfer.objects.filter(from_warehouse__branch=self.request.branch)

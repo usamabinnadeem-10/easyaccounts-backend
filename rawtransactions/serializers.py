@@ -18,6 +18,9 @@ from .models import (
     RawSaleAndReturn,
     RawSaleAndReturnLotDetail,
     RawSaleAndReturnWithPurchaseLotRelation,
+    RawStockTransfer,
+    RawStockTransferAndLotRelation,
+    RawStockTransferLotDetail,
 )
 from .utils import calculate_amount, get_all_raw_stock, is_array_unique
 
@@ -243,7 +246,6 @@ class StockCheck:
     def check_stock(self, array, check_person=False, person=None):
         self.branch = self.context["request"].branch
         stock = get_all_raw_stock(self.branch)
-        print(stock)
         for data in array:
             lot = data["purchase_lot_number"]
             if check_person and lot.raw_purchase.person != person:
@@ -418,23 +420,19 @@ class ViewAllStockSerializer(serializers.Serializer):
     # nature = serializers.CharField()
 
 
-class RawLotDetailWithTransferWarehouse(serializers.ModelSerializer):
-
-    to_warehouse = serializers.UUIDField(required=True)
-
+class RawLotDetailForTransferSerializer(serializers.ModelSerializer):
     class Meta:
-        model = RawPurchaseLotDetail
+        model = RawStockTransferLotDetail
         fields = [
             "id",
-            "lot_number",
             "quantity",
             "actual_gazaana",
             "expected_gazaana",
             "formula",
             "warehouse",
-            "to_warehouse",
+            "raw_stock_transfer_id",
         ]
-        read_only_fields = ["id", "lot_number"]
+        read_only_fields = ["id", "raw_stock_transfer_id"]
 
 
 class RawStockTransferSerializer(
@@ -442,96 +440,84 @@ class RawStockTransferSerializer(
 ):
     class Serializer(serializers.ModelSerializer):
 
-        detail = RawLotDetailWithTransferWarehouse(many=True, required=True)
+        detail = RawLotDetailForTransferSerializer(many=True, required=True)
 
         class Meta:
-            model = RawSaleAndReturnWithPurchaseLotRelation
-            fields = ["lot_number", "detail"]
+            model = RawStockTransferAndLotRelation
+            fields = ["purchase_lot_number", "detail"]
 
     data = Serializer(many=True, required=True)
 
     class Meta:
-        model = RawSaleAndReturn
+        model = RawStockTransfer
         fields = [
             "id",
-            # "manual_invoice_serial",
-            "bill_number",
+            "manual_serial",
+            "serial",
+            "from_warehouse",
             "date",
             "data",
-            "debit_type",
         ]
-        read_only_fields = ["id", "bill_number"]
+        read_only_fields = ["id", "serial"]
 
     def validate(self, data):
         super().validate(data)
-        # if not RawSaleAndReturn.is_serial_unique(
-        #     manual_invoice_serial=data["manual_invoice_serial"],
-        #     debit_type=data["debit_type"],
-        #     branch=self.context["request"].branch,
-        # ):
-        #     raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
+        if RawStockTransfer.objects.filter(
+            manual_serial=data["manual_serial"],
+            from_warehouse__branch=self.context["request"].branch,
+        ).exists():
+            raise ValidationError(f"Serial # {data['manual_serial']} exists")
 
-        if data["debit_type"] != RawSaleAndReturnTypes.TRANSFER:
-            raise ValidationError(
-                "Please choose transfer type", status.HTTP_400_BAD_REQUEST
-            )
-
+        # TODO: Check if from_warehouse is equal to any of the warehouse person is transferring to
         return data
 
+    def format_lot_details_for_stock(self, validated_data):
+        def helper(x):
+            return {
+                **x,
+                "detail": list(
+                    map(
+                        lambda det: {
+                            **det,
+                            "warehouse": validated_data["from_warehouse"],
+                        },
+                        x["detail"],
+                    )
+                ),
+            }
+
+        return list(
+            map(
+                helper,
+                validated_data["data"],
+            )
+        )
+
     def create(self, validated_data):
+        self.check_stock(self.format_lot_details_for_stock(validated_data))
         data = validated_data.pop("data")
-        self.check_stock(data)
-        debit_instance = RawSaleAndReturn.objects.create(
+        transfer_instance = RawStockTransfer.objects.create(
             **validated_data,
-            branch=self.branch,
-            bill_number=RawSaleAndReturn.get_next_serial(
+            serial=RawStockTransfer.get_next_serial(
                 "serial",
-                debit_type=validated_data["debit_type"],
-                person__branch=self.branch,
+                from_warehouse=validated_data["from_warehouse"],
+                from_warehouse__branch=self.branch,
             ),
         )
 
         for lot in data:
-            raw_debit_lot_relation = (
-                RawSaleAndReturnWithPurchaseLotRelation.objects.create(
-                    lot_number=lot["lot_number"],
-                    bill_number=debit_instance,
-                )
+            raw_transfer_and_lot_relation = RawStockTransferAndLotRelation.objects.create(
+                purchase_lot_number=lot["purchase_lot_number"],
+                raw_transfer=transfer_instance,
             )
-            current_return_details = []
+            current_transfer_details = []
             for detail in lot["detail"]:
-                try:
-                    to_warehouse = Warehouse.objects.get(
-                        id=detail["to_warehouse"], branch=self.branch
-                    )
-                except:
-                    raise ValidationError(
-                        "This warehouse does not exist", status.HTTP_400_BAD_REQUEST
-                    )
-
-                if to_warehouse.id == detail["warehouse"].id:
-                    raise ValidationError(
-                        f"Both warehouse are same in lot# {lot['lot_number'].lot_number}",
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-                obj = {**detail, "nature": TransactionChoices.DEBIT, "rate": 1.0}
-                del obj["to_warehouse"]
-                current_return_details.append(
-                    RawSaleAndReturnLotDetail(
-                        return_lot=raw_debit_lot_relation,
-                        **obj,
-                    )
-                )
-                obj["nature"] = TransactionChoices.CREDIT
-                obj["warehouse"] = to_warehouse
-                current_return_details.append(
-                    RawSaleAndReturnLotDetail(
-                        return_lot=raw_debit_lot_relation,
-                        **obj,
+                current_transfer_details.append(
+                    RawStockTransferLotDetail(
+                        raw_stock_transfer_id=raw_transfer_and_lot_relation, **detail
                     )
                 )
 
-            RawSaleAndReturnLotDetail.objects.bulk_create(current_return_details)
+            RawStockTransferLotDetail.objects.bulk_create(current_transfer_details)
         validated_data["data"] = data
         return validated_data

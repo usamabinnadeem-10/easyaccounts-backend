@@ -21,12 +21,14 @@ class Formula(BranchAwareModel):
 
 class AbstractRawLotDetail(ID):
 
-    quantity = models.PositiveIntegerField(
+    quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
+    actual_gazaana = models.FloatField(
         validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
     )
-    actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
-    expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
-    rate = models.FloatField(validators=[MinValueValidator(1.0)])
+    expected_gazaana = models.FloatField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
+    rate = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
     formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)
 
@@ -112,3 +114,32 @@ class RawSaleAndReturnLotDetail(AbstractRawLotDetail):
     nature = models.CharField(
         max_length=1, choices=TransactionChoices.choices, default=TransactionChoices.DEBIT
     )
+
+
+class RawStockTransfer(ID, DateTimeAwareModel, NextSerial):
+
+    from_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
+    serial = models.PositiveBigIntegerField()
+    manual_serial = models.PositiveBigIntegerField()
+
+
+class RawStockTransferAndLotRelation(ID):
+
+    raw_transfer = models.ForeignKey(RawStockTransfer, on_delete=models.CASCADE)
+    purchase_lot_number = models.ForeignKey(RawPurchaseLot, on_delete=models.CASCADE)
+
+
+class RawStockTransferLotDetail(ID):
+
+    raw_stock_transfer_id = models.ForeignKey(
+        RawStockTransferAndLotRelation, on_delete=models.CASCADE
+    )
+    quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
+    actual_gazaana = models.FloatField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
+    expected_gazaana = models.FloatField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
+    formula = models.ForeignKey(Formula, on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)

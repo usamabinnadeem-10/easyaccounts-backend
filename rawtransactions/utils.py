@@ -3,7 +3,11 @@ from collections import defaultdict
 from django.db.models import F, Sum
 from dying.models import DyingIssueDetail
 
-from .models import RawPurchaseLotDetail, RawSaleAndReturnLotDetail
+from .models import (
+    RawPurchaseLotDetail,
+    RawSaleAndReturnLotDetail,
+    RawStockTransferLotDetail,
+)
 
 
 def is_array_unique(array, key):
@@ -47,18 +51,17 @@ def get_all_raw_stock(branch):
             .annotate(quantity=Sum("quantity"))
         )
     )
-    balance_lots = list(
+    balance_lots_final = list(
         map(
             lambda obj: {
                 **obj,
                 "nature": "C",
-                # "raw_product": obj["lot_number__raw_product"],
             },
             balance_lots,
         )
     )
 
-    balance_returns = list(
+    balance_returns_final = list(
         (
             RawSaleAndReturnLotDetail.objects.values(
                 "actual_gazaana",
@@ -66,26 +69,14 @@ def get_all_raw_stock(branch):
                 "warehouse",
                 "formula",
                 "nature",
-                lot_number=F("sale_and_return_id__purchase_lot_number"),
+                purchase_lot_number=F("sale_and_return_id__purchase_lot_number"),
                 raw_product=F("sale_and_return_id__purchase_lot_number__raw_product"),
             )
             .filter(
-                # sale_and_return_id__purchase_lot_number__raw_product__person__branch=branch,
-                # sale_and_return_id__purchase_lot_number__issued=False,
                 sale_and_return_id__purchase_lot_number__raw_product__person__branch=branch,
                 sale_and_return_id__purchase_lot_number__issued=False,
             )
             .annotate(quantity=Sum("quantity"))
-        )
-    )
-    balance_returns = list(
-        map(
-            lambda obj: {
-                **obj,
-                # "lot_number": obj["return_lot__lot_number"],
-                # "raw_product": obj["return_lot__lot_number__raw_product"],
-            },
-            balance_returns,
         )
     )
 
@@ -96,28 +87,68 @@ def get_all_raw_stock(branch):
                 "expected_gazaana",
                 "formula",
                 "warehouse",
-                lot_number=F("dying_lot_number__purchase_lot_number"),
+                purchase_lot_number=F("dying_lot_number__purchase_lot_number"),
                 raw_product=F("dying_lot_number__purchase_lot_number__raw_product"),
             )
             .filter(
-                # dying_lot_number__dying_lot__dying_unit__branch=branch,
-                # dying_lot_number__lot_number__issued=False,
                 dying_lot_number__purchase_lot_number__issued=False,
                 formula__branch=branch,
             )
             .annotate(quantity=Sum("quantity"))
         )
     )
-    balance_dyings = list(
+    balance_dyings_final = list(
         map(
             lambda obj: {
                 **obj,
                 "nature": "D",
-                # "raw_product": obj["dying_lot_number__lot_number__raw_product"],
-                # "lot_number": obj["dying_lot_number__lot_number"],
             },
             balance_dyings,
         )
     )
 
-    return [*balance_lots, *balance_returns, *balance_dyings]
+    balance_transfers = list(
+        RawStockTransferLotDetail.objects.values(
+            "actual_gazaana",
+            "expected_gazaana",
+            "formula",
+            "warehouse",
+            from_warehouse=F("raw_stock_transfer_id__raw_transfer__from_warehouse"),
+            purchase_lot_number=F("raw_stock_transfer_id__purchase_lot_number"),
+            raw_product=F("raw_stock_transfer_id__purchase_lot_number__raw_product"),
+        )
+        .filter(warehouse__branch=branch)
+        .annotate(quantity=Sum("quantity"))
+    )
+
+    balance_transfers_final = []
+    for t in balance_transfers:
+        product = {
+            "quantity": t["quantity"],
+            "actual_gazaana": t["actual_gazaana"],
+            "expected_gazaana": t["expected_gazaana"],
+            "formula": t["formula"],
+            "purchase_lot_number": t["purchase_lot_number"],
+            "raw_product": t["raw_product"],
+        }
+        balance_transfers_final.append(
+            {
+                **product,
+                "warehouse": t["warehouse"],
+                "nature": "C",
+            }
+        )
+        balance_transfers_final.append(
+            {
+                **product,
+                "warehouse": t["from_warehouse"],
+                "nature": "D",
+            }
+        )
+
+    return [
+        *balance_lots_final,
+        *balance_returns_final,
+        *balance_dyings_final,
+        *balance_transfers_final,
+    ]

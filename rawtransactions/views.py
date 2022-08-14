@@ -12,6 +12,7 @@ from .queries import (
     RawPurchaseLotQuery,
     RawPurchaseQuery,
     RawSaleAndReturnQuery,
+    RawStockTransferQuery,
 )
 from .serializers import (
     CreateRawTransactionSerializer,
@@ -129,6 +130,6 @@ class ViewAllStock(generics.ListAPIView):
         return stock
 
 
-class TransferRawStockView(RawSaleAndReturnQuery, generics.CreateAPIView):
+class TransferRawStockView(RawStockTransferQuery, generics.CreateAPIView):
 
     serializer_class = RawStockTransferSerializer

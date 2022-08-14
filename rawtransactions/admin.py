@@ -9,6 +9,9 @@ from .models import (
     RawSaleAndReturn,
     RawSaleAndReturnLotDetail,
     RawSaleAndReturnWithPurchaseLotRelation,
+    RawStockTransfer,
+    RawStockTransferAndLotRelation,
+    RawStockTransferLotDetail,
 )
 
 
@@ -37,3 +40,6 @@ admin.site.register(RawPurchaseLotDetail, RawPurchaseLotDetailAdmin)
 admin.site.register(RawSaleAndReturn)
 admin.site.register(RawSaleAndReturnWithPurchaseLotRelation)
 admin.site.register(RawSaleAndReturnLotDetail)
+admin.site.register(RawStockTransfer)
+admin.site.register(RawStockTransferAndLotRelation)
+admin.site.register(RawStockTransferLotDetail)
