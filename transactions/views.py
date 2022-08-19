@@ -144,8 +144,7 @@ class ProductPerformanceHistory(APIView):
     def get(self, request):
         filters = {
             "transaction__person__branch": request.branch,
-            "transaction__nature": "D",
-            "transaction__person__person_type": "C",
+            "transaction__serial_type": TransactionSerialTypes.INV,
         }
         values = ["product__name"]
         person = request.query_params.get("person")
