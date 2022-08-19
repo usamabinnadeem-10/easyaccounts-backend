@@ -166,7 +166,7 @@ class RawSaleAndReturn(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
 
     @classmethod
     def make_transaction(cls, data, user, branch, isEdit=False, editInstance=None):
-
+        t_data = data.pop("data")
         sale_and_return_instance = RawSaleAndReturn.objects.create(
             **data,
             user=user,
@@ -177,7 +177,7 @@ class RawSaleAndReturn(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
             ),
         )
         ledger_amount = 0
-        for lot in data:
+        for lot in t_data:
             ledger_amount += calculate_amount(lot["detail"])
             raw_debit_lot_relation = (
                 RawSaleAndReturnWithPurchaseLotRelation.objects.create(
@@ -200,6 +200,11 @@ class RawSaleAndReturn(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
             sale_and_return_instance, ledger_amount
         )
 
+        return {
+            "sale_and_return": sale_and_return_instance,
+            "t_data": t_data,
+        }
+
 
 class RawSaleAndReturnWithPurchaseLotRelation(ID):
     """Raw sale/return and lot relation"""
@@ -219,11 +224,41 @@ class RawSaleAndReturnLotDetail(AbstractRawLotDetail):
     )
 
 
-class RawStockTransfer(ID, DateTimeAwareModel, NextSerial):
+class RawStockTransfer(ID, DateTimeAwareModel, UserAwareModel, NextSerial):
 
     from_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
     serial = models.PositiveBigIntegerField()
     manual_serial = models.PositiveBigIntegerField()
+
+    @classmethod
+    def make_transfer(cls, data, user, branch, isEdit=False, editInstance=None):
+        t_data = data.pop("data")
+        transfer_instance = RawStockTransfer.objects.create(
+            **data,
+            user=user,
+            serial=RawStockTransfer.get_next_serial(
+                "serial",
+                from_warehouse=data["from_warehouse"],
+                from_warehouse__branch=branch,
+            ),
+        )
+
+        for lot in t_data:
+            raw_transfer_and_lot_relation = RawStockTransferAndLotRelation.objects.create(
+                purchase_lot_number=lot["purchase_lot_number"],
+                raw_transfer=transfer_instance,
+            )
+            current_transfer_details = []
+            for detail in lot["detail"]:
+                current_transfer_details.append(
+                    RawStockTransferLotDetail(
+                        raw_stock_transfer_id=raw_transfer_and_lot_relation, **detail
+                    )
+                )
+
+            RawStockTransferLotDetail.objects.bulk_create(current_transfer_details)
+
+        return {"transfer": transfer_instance, "data": t_data}
 
 
 class RawStockTransferAndLotRelation(ID):

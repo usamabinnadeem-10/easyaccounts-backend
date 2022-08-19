@@ -19,9 +19,9 @@ from .serializers import (
     CreateRawTransactionSerializer,
     FormulaSerializer,
     ListRawTransactionSerializer,
-    RawDebitSerializer,
     RawLotNumberAndIdSerializer,
     RawProductSerializer,
+    RawSaleAndReturnSerializer,
     RawStockTransferSerializer,
     ViewAllStockSerializer,
 )
@@ -60,7 +60,7 @@ class CreateFormula(FormulaQuery, generics.CreateAPIView):
 
 class RawSaleAndReturnView(generics.CreateAPIView):
 
-    serializer_class = RawDebitSerializer
+    serializer_class = RawSaleAndReturnSerializer
 
 
 class ListLotNumberAndIdView(RawPurchaseLotQuery, generics.ListAPIView):

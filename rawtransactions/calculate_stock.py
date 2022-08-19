@@ -11,7 +11,7 @@ from .models import (
 )
 
 
-def get_all_raw_stock(branch):
+def get_all_raw_stock(branch, return_raw=False):
     balance_lots = list(
         (
             RawPurchaseLotDetail.objects.values(
@@ -130,6 +130,10 @@ def get_all_raw_stock(branch):
         *balance_dyings_final,
         *balance_transfers_final,
     ]
+
+    if return_raw:
+        return stock
+
     d = defaultdict(lambda: defaultdict(int))
 
     group_keys = [
