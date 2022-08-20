@@ -227,7 +227,7 @@ class GetLowStock(APIView):
         return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
 
 
-class ProductPerformanceHistory(APIView):
+class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
     """
     statistics for a particular product or all products
     optional customer selected for customer purchase history
