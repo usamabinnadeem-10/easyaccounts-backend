@@ -8,13 +8,13 @@ from authentication.mixins import (
 )
 from core.utils import convert_date_to_datetime
 from django.db.models import Sum
-from essentials.models import OpeningSaleData
+from essentials.models import OpeningSaleData, Product
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from transactions.models import TransactionDetail
+from transactions.models import Transaction, TransactionDetail
 
 
 class BalanceSheet(IsAdminOrReadAdminPermissionMixin, APIView):
@@ -168,3 +168,30 @@ class GetAllBalances(IsAdminOrReadAdminOrAccountantMixin, APIView):
             return Response(final_balances, status=status.HTTP_200_OK)
 
         return Response(data, status=status.HTTP_200_OK)
+
+
+class GetLowStock(APIView):
+    """Low stock with product category and warehouse filter"""
+
+    def get(self, request, *args, **kwargs):
+        branch = request.branch
+        category_filter = {}
+        treshold = request.query_params.get("treshold", 0)
+        if request.query_params.get("category"):
+            category_filter = {"category": request.query_params.get("category")}
+        products = Product.objects.filter(**category_filter)
+        all_stock = Transaction.get_all_stock(branch, None)
+        all_stock = list(filter(lambda x: x["quantity"] <= float(treshold), all_stock))
+        if request.query_params.get("warehouse"):
+            all_stock = list(
+                filter(
+                    lambda x: x["warehouse"] == request.query_params.get("warehouse"),
+                    all_stock,
+                )
+            )
+        additional_stock = []
+        for p in products:
+            if not any(s["product"] == str(p.id) for s in all_stock):
+                additional_stock.append({"product": p.id})
+
+        return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
