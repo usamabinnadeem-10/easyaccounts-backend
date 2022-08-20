@@ -135,48 +135,6 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         return queryset.order_by("serial_type", "serial", "-date")
 
 
-class ProductPerformanceHistory(APIView):
-    """
-    statistics for a particular product or all products
-    optional customer selected for customer purchase history
-    """
-
-    def get(self, request):
-        filters = {
-            "transaction__person__branch": request.branch,
-            "transaction__serial_type": TransactionSerialTypes.INV,
-        }
-        values = ["product__name"]
-        person = request.query_params.get("person")
-        product = request.query_params.get("product")
-        start = request.query_params.get("start")
-        end = request.query_params.get("end")
-        if person:
-            filters.update({"transaction__person": person})
-            values.append("transaction__person")
-        if product:
-            filters.update({"product": product})
-        if start:
-            filters.update({"transaction__date__gte": start})
-        if end:
-            filters.update({"transaction__date__lte": end})
-
-        stats = (
-            TransactionDetail.objects.values(*values)
-            .annotate(
-                quantity_sold=Sum("quantity"),
-                average_rate=Avg("rate"),
-                minimum_rate=Min("rate"),
-                maximum_rate=Max("rate"),
-                number_of_times_sold=Count("transaction__id"),
-            )
-            .filter(**filters)
-            .order_by("-number_of_times_sold", "quantity_sold")
-        )
-
-        return Response(stats, status=status.HTTP_200_OK)
-
-
 class BusinessPerformanceHistory(APIView):
     """
     get business' working statistics with optional date ranges

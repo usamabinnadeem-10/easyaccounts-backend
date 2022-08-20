@@ -7,13 +7,14 @@ from authentication.mixins import (
     IsAdminOrReadAdminPermissionMixin,
 )
 from core.utils import convert_date_to_datetime
-from django.db.models import Sum
+from django.db.models import Avg, Count, Max, Min, Sum
 from essentials.models import OpeningSaleData, Product
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from transactions.choices import TransactionSerialTypes
 from transactions.models import Transaction, TransactionDetail
 
 
@@ -224,3 +225,48 @@ class GetLowStock(APIView):
         )
 
         return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
+
+
+class ProductPerformanceHistory(APIView):
+    """
+    statistics for a particular product or all products
+    optional customer selected for customer purchase history
+    """
+
+    def get(self, request):
+        filters = {
+            "transaction__person__branch": request.branch,
+            "transaction__serial_type": TransactionSerialTypes.INV,
+        }
+        values = ["product__name"]
+        person = request.query_params.get("person")
+        product = request.query_params.get("product")
+        start = request.query_params.get("start")
+        end = request.query_params.get("end")
+        category = request.query_params.get("category")
+        if person:
+            filters.update({"transaction__person": person})
+            values.append("transaction__person")
+        if product:
+            filters.update({"product": product})
+        if start:
+            filters.update({"transaction__date__gte": start})
+        if end:
+            filters.update({"transaction__date__lte": end})
+        if category:
+            filters.update({"product__category": category})
+
+        stats = (
+            TransactionDetail.objects.values(*values)
+            .annotate(
+                quantity_sold=Sum("quantity"),
+                average_rate=Avg("rate"),
+                minimum_rate=Min("rate"),
+                maximum_rate=Max("rate"),
+                number_of_times_sold=Count("transaction__id"),
+            )
+            .filter(**filters)
+            .order_by("-quantity_sold")
+        )
+
+        return Response(stats, status=status.HTTP_200_OK)
