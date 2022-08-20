@@ -181,7 +181,7 @@ class GetLowStock(APIView):
             category_filter = {"category": request.query_params.get("category")}
         products = Product.objects.filter(**category_filter)
         all_stock = Transaction.get_all_stock(branch, None)
-        all_stock = list(filter(lambda x: x["quantity"] <= float(treshold), all_stock))
+        # all_stock = list(filter(lambda x: x["quantity"] <= float(treshold), all_stock))
         if request.query_params.get("warehouse"):
             all_stock = list(
                 filter(
@@ -189,11 +189,13 @@ class GetLowStock(APIView):
                     all_stock,
                 )
             )
-        # all_stock = {s['product'] for s in all_stock}
+
         additional_stock = []
         for p in products:
             if not any(s["product"] == str(p.id) for s in all_stock):
                 additional_stock.append({"product": p.id})
+
+        all_stock = list(filter(lambda x: x["quantity"] <= float(treshold), all_stock))
 
         final_low_stock = {s["product"] for s in [*all_stock, *additional_stock]}
         return Response(final_low_stock, status=status.HTTP_200_OK)
