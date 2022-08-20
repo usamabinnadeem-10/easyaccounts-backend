@@ -296,4 +296,7 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
             invoices_only_stats,
         )
 
-        return Response(final_stats, status=status.HTTP_200_OK)
+        return Response(
+            sorted(final_stats, key=lambda x: x["quantity_sold"], reverse=True),
+            status=status.HTTP_200_OK,
+        )
