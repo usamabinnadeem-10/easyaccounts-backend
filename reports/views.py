@@ -236,9 +236,9 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
     def get(self, request):
         filters = {
             "transaction__person__branch": request.branch,
-            "transaction__serial_type": TransactionSerialTypes.INV,
+            # "transaction__serial_type": TransactionSerialTypes.INV,
         }
-        values = ["product__name"]
+        values = ["product__name", "transaction__serial_type"]
         person = request.query_params.get("person")
         product = request.query_params.get("product")
         start = request.query_params.get("start")
@@ -269,4 +269,31 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
             .order_by("-quantity_sold")
         )
 
-        return Response(stats, status=status.HTTP_200_OK)
+        qty_sold = defaultdict(float)
+        num_invoices = defaultdict(float)
+        for s in stats:
+            key = s["product__name"]
+            if s["transaction__serial_type"] == TransactionSerialTypes.INV:
+                qty_sold[key] += s["quantity_sold"]
+                num_invoices[key] += s["number_of_times_sold"]
+            elif s["transaction__serial_type"] == TransactionSerialTypes.MWC:
+                qty_sold[key] -= s["quantity_sold"]
+                num_invoices[key] -= s["number_of_times_sold"]
+
+        invoices_only_stats = list(
+            filter(
+                lambda x: x["transaction__serial_type"] == TransactionSerialTypes.INV,
+                stats,
+            )
+        )
+
+        final_stats = map(
+            lambda x: {
+                **x,
+                "quantity_sold": qty_sold[x["product__name"]],
+                "number_of_times_sold": num_invoices[x["product__name"]],
+            },
+            invoices_only_stats,
+        )
+
+        return Response(final_stats, status=status.HTTP_200_OK)
