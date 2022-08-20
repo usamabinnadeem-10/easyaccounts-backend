@@ -189,9 +189,11 @@ class GetLowStock(APIView):
                     all_stock,
                 )
             )
+        # all_stock = {s['product'] for s in all_stock}
         additional_stock = []
         for p in products:
             if not any(s["product"] == str(p.id) for s in all_stock):
                 additional_stock.append({"product": p.id})
 
-        return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
+        final_low_stock = {s["product"] for s in [*all_stock, *additional_stock]}
+        return Response(final_low_stock, status=status.HTTP_200_OK)
