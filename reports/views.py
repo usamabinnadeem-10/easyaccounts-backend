@@ -179,23 +179,34 @@ class GetLowStock(APIView):
         treshold = request.query_params.get("treshold", 0)
         if request.query_params.get("category"):
             category_filter = {"category": request.query_params.get("category")}
+
+        final_stock = defaultdict(float)
         products = Product.objects.filter(**category_filter)
         all_stock = Transaction.get_all_stock(branch, None)
         # all_stock = list(filter(lambda x: x["quantity"] <= float(treshold), all_stock))
         if request.query_params.get("warehouse"):
             all_stock = list(
                 filter(
-                    lambda x: x["warehouse"] == request.query_params.get("warehouse"),
+                    lambda x: str(x["warehouse"])
+                    == str(request.query_params.get("warehouse")),
                     all_stock,
                 )
             )
+
+        filtered_all_stock = []  # only those products' stock that are in Product queryset
+        for p in products:
+            stock_prod = list(filter(lambda x: str(x["product"]) == str(p.id), all_stock))
+            if len(stock_prod):
+                filtered_all_stock.extend(stock_prod)
 
         additional_stock = []
         for p in products:
             if not any(s["product"] == str(p.id) for s in all_stock):
                 additional_stock.append({"product": p.id})
 
-        all_stock = list(filter(lambda x: x["quantity"] <= float(treshold), all_stock))
+        # now check the treshold of the filtered products
+        all_stock = list(
+            filter(lambda x: x["quantity"] <= float(treshold), filtered_all_stock)
+        )
 
-        final_low_stock = {s["product"] for s in [*all_stock, *additional_stock]}
-        return Response(final_low_stock, status=status.HTTP_200_OK)
+        return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
