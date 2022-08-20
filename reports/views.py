@@ -180,7 +180,6 @@ class GetLowStock(APIView):
         if request.query_params.get("category"):
             category_filter = {"category": request.query_params.get("category")}
 
-        final_stock = defaultdict(float)
         products = Product.objects.filter(**category_filter)
         all_stock = Transaction.get_all_stock(branch, None)
         # all_stock = list(filter(lambda x: x["quantity"] <= float(treshold), all_stock))
@@ -203,6 +202,21 @@ class GetLowStock(APIView):
         for p in products:
             if not any(s["product"] == str(p.id) for s in all_stock):
                 additional_stock.append({"product": p.id})
+
+        if request.query_params.get("ignoreGazaana"):
+            combined_gazaana_stock = defaultdict(float)
+            for f in filtered_all_stock:
+                combined_gazaana_stock[f["product"]] = (
+                    combined_gazaana_stock[f["product"]] + f["quantity"]
+                )
+            new_combined_stock = []
+            for key, value in combined_gazaana_stock.items():
+                new_combined_stock.append({"product": key, "quantity": value})
+
+            all_stock = list(
+                filter(lambda x: x["quantity"] <= float(treshold), new_combined_stock)
+            )
+            return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
 
         # now check the treshold of the filtered products
         all_stock = list(
