@@ -238,7 +238,7 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
             "transaction__person__branch": request.branch,
             # "transaction__serial_type": TransactionSerialTypes.INV,
         }
-        values = ["product__name", "transaction__serial_type"]
+        values = ["product__name", "transaction__serial_type", "yards_per_piece"]
         person = request.query_params.get("person")
         product = request.query_params.get("product")
         start = request.query_params.get("start")
@@ -272,7 +272,7 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
         qty_sold = defaultdict(float)
         num_invoices = defaultdict(float)
         for s in stats:
-            key = s["product__name"]
+            key = f"{s['product__name']}|{s['yards_per_piece']}"
             if s["transaction__serial_type"] == TransactionSerialTypes.INV:
                 qty_sold[key] += s["quantity_sold"]
                 num_invoices[key] += s["number_of_times_sold"]
@@ -290,8 +290,10 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
         final_stats = map(
             lambda x: {
                 **x,
-                "quantity_sold": qty_sold[x["product__name"]],
-                "number_of_times_sold": num_invoices[x["product__name"]],
+                "quantity_sold": qty_sold[f"{x['product__name']}|{x['yards_per_piece']}"],
+                "number_of_times_sold": num_invoices[
+                    f"{x['product__name']}|{x['yards_per_piece']}"
+                ],
             },
             invoices_only_stats,
         )
