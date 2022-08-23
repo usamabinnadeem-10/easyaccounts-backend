@@ -253,6 +253,10 @@ class DayBook(IsAdminOrReadAdminOrAccountantMixin, APIView):
         )
         balance_external_cheques = balance_external_cheques.get("total", 0)
 
+        num_of_pending_cheques = ExternalCheque.objects.filter(
+            status=ChequeStatusChoices.PENDING
+        ).count()
+
         balance_external_cheques_history = (
             ExternalChequeHistory.objects.values(
                 "account_type__name",
@@ -298,6 +302,7 @@ class DayBook(IsAdminOrReadAdminOrAccountantMixin, APIView):
         )
         if balance_external_cheques is not None:
             final_account_balances.update({"Cheque Account": balance_external_cheques})
+            final_account_balances.update({"Pending cheques": num_of_pending_cheques})
 
         return Response(
             {
