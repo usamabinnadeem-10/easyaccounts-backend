@@ -449,12 +449,15 @@ class ViewAllStock(TransactionQuery, generics.ListAPIView):
             )
         if quantity:
             stock = filter(lambda x: x["quantity"] == quantity, stock)
+            stock = filter(lambda x: x["quantity"] == qps.get("warehouse"), stock)
         if quantity__gte:
             stock = filter(lambda x: x["quantity"] >= quantity__gte, stock)
         if quantity__lte:
             stock = filter(lambda x: x["quantity"] <= quantity__lte, stock)
         if qps.get("warehouse"):
             stock = filter(lambda x: x["warehouse"] == qps.get("warehouse"), stock)
+
+        stock = filter(lambda x: x["quantity"] > 0, stock)
 
         serializer = self.get_serializer(stock, many=True)
         return Response(serializer.data)
