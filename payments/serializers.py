@@ -166,7 +166,7 @@ class PaymentSerializer(
 
         log_string = (
             f"""P-{instance.serial}"""
-            f"""{instance.amount}/= {instance.get_nature_display()} """
+            f""" {instance.amount}/= {instance.get_nature_display()} """
             f"""{instance.person.name} {instance.date}"""
             f"""{f" on {instance.account_type.name}" if instance.account_type else ""} -->\n"""
         )
