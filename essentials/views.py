@@ -355,16 +355,18 @@ class GetAccountHistory(
             filters = {}
             date_filters = {}
             ledger_detail_date_filter = {}
-            start = convert_date_to_datetime(qp.get("start"), True)
-            end = convert_date_to_datetime(qp.get("end"), True)
+            # start = convert_date_to_datetime(qp.get("start"), True)
+            # end = convert_date_to_datetime(qp.get("end"), True)
+            start = qp.get("date__gte", None)
+            end = qp.get("date__lte", None)
             if start:
-                start_date = start.replace(hour=0, minute=0, second=0, microsecond=0)
-                date_filters.update({"date__gte": start_date})
-                ledger_detail_date_filter.update({"ledger_entry__date__gte": start_date})
+                # start_date = start.replace(hour=0, minute=0, second=0, microsecond=0)
+                date_filters.update({"date__gte": start})
+                ledger_detail_date_filter.update({"ledger_entry__date__gte": start})
             if end:
-                end_date = end.replace(hour=23, minute=59, second=59, microsecond=999999)
-                date_filters.update({"date__lte": end_date})
-                ledger_detail_date_filter.update({"ledger_entry__date__lte": end_date})
+                # end_date = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+                date_filters.update({"date__lte": end})
+                ledger_detail_date_filter.update({"ledger_entry__date__lte": end})
 
             account = get_object_or_404(AccountType, id=account, branch=request.branch)
             cheque_account = get_cheque_account(branch).account
