@@ -398,7 +398,7 @@ class GetAccountHistory(
 
             external_cheque_history = format_cheques_as_ledger(
                 ExternalChequeHistory.objects.filter(
-                    **filters, **date_filters, parent_cheque__person__branch=branch
+                    **filters, parent_cheque__person__branch=branch
                 )
                 .exclude(account_type=cheque_account)
                 .values(
@@ -414,7 +414,6 @@ class GetAccountHistory(
             personal_cheques = format_cheques_as_ledger(
                 PersonalCheque.objects.filter(
                     **filters,
-                    **date_filters,
                     status=PersonalChequeStatusChoices.CLEARED,
                     person__branch=branch,
                 ).values("amount", "date", "serial", "id"),
@@ -423,9 +422,9 @@ class GetAccountHistory(
             )
 
             expenses = format_cheques_as_ledger(
-                ExpenseDetail.objects.filter(
-                    **filters, **date_filters, expense__branch=branch
-                ).values("amount", "date", "serial", "id"),
+                ExpenseDetail.objects.filter(**filters, expense__branch=branch).values(
+                    "amount", "date", "serial", "id"
+                ),
                 "D",
                 "E",
             )
