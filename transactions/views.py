@@ -127,6 +127,7 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         "type": ["exact"],
         "requires_action": ["exact"],
         "transaction_detail__product": ["exact"],
+        "transaction_detail__product__category": ["exact"],
         "transaction_detail__warehouse": ["exact"],
     }
 
@@ -287,6 +288,7 @@ class ViewTransfers(
     filter_fields = {
         "date": ["gte", "lte"],
         "transfer_detail__product": ["exact"],
+        "transfer_detail__product__category": ["exact"],
         "transfer_detail__yards_per_piece": ["exact", "gte", "lte"],
         "from_warehouse": ["exact"],
         "serial": ["gte", "lte", "exact"],
@@ -391,6 +393,7 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
             "yards_per_piece",
             "transfer__from_warehouse",
             "transfer__serial",
+            "transfer__manual_serial",
         ]
         if qp.get("warehouse"):
             transfers = (
