@@ -8,7 +8,9 @@ from .models import (
 
 class ExternalChequeQuery:
     def get_queryset(self):
-        return ExternalCheque.objects.filter(person__branch=self.request.branch)
+        return ExternalCheque.objects.filter(person__branch=self.request.branch).order_by(
+            "due_date"
+        )
 
 
 class ExternalChequeHistoryQuery:
@@ -27,4 +29,6 @@ class ExternalChequeTransferQuery:
 
 class PersonalChequeQuery:
     def get_queryset(self):
-        return PersonalCheque.objects.filter(person__branch=self.request.branch)
+        return PersonalCheque.objects.filter(person__branch=self.request.branch).order_by(
+            "due_date"
+        )
