@@ -89,7 +89,10 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 warehouse=F("to_warehouse"),
             )
             .filter(
-                *or_condition, transfer__from_warehouse__branch=branch, **transfer_kwargs
+                *or_condition,
+                transfer__date__lte=date,
+                transfer__from_warehouse__branch=branch,
+                **transfer_kwargs,
             )
             .annotate(quantity=Sum("quantity"))
         )
@@ -141,7 +144,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 )
                 .filter(
                     transaction__person__branch=branch,
-                    # transaction__date__lte=date,
+                    transaction__date__lte=date,
                     **kwargs,
                 )
                 .annotate(quantity=Sum("quantity"))
