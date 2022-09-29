@@ -241,11 +241,13 @@ class TransferStockDetail(serializers.ModelSerializer):
     class Meta:
         model = StockTransferDetail
         fields = [
+            "id",
             "product",
             "yards_per_piece",
             "to_warehouse",
             "quantity",
         ]
+        read_only_fields = ["id"]
 
 
 class TransferStockSerializer(serializers.ModelSerializer):
