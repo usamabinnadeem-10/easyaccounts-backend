@@ -60,10 +60,20 @@ class ExternalChequeSerializer(serializers.ModelSerializer):
 class ShortExternalChequeHistorySerializer(serializers.ModelSerializer):
 
     serial = serializers.IntegerField(source="parent_cheque.serial")
+    cheque_number = serializers.CharField(source="parent_cheque.cheque_number")
+    person = serializers.UUIDField(source="parent_cheque.person.id")
 
     class Meta:
         model = ExternalChequeHistory
-        fields = ["id", "serial", "account_type", "amount", "date"]
+        fields = [
+            "id",
+            "serial",
+            "account_type",
+            "amount",
+            "date",
+            "cheque_number",
+            "person",
+        ]
 
 
 class ExternalChequeHistorySerializer(serializers.ModelSerializer):
