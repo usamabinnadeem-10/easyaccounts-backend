@@ -1,8 +1,17 @@
-from rest_framework.generics import ListAPIView, CreateAPIView
+from rest_framework.generics import CreateAPIView, ListAPIView
 
-from .mixins import IsAuthenticatedPermissionMixin, HasBranchPermissionMixin
-from .queries import UserBranchQuery
-from .serializers import UserBranchSerializer, LoginSerializer, LogoutSerializer
+from .mixins import (
+    HasBranchPermissionMixin,
+    IsAdminOrReadAdminPermissionMixin,
+    IsAuthenticatedPermissionMixin,
+)
+from .queries import UserBranchQuery, UserQuery
+from .serializers import (
+    LoginSerializer,
+    LogoutSerializer,
+    UserBranchSerializer,
+    UserSerializer,
+)
 
 
 class UserBranchesView(HasBranchPermissionMixin, UserBranchQuery, ListAPIView):
@@ -21,3 +30,9 @@ class LogoutView(IsAuthenticatedPermissionMixin, CreateAPIView, UserBranchQuery)
     """log user out of all branches"""
 
     serializer_class = LogoutSerializer
+
+
+class ListUsers(IsAdminOrReadAdminPermissionMixin, UserQuery, ListAPIView):
+    """List all users of the branch"""
+
+    serializer_class = UserSerializer

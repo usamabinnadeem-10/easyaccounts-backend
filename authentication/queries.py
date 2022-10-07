@@ -13,3 +13,10 @@ class UserBranchQuery:
         if not user_branches:
             raise AuthenticationFailed("User does not exist")
         return user_branches
+
+
+class UserQuery:
+    """this query returns all the users of the branch"""
+
+    def get_queryset(self):
+        return UserBranchRelation.objects.filter(branch=self.request.branch)

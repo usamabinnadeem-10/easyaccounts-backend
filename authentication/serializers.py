@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
@@ -48,3 +49,10 @@ class LogoutSerializer(serializers.ModelSerializer):
         UserBranchRelation.utils.logout_all(self.context["request"].user)
 
         return {}
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "first_name", "last_name"]
+        read_only_fields = ["id", "username", "first_name", "last_name"]
