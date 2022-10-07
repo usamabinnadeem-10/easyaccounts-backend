@@ -298,6 +298,7 @@ class ViewTransfers(
         "manual_serial": ["gte", "lte", "exact"],
         "transfer_detail__to_warehouse": ["exact"],
         "transfer_detail__quantity": ["exact", "gte", "lte"],
+        "user": ["exact"],
     }
 
 
