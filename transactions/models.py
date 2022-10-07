@@ -285,14 +285,17 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             string += "Sale return : "
         # string += f" {serial_num} : "
         total = 0.0
+        total_gazaana = 0.0
         for d in details:
             total += float(d.quantity)
+            total += float(d.quantity * d.yards_per_piece)
             string += (
                 f"{float(d.quantity)} thaan "
                 f"{d.product.name} ({d.yards_per_piece} Yards) "
                 f"@ PKR {str(d.rate)} per yard\n"
             )
         string += f"\nTotal thaan = {total}"
+        string += f"\nTotal gazaana = {total_gazaana}"
         return string
 
     @classmethod
