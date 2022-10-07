@@ -59,3 +59,10 @@ class IsAdminReadOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.role == RoleChoices.ADMIN_VIEWER
+
+
+class IsStockist(permissions.BasePermission):
+    """Permission class to check whether user is a stockist"""
+
+    def has_permission(self, request, view):
+        return request.role == RoleChoices.STOCKIST

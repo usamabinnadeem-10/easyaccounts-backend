@@ -4,7 +4,10 @@ from itertools import chain
 from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrAccountantMixin,
+    IsAdminOrAccountantOrStockistMixin,
     IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrStockistPermissionMixin,
+    IsAdminOrStockistMixin,
     IsAdminPermissionMixin,
 )
 from core.pagination import StandardPagination
@@ -252,7 +255,7 @@ class BusinessPerformanceHistory(APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class TransferStock(IsAdminOrAccountantMixin, generics.CreateAPIView):
+class TransferStock(IsAdminOrAccountantOrStockistMixin, generics.CreateAPIView):
     """Transfer stock from one warehouse to another"""
 
     serializer_class = TransferStockSerializer
@@ -272,14 +275,14 @@ class DeleteTransferStock(TransferQuery, IsAdminPermissionMixin, generics.Destro
         )
 
 
-class EditTransferStock(TransferQuery, IsAdminPermissionMixin, generics.UpdateAPIView):
+class EditTransferStock(TransferQuery, IsAdminOrStockistMixin, generics.UpdateAPIView):
     """Edit stock transfer"""
 
     serializer_class = UpdateTransferStockSerializer
 
 
 class ViewTransfers(
-    TransferQuery, IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView
+    TransferQuery, IsAdminOrReadAdminOrStockistPermissionMixin, generics.ListAPIView
 ):
     """View for listing transfers"""
 

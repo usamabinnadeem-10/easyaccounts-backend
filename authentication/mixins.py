@@ -8,6 +8,7 @@ from .permissions import (
     IsLoggedIn,
     IsPurchaser,
     IsSaleman,
+    IsStockist,
 )
 
 
@@ -73,3 +74,29 @@ class IsAdminOrReadAdminPermissionMixin:
     """To check if user is admin or read admin"""
 
     permission_classes = [IsAuthenticated, IsLoggedIn, IsAdmin | IsAdminReadOnly]
+
+
+class IsAdminOrAccountantOrStockistMixin:
+    """To check if user is admin or accountant or stockist"""
+
+    permission_classes = [
+        IsAuthenticated,
+        IsLoggedIn,
+        IsAdmin | IsAccountant | IsStockist,
+    ]
+
+
+class IsAdminOrStockistMixin:
+    """To check if user is admin or stockist"""
+
+    permission_classes = [IsAuthenticated, IsLoggedIn, IsAdmin | IsStockist]
+
+
+class IsAdminOrReadAdminOrStockistPermissionMixin:
+    """To check if user is admin or read admin or stockist"""
+
+    permission_classes = [
+        IsAuthenticated,
+        IsLoggedIn,
+        IsAdmin | IsAdminReadOnly | IsStockist,
+    ]
