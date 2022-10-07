@@ -288,7 +288,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         total_gazaana = 0.0
         for d in details:
             total += float(d.quantity)
-            total += float(d.quantity * d.yards_per_piece)
+            total_gazaana += float(d.quantity) * float(d.yards_per_piece)
             string += (
                 f"{float(d.quantity)} thaan "
                 f"{d.product.name} ({d.yards_per_piece} Yards) "
