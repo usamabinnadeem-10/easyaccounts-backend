@@ -60,12 +60,11 @@ class ListLedger(LedgerQuery, IsAdminOrReadAdminOrAccountantMixin, generics.List
         startDate = convert_date_to_datetime(qp.get("start"), True) or (
             queryset.aggregate(Min("date"))["date__min"] or datetime.now()
         )
-        startDateMinusOne = startDate - timedelta(days=1)
         balance = (
             queryset.values("nature")
             .order_by("nature")
             .annotate(amount=Sum("amount"))
-            .filter(date__lte=startDateMinusOne)
+            .filter(date__lt=startDate)
         )
 
         branch = request.branch
