@@ -23,7 +23,7 @@ class AbstractCheque(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
 
     def get_ledger_string(self, cheque_type):
         """Return string for ledger. Instances here are LedgerAnd(External or Personal)Cheque records"""
-        return f"Cheque # {self.serial} {self.get_bank_display()} {self.cheque_number}"
+        return f"Cheque # {self.serial} {self.get_bank_display()} {self.cheque_number} Due: {self.due_date}"
 
     class Meta:
         abstract = True

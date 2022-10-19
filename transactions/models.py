@@ -276,23 +276,27 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                     return f"Paid for {serial_num}"
             else:
                 # return f"Paid for {serial_num}"
-                string += "Sale : "
+                string += f"Sale\n"
         elif serial_type == TransactionSerialTypes.SUP:
-            string += "Purchase : "
+            string += f"Purchase\n"
         elif serial_type == TransactionSerialTypes.MWC:
-            string += "Purchase return : "
+            string += f"Purchase return\n"
         elif serial_type == TransactionSerialTypes.MWS:
-            string += "Sale return : "
+            string += f"Sale return\n"
         # string += f" {serial_num} : "
         total = 0.0
         total_gazaana = 0.0
         for d in details:
             total += float(d.quantity)
             total_gazaana += float(d.quantity) * float(d.yards_per_piece)
+            # string += (
+            #     f"{float(d.quantity)} thaan "
+            #     f"{d.product.name} ({d.yards_per_piece} Yards) "
+            #     f"@ PKR {str(d.rate)} per yard\n"
+            # )
             string += (
-                f"{float(d.quantity)} thaan "
-                f"{d.product.name} ({d.yards_per_piece} Yards) "
-                f"@ PKR {str(d.rate)} per yard\n"
+                f"{d.product.name} {float(d.quantity)} / {d.yards_per_piece} "
+                f"@ {str(d.rate)}/=\n"
             )
         string += f"\nTotal thaan = {total}"
         string += f"\nTotal gazaana = {total_gazaana}"
