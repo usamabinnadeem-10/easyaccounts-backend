@@ -314,6 +314,10 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             Transaction.objects.filter(person__branch=branch,serial_type=TransactionSerialTypes.INV, **date_filter).aggregate(
                 total=Sum("discount")
             )["total"]
+            or 0 - 
+            Transaction.objects.filter(person__branch=branch,serial_type=TransactionSerialTypes.MWC, **date_filter).aggregate(
+                total=Sum("discount")
+            )["total"]
             or 0
         )
 
