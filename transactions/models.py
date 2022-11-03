@@ -311,7 +311,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         if end_date:
             date_filter.update({"date__lte": end_date})
         return (
-            Transaction.objects.filter(person__branch=branch, **date_filter).aggregate(
+            Transaction.objects.filter(person__branch=branch,serial_type=TransactionSerialTypes.INV, **date_filter).aggregate(
                 total=Sum("discount")
             )["total"]
             or 0
