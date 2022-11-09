@@ -1,15 +1,7 @@
 from datetime import date
 
-from authentication.mixins import (
-    IsAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantMixin,
-    IsAdminPermissionMixin,
-)
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from essentials.models import AccountType
-from logs.choices import ActivityCategory, ActivityTypes
-from logs.models import Log
 from rest_framework import status
 from rest_framework.generics import (
     CreateAPIView,
@@ -19,6 +11,15 @@ from rest_framework.generics import (
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from authentication.mixins import (
+    IsAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminPermissionMixin,
+)
+from essentials.models import AccountType
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 
 from .choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from .models import ExternalCheque, ExternalChequeHistory, ExternalChequeTransfer
@@ -442,6 +443,25 @@ class DeleteExternalChequeView(
             ActivityTypes.DELETED, ActivityCategory.EXTERNAL_CHEQUE, log_string, request
         )
 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeleteExternalChequeHistoryView(
+    IsAdminPermissionMixin, ExternalChequeHistoryQuery, DestroyAPIView
+):
+    """delete external cheque history"""
+
+    serializer_class = ExternalChequeHistorySerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        print(instance)
+        if instance.return_cheque:
+            return Response(
+                {"error": "Please delete the cheque itself"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
