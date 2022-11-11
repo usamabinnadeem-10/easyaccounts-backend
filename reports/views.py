@@ -1,5 +1,10 @@
 from collections import defaultdict
 
+from django.db.models import Avg, Count, Max, Min, Sum
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from assets.models import Asset
 from authentication.choices import RoleChoices
 from authentication.mixins import (
@@ -7,13 +12,9 @@ from authentication.mixins import (
     IsAdminOrReadAdminPermissionMixin,
 )
 from core.utils import convert_date_to_datetime
-from django.db.models import Avg, Count, Max, Min, Sum
 from essentials.models import OpeningSaleData, Product
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
 from transactions.choices import TransactionSerialTypes
 from transactions.models import Transaction, TransactionDetail
 
@@ -177,6 +178,7 @@ class GetLowStock(APIView):
     def get(self, request, *args, **kwargs):
         branch = request.branch
         category_filter = {}
+        is_gazaana_ignored = False
         treshold = request.query_params.get("treshold", 0)
         if request.query_params.get("category"):
             category_filter = {"category": request.query_params.get("category")}
@@ -205,19 +207,51 @@ class GetLowStock(APIView):
                 additional_stock.append({"product": p.id})
 
         if request.query_params.get("ignoreGazaana"):
+            is_gazaana_ignored = True
             combined_gazaana_stock = defaultdict(float)
             for f in filtered_all_stock:
-                combined_gazaana_stock[f["product"]] = (
-                    combined_gazaana_stock[f["product"]] + f["quantity"]
-                )
+                key = f["product"] + "|" + f["warehouse"]
+                combined_gazaana_stock[key] = combined_gazaana_stock[key] + f["quantity"]
+
             new_combined_stock = []
             for key, value in combined_gazaana_stock.items():
-                new_combined_stock.append({"product": key, "quantity": value})
+                [product, warehouse] = key.split("|")
+                new_combined_stock.append(
+                    {"product": product, "warehouse": warehouse, "quantity": value}
+                )
 
-            all_stock = list(
-                filter(lambda x: x["quantity"] <= float(treshold), new_combined_stock)
-            )
-            return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
+            filtered_all_stock = new_combined_stock
+
+        if not request.query_params.get("ignoreWarehouse"):
+            combined_warehouse_stock = defaultdict(float)
+            if not is_gazaana_ignored:
+                for f in filtered_all_stock:
+                    key = f"{f['product']}|{f['yards_per_piece']}"
+                    combined_warehouse_stock[key] = (
+                        combined_warehouse_stock[key] + f["quantity"]
+                    )
+                new_combined_stock = []
+                for key, value in combined_warehouse_stock.items():
+                    [product, yards_per_piece] = key.split("|")
+                    new_combined_stock.append(
+                        {
+                            "product": product,
+                            "yards_per_piece": yards_per_piece,
+                            "quantity": value,
+                        }
+                    )
+            else:
+                for f in filtered_all_stock:
+                    key = f["product"]
+                    combined_warehouse_stock[key] = (
+                        combined_warehouse_stock[key] + f["quantity"]
+                    )
+
+                new_combined_stock = []
+                for key, value in combined_warehouse_stock.items():
+                    new_combined_stock.append({"product": key, "quantity": value})
+
+            filtered_all_stock = new_combined_stock
 
         # now check the treshold of the filtered products
         all_stock = list(
