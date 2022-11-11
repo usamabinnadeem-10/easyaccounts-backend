@@ -222,7 +222,7 @@ class GetLowStock(APIView):
 
             filtered_all_stock = new_combined_stock
 
-        if not request.query_params.get("ignoreWarehouse"):
+        if request.query_params.get("ignoreWarehouse"):
             combined_warehouse_stock = defaultdict(float)
             if not is_gazaana_ignored:
                 for f in filtered_all_stock:
