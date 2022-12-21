@@ -92,11 +92,11 @@ class IsAdminOrStockistMixin:
     permission_classes = [IsAuthenticated, IsLoggedIn, IsAdmin | IsStockist]
 
 
-class IsAdminOrReadAdminOrStockistPermissionMixin:
+class IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin:
     """To check if user is admin or read admin or stockist"""
 
     permission_classes = [
         IsAuthenticated,
         IsLoggedIn,
-        IsAdmin | IsAdminReadOnly | IsStockist,
+        IsAdmin | IsAdminReadOnly | IsStockist | IsAccountant,
     ]

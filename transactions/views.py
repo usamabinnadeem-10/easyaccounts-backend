@@ -1,29 +1,30 @@
 from datetime import date, datetime, timedelta
 from itertools import chain
 
+from django.db.models import Avg, Count, F, Max, Min, Q, Sum
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.status import *
+from rest_framework.views import APIView
+
 from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrAccountantMixin,
     IsAdminOrAccountantOrStockistMixin,
     IsAdminOrReadAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrStockistPermissionMixin,
+    IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin,
     IsAdminOrStockistMixin,
     IsAdminPermissionMixin,
 )
 from core.pagination import StandardPagination
 from core.utils import convert_qp_dict_to_qp
-from django.db.models import Avg, Count, F, Max, Min, Q, Sum
-from django.shortcuts import get_object_or_404
-from django_filters.rest_framework import DjangoFilterBackend
 from essentials.models import Stock
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.status import *
-from rest_framework.views import APIView
 
 from .models import *
 from .queries import (  # CancelledInvoiceQuery,; CancelStockTransferQuery,
@@ -282,7 +283,9 @@ class EditTransferStock(TransferQuery, IsAdminOrStockistMixin, generics.UpdateAP
 
 
 class ViewTransfers(
-    TransferQuery, IsAdminOrReadAdminOrStockistPermissionMixin, generics.ListAPIView
+    TransferQuery,
+    IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin,
+    generics.ListAPIView,
 ):
     """View for listing transfers"""
 
