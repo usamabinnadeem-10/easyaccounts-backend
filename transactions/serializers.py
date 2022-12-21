@@ -1,10 +1,12 @@
 from functools import reduce
 
+from rest_framework import serializers, status
+
 from cheques.utils import get_cheque_account
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
-from rest_framework import serializers, status
 
+from .choices import TransactionSerialTypes
 from .models import StockTransfer, StockTransferDetail, Transaction, TransactionDetail
 
 
@@ -20,6 +22,20 @@ class ValidateSerial:
             ).exists():
                 raise serializers.ValidationError(
                     "This serial already exists", status.HTTP_400_BAD_REQUEST
+                )
+        if data["wasooli_number"]:
+            if data["serial_type"] != TransactionSerialTypes.SUP:
+                raise serializers.ValidationError(
+                    "Wasooli number can not be added with this transaction type",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+            if Transaction.objects.filter(
+                wasooli_number=data["wasooli_number"],
+                person__branch=self.context["request"].branch,
+                serial_type=data["serial_type"],
+            ).exists():
+                raise serializers.ValidationError(
+                    "This wasooli number already exists", status.HTTP_400_BAD_REQUEST
                 )
         return data
 
@@ -113,6 +129,7 @@ class TransactionSerializer(
             "id",
             "serial",
             "manual_serial",
+            "wasooli_number",
             "date",
             "transaction_detail",
             "nature",
@@ -194,6 +211,7 @@ class UpdateTransactionSerializer(
             "paid_amount",
             "detail",
             "manual_serial",
+            "wasooli_number",
             # "manual_serial_type",
             "serial_type",
             "requires_action",
@@ -208,7 +226,6 @@ class UpdateTransactionSerializer(
     def update(self, instance, validated_data):
         request = self.context["request"]
         # transaction_detail = validated_data.pop("transaction_detail")
-        branch = request.branch
         # check if user changed the book number
         # if he did, then ensure it does not exist already
         if instance.manual_serial != validated_data["manual_serial"]:
@@ -218,6 +235,15 @@ class UpdateTransactionSerializer(
             ).exists():
                 raise serializers.ValidationError(
                     "This serial already exists",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+        if instance.wasooli_number != validated_data["wasooli_number"]:
+            if Transaction.objects.filter(
+                wasooli_number=validated_data["wasooli_number"],
+                person__branch=request.branch,
+            ).exists():
+                raise serializers.ValidationError(
+                    "This wasooli number already exists",
                     status.HTTP_400_BAD_REQUEST,
                 )
         transaction = Transaction.make_transaction(validated_data, request, instance)

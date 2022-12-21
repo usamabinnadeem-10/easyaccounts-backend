@@ -126,6 +126,7 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         "person": ["exact"],
         "serial": ["exact", "gte", "lte"],
         "manual_serial": ["exact", "gte", "lte"],
+        "wasooli_number": ["exact", "gte", "lte"],
         "serial_type": ["exact"],
         "discount": ["gte", "lte"],
         "type": ["exact"],

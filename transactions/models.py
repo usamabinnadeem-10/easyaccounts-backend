@@ -2,19 +2,19 @@ from collections import defaultdict
 from datetime import datetime
 from math import inf
 
-from authentication.choices import RoleChoices
-from authentication.models import UserAwareModel
-from core.constants import MIN_POSITIVE_VAL_SMALL
-from core.models import ID, DateTimeAwareModel, NextSerial
-
 # from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import F, Q, Sum
+from rest_framework.serializers import ValidationError
+
+from authentication.choices import RoleChoices
+from authentication.models import UserAwareModel
+from core.constants import MIN_POSITIVE_VAL_SMALL
+from core.models import ID, DateTimeAwareModel, NextSerial
 from essentials.models import AccountType, Person, Product, Stock, Warehouse
 from ledgers.models import Ledger
 from payments.models import Payment
-from rest_framework.serializers import ValidationError
 
 from .choices import TransactionChoices, TransactionSerialTypes, TransactionTypes
 
@@ -31,6 +31,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     )
     paid_amount = models.FloatField(default=0.0)
     manual_serial = models.BigIntegerField(null=True, blank=True)
+    wasooli_number = models.BigIntegerField(null=True, blank=True)
     serial_type = models.CharField(max_length=3, choices=TransactionSerialTypes.choices)
     requires_action = models.BooleanField(default=False)
     builty = models.CharField(max_length=100, null=True, default=None, blank=True)
