@@ -26,6 +26,7 @@ from ledgers.views import GetAllBalances
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 
+from .filters import TransactionsFilter
 from .models import *
 from .queries import (  # CancelledInvoiceQuery,; CancelStockTransferQuery,
     TransactionQuery,
@@ -119,22 +120,7 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
     serializer_class = TransactionSerializer
     pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]
-    filter_fields = {
-        "date": ["gte", "lte"],
-        "account_type": ["exact"],
-        "detail": ["icontains"],
-        "person": ["exact"],
-        "serial": ["exact", "gte", "lte"],
-        "manual_serial": ["exact", "gte", "lte"],
-        "wasooli_number": ["exact", "gte", "lte"],
-        "serial_type": ["exact"],
-        "discount": ["gte", "lte"],
-        "type": ["exact"],
-        "requires_action": ["exact"],
-        "transaction_detail__product": ["exact"],
-        "transaction_detail__product__category": ["exact"],
-        "transaction_detail__warehouse": ["exact"],
-    }
+    filterset_class = TransactionsFilter
 
     def get_queryset(self):
         queryset = super().get_queryset()
