@@ -43,7 +43,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         return f"{self.serial_type}-{self.serial}"
 
     def get_computer_and_bill_serial(self):
-        return f"{self.get_computer_serial()}{f' Book # {self.manual_serial}' or ''}"
+        return f"{self.get_computer_serial()}{f' Book # {self.manual_serial}' or ''}{f' W # {self.wasooli_number}' or ''}"
 
     @classmethod
     def check_average_selling_rates(cls, date, t_detail, branch):
