@@ -278,6 +278,7 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
         start = request.query_params.get("start")
         end = request.query_params.get("end")
         category = request.query_params.get("category")
+        gazaana = request.query_params.get("gazaana")
         if person:
             filters.update({"transaction__person": person})
             values.append("transaction__person")
@@ -289,6 +290,8 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
             filters.update({"transaction__date__lte": end})
         if category:
             filters.update({"product__category": category})
+        if gazaana:
+            filters.update({"yards_per_piece": gazaana})
 
         stats = (
             TransactionDetail.objects.values(*values)
