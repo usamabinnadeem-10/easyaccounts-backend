@@ -20,7 +20,7 @@ from authentication.mixins import (
 )
 from core.pagination import StandardPagination
 from core.utils import convert_qp_dict_to_qp
-from essentials.models import Stock
+from essentials.models import ProductCategory, Stock
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
 from logs.choices import ActivityCategory, ActivityTypes
@@ -295,11 +295,35 @@ class ViewTransfers(
 class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
     def get(self, request):
         qp = request.query_params
-        product = get_object_or_404(Product, id=qp.get("product"))
+
+        if not qp.get("product") and not qp.get("product_category"):
+            return Response(
+                {
+                    "error": "Please choose a product or a category",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        product_and_category_filter = {}
+        product_and_category_filter_objects = {}
+        if qp.get("product"):
+            product = get_object_or_404(Product, id=qp.get("product"))
+            product_and_category_filter.update({"product": qp.get("product")})
+            product_and_category_filter_objects.update({"product": product})
+        if qp.get("product_category"):
+            product_category = get_object_or_404(
+                ProductCategory, id=qp.get("product_category")
+            )
+            product_and_category_filter.update(
+                {"product__category": qp.get("product_category")}
+            )
+            product_and_category_filter_objects.update(
+                {"product__category": product_category}
+            )
+
         opening_stock = 0.0
         branch = request.branch
-
-        initial_stock_filters = {"product": qp.get("product")}
+        initial_stock_filters = {**product_and_category_filter}
         if qp.get("warehouse"):
             initial_stock_filters.update({"warehouse": qp.get("warehouse")})
         if qp.get("yards_per_piece"):
@@ -313,10 +337,10 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
         )
 
         opening_stock += initial_stock
+        filters = {"transaction__person__branch": branch}
 
-        filters = {"product": product, "transaction__person__branch": branch}
         filters_transfers = {
-            "product": product,
+            **product_and_category_filter_objects,
             "transfer__from_warehouse__branch": branch,
         }
         if qp.get("start"):
@@ -330,8 +354,9 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
                 .annotate(quantity=Sum("quantity"))
                 .filter(
                     transaction__date__lte=startDateMinusOne,
-                    product=product,
+                    # product=product,
                     transaction__person__branch=branch,
+                    **product_and_category_filter_objects,
                 )
             )
             for old in old_stock:
@@ -354,8 +379,8 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
         if qp.get("warehouse") and qp.get("start"):
             old_transfer_quantity = StockTransferDetail.calculateTransferredAmount(
                 qp.get("warehouse"),
-                qp.get("product"),
                 {
+                    **product_and_category_filter_objects,
                     "transfer__date__lte": startDateMinusOne,
                     "transfer__from_warehouse__branch": branch,
                 },
@@ -375,7 +400,12 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
                 "transaction__type",
                 date=F("transaction__date"),
             )
-            .filter(**filters)
+            .filter(
+                **{
+                    **filters,
+                    **product_and_category_filter_objects,
+                }
+            )
             .annotate(quantity=Sum("quantity"))
             .order_by("date")
         )

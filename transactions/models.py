@@ -613,11 +613,10 @@ class StockTransferDetail(ID):
     quantity = models.FloatField(validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)])
 
     @classmethod
-    def calculateTransferredAmount(cls, warehouse, product, filters):
+    def calculateTransferredAmount(cls, warehouse, filters):
         """return transferred amount to this warehouse"""
         custom_filters = {
             **filters,
-            "product": product,
         }
         values = ["product", "from_warehouse", "to_warehouse"]
         quantity = 0.0
