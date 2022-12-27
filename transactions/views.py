@@ -419,28 +419,33 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
             "transfer__serial",
             "transfer__manual_serial",
         ]
-        if qp.get("warehouse"):
-            transfers = (
-                StockTransferDetail.objects.filter(
-                    Q(transfer__from_warehouse=qp.get("warehouse"))
-                    | Q(to_warehouse=qp.get("warehouse")),
-                    **filters_transfers,
+        if not qp.get("remove_transfers"):
+            if qp.get("warehouse"):
+                transfers = (
+                    StockTransferDetail.objects.filter(
+                        Q(transfer__from_warehouse=qp.get("warehouse"))
+                        | Q(to_warehouse=qp.get("warehouse")),
+                        **filters_transfers,
+                    )
+                    .values(*transfer_values, date=F("transfer__date"))
+                    .order_by("transfer__date")
                 )
-                .values(*transfer_values, date=F("transfer__date"))
-                .order_by("transfer__date")
+            else:
+                transfers = (
+                    StockTransferDetail.objects.filter(**filters_transfers)
+                    .values(*transfer_values, date=F("transfer__date"))
+                    .order_by("transfer__date")
+                )
+
+            chained_data = sorted(
+                chain(stock, transfers),
+                key=lambda obj: obj["date"],
             )
         else:
-            transfers = (
-                StockTransferDetail.objects.filter(**filters_transfers)
-                .values(*transfer_values, date=F("transfer__date"))
-                .order_by("transfer__date")
+            chained_data = sorted(
+                chain(stock, []),
+                key=lambda obj: obj["date"],
             )
-
-        chained_data = sorted(
-            chain(stock, transfers),
-            key=lambda obj: obj["date"],
-        )
-
         return Response(
             {
                 "data": chained_data,
