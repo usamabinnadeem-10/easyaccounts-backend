@@ -1,7 +1,8 @@
+from rest_framework import serializers
+
 from cheques.utils import get_cheque_account
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
-from rest_framework import serializers
 
 from .models import Ledger, LedgerAndDetail
 
@@ -74,7 +75,7 @@ class LedgerSerializer(serializers.ModelSerializer):
         elif obj.ledger_personal_cheque.exists():
             return f"CHP-{obj.ledger_personal_cheque.first().personal_cheque.serial}"
         elif obj.ledger_payment.exists():
-            return f"P-{obj.ledger_payment.first().payment.serial}"
+            return f"P-{obj.ledger_payment.first().payment.serial} {obj.ledger_payment.first().payment.detail}"
         else:
             return "---"
 
