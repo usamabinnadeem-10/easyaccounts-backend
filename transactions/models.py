@@ -568,10 +568,8 @@ class TransactionDetail(ID):
             .annotate(period=truncate_by)
             .values("period")
             .annotate(
-                sale=Sum(
-                    (F("rate") * F("yards_per_piece") * F("quantity"))
-                    - F("transaction__discount")
-                )
+                sale=Sum(F("rate") * F("yards_per_piece") * F("quantity")),
+                discount=F("transaction__discount"),
             )
         )
 
