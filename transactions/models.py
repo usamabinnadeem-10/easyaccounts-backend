@@ -546,32 +546,54 @@ class TransactionDetail(ID):
     def calculate_revenue_of_period(cls, branch, period, start_date, end_date):
         from django.db.models.functions import TruncDay, TruncMonth, TruncWeek
 
-        date_filter = {}
-        if start_date:
-            date_filter.update({"transaction__date__gte": start_date})
-        if end_date:
-            date_filter.update({"transaction__date__lte": end_date})
+        def get_date_filter(key):
+            date_filter = {}
+            if start_date:
+                date_filter.update({[f"{key}__gte"]: start_date})
+            if end_date:
+                date_filter.update({[f"{key}__lte"]: end_date})
+            return date_filter
 
-        truncate_by = (
-            TruncDay("transaction__date")
-            if period == "day"
-            else TruncWeek("transaction__date")
-            if period == "week"
-            else TruncMonth("transaction__date")
-        )
-        return (
+        def get_truncate_method(key):
+            truncate_by = (
+                TruncDay(key)
+                if period == "day"
+                else TruncWeek(key)
+                if period == "week"
+                else TruncMonth(key)
+            )
+            return truncate_by
+
+        revenue = (
             TransactionDetail.objects.filter(
                 transaction__person__branch=branch,
                 transaction__serial_type=TransactionSerialTypes.INV,
-                **date_filter,
+                **get_date_filter("transaction__date"),
             )
-            .annotate(period=truncate_by)
+            .annotate(period=get_truncate_method("transaction__date"))
             .values("period")
             .annotate(
                 sale=Sum(F("rate") * F("yards_per_piece") * F("quantity")),
-                discount=F("transaction__discount"),
             )
+            .order_by("period")
         )
+        discounts = (
+            Transaction.objects.filter(
+                person__branch=branch,
+                serial_type=TransactionSerialTypes.INV,
+                **get_date_filter("date"),
+            )
+            .annotate(period=get_truncate_method("date"))
+            .values("period")
+            .annotate(
+                discount=Sum("discount"),
+            )
+            .order_by("period")
+        )
+        return {
+            "revenue": revenue,
+            "discounts": discounts,
+        }
 
 
 class StockTransfer(ID, UserAwareModel, DateTimeAwareModel, NextSerial):

@@ -344,7 +344,7 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
 class RevenueByPeriod(IsAdminOrReadAdminPermissionMixin, APIView):
     def get(self, request):
         period = request.query_params.get("period") or "day"
-        revenue = TransactionDetail.calculate_revenue_of_period(
+        data = TransactionDetail.calculate_revenue_of_period(
             request.branch,
             period,
             request.query_params.get("start"),
@@ -352,6 +352,10 @@ class RevenueByPeriod(IsAdminOrReadAdminPermissionMixin, APIView):
         )
 
         return Response(
-            {"revenue": revenue, "period": period},
+            {
+                "revenue": data["revenue"],
+                "discounts": data["discounts"],
+                "period": period,
+            },
             status=status.HTTP_200_OK,
         )
