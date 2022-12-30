@@ -542,6 +542,34 @@ class TransactionDetail(ID):
 
         return (beginning_inventory + purchases_period) - ending_inventory
 
+    @classmethod
+    def calculate_revenue_of_period(cls, branch, period, start_date, end_date):
+        from django.db.models.functions import TruncDay, TruncMonth, TruncWeek
+
+        date_filter = {}
+        if start_date:
+            date_filter.update({"transaction__date__gte": start_date})
+        if end_date:
+            date_filter.update({"transaction__date__lte": end_date})
+
+        truncate_by = (
+            TruncDay("transaction__date")
+            if period == "day"
+            else TruncWeek("transaction__date")
+            if period == "week"
+            else TruncMonth("transaction__date")
+        )
+        return (
+            TransactionDetail.objects.filter(
+                transaction__person__branch=branch,
+                transaction__serial_type=TransactionSerialTypes.INV,
+                **date_filter,
+            )
+            .annotate(period=truncate_by)
+            .values("period")
+            .annotate(sale=Sum(F("rate") * F("yards_per_piece") * F("quantity")))
+        )
+
 
 class StockTransfer(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial = models.PositiveBigIntegerField()

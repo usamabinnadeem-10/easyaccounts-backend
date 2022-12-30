@@ -6,6 +6,7 @@ from .views import (
     GetLowStock,
     IncomeStatement,
     ProductPerformanceHistory,
+    RevenueByPeriod,
 )
 
 urlpatterns = [
@@ -14,4 +15,5 @@ urlpatterns = [
     path("all-balances/", GetAllBalances.as_view()),
     path("get-low-stock/", GetLowStock.as_view()),
     path("product-performance-history/", ProductPerformanceHistory.as_view()),
+    path("revenue-by-period/", RevenueByPeriod.as_view()),
 ]

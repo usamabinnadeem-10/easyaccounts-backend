@@ -339,3 +339,19 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
             sorted(final_stats, key=lambda x: x["quantity_sold"], reverse=True),
             status=status.HTTP_200_OK,
         )
+
+
+class RevenueByPeriod(IsAdminOrReadAdminOrAccountantMixin, APIView):
+    def get(self, request):
+        period = request.query_params.get("period") or "day"
+        revenue = TransactionDetail.calculate_revenue_of_period(
+            request.branch,
+            period,
+            request.query_params.get("start"),
+            request.query_params.get("end"),
+        )
+
+        return Response(
+            revenue,
+            status=status.HTTP_200_OK,
+        )
