@@ -549,9 +549,9 @@ class TransactionDetail(ID):
         def get_date_filter(key):
             date_filter = {}
             if start_date:
-                date_filter.update({[f"{key}__gte"]: start_date})
+                date_filter.update({f"{key}__gte": start_date})
             if end_date:
-                date_filter.update({[f"{key}__lte"]: end_date})
+                date_filter.update({f"{key}__lte": end_date})
             return date_filter
 
         def get_truncate_method(key):
