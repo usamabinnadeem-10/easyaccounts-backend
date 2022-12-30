@@ -352,6 +352,6 @@ class RevenueByPeriod(IsAdminOrReadAdminOrAccountantMixin, APIView):
         )
 
         return Response(
-            revenue,
+            {"revenue": revenue, "period": period},
             status=status.HTTP_200_OK,
         )
