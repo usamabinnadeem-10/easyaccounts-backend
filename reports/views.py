@@ -341,7 +341,7 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
         )
 
 
-class RevenueByPeriod(IsAdminOrReadAdminOrAccountantMixin, APIView):
+class RevenueByPeriod(IsAdminOrReadAdminPermissionMixin, APIView):
     def get(self, request):
         period = request.query_params.get("period") or "day"
         revenue = TransactionDetail.calculate_revenue_of_period(
