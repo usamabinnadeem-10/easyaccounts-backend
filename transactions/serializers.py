@@ -170,6 +170,7 @@ class TransactionSerializer(
         validated_data["id"] = transaction.id
         validated_data["serial"] = transaction.serial
         validated_data["date"] = transaction.date
+        validated_data["is_cancelled"] = transaction.is_cancelled
 
         Log.create_log(
             self.type,
@@ -273,6 +274,7 @@ class UpdateTransactionSerializer(
         validated_data["id"] = transaction["transaction"].id
         validated_data["serial"] = transaction["transaction"].serial
         validated_data["date"] = transaction["transaction"].date
+        validated_data["is_cancelled"] = transaction["transaction"].is_cancelled
         return validated_data
 
 
