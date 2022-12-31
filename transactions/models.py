@@ -35,6 +35,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
     serial_type = models.CharField(max_length=3, choices=TransactionSerialTypes.choices)
     requires_action = models.BooleanField(default=False)
     builty = models.CharField(max_length=100, null=True, default=None, blank=True)
+    is_cancelled = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["serial"]
@@ -196,12 +197,14 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                     "Please enter a valid paid amount",
                     400,
                 )
+
+            # verify if the selling rates are legal
             if (
                 data["serial_type"]
                 in [
                     TransactionSerialTypes.INV,
                 ]
-                and request.role != RoleChoices.ADMIN
+                # and request.role != RoleChoices.ADMIN
             ):
                 Transaction.check_average_selling_rates(
                     data["date"], transaction_details, branch
@@ -222,9 +225,11 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                     person__branch=branch,
                 ),
             )
-            details = []
 
-            # verify if the selling rates are legal
+            if transaction.is_cancelled:
+                return {"transaction": transaction, "detail": []}
+
+            details = []
             for detail in transaction_details:
                 details.append(
                     TransactionDetail(
@@ -252,7 +257,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                         "amount": transaction.paid_amount,
                         "account_type": transaction.account_type,
                         "person": transaction.person,
-                        "detail": f"{transaction.detail or ''} Bill # {transaction.manual_serial} {transaction.get_computer_serial()}",
+                        "detail": f"{transaction.detail or ''}{' ' if transaction.detail else ''}Bill # {transaction.manual_serial} {transaction.get_computer_serial()}",
                     },
                 )
 

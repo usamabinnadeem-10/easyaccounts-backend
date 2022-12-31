@@ -20,6 +20,10 @@ class ValidateSerial:
                 person__branch=self.context["request"].branch,
                 serial_type=data["serial_type"],
             ).exists():
+                if data["is_cancelled"]:
+                    raise serializers.ValidationError(
+                        "This serial is already cancelled", status.HTTP_400_BAD_REQUEST
+                    )
                 raise serializers.ValidationError(
                     "This serial already exists", status.HTTP_400_BAD_REQUEST
                 )
@@ -44,23 +48,24 @@ class ValidateTotal:
     """Validates total for transaction"""
 
     def validate_total(self, data):
-        total = reduce(
-            lambda prev, curr: prev
-            + (curr["rate"] * curr["quantity"] * curr["yards_per_piece"]),
-            data["transaction_detail"],
-            0,
-        )
-        total -= data["discount"]
-        if total <= 0:
-            raise serializers.ValidationError(
-                "Total is too low", status.HTTP_400_BAD_REQUEST
+        if not data["is_cancelled"]:
+            total = reduce(
+                lambda prev, curr: prev
+                + (curr["rate"] * curr["quantity"] * curr["yards_per_piece"]),
+                data["transaction_detail"],
+                0,
             )
-        if data["paid"]:
-            if data["paid_amount"] > total:
+            total -= data["discount"]
+            if total <= 0:
                 raise serializers.ValidationError(
-                    "Paid amount can not be greater than total",
-                    status.HTTP_400_BAD_REQUEST,
+                    "Total is too low", status.HTTP_400_BAD_REQUEST
                 )
+            if data["paid"]:
+                if data["paid_amount"] > total:
+                    raise serializers.ValidationError(
+                        "Paid amount can not be greater than total",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
         return data
 
 
@@ -75,6 +80,12 @@ class ValidateAccountType:
             ):
                 raise serializers.ValidationError(
                     "Please use another account type for transaction",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            if data.get("account_type", False) or data.get("paid_amount", None):
+                raise serializers.ValidationError(
+                    "Please remove account type / paid amount",
                     status.HTTP_400_BAD_REQUEST,
                 )
         return data
@@ -143,6 +154,7 @@ class TransactionSerializer(
             "serial_type",
             "requires_action",
             "builty",
+            "is_cancelled",
         ]
         read_only_fields = ["id"]
 
@@ -216,6 +228,7 @@ class UpdateTransactionSerializer(
             "serial_type",
             "requires_action",
             "builty",
+            "is_cancelled",
         ]
 
     def validate(self, data):
