@@ -26,4 +26,5 @@ class TransactionsFilter(filters.FilterSet):
             "transaction_detail__product": ["exact"],
             # "transaction_detail__product__category": ["exact"],
             "transaction_detail__warehouse": ["exact"],
+            "is_cancelled": ["exact"],
         }
