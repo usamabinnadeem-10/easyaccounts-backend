@@ -45,7 +45,7 @@ class Warehouse(BranchAwareModel):
     # address = models.CharField(max_length=50, null=True)
 
     def __str__(self) -> str:
-        return self.name
+        return f"{self.name} - {self.branch.name}"
 
 
 class Person(BranchAwareModel):
