@@ -1,11 +1,12 @@
 from datetime import datetime
 
-from authentication.models import BranchAwareModel
-from core.constants import MIN_POSITIVE_VAL_SMALL
-from core.models import ID
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import F, Sum
+
+from authentication.models import BranchAwareModel
+from core.constants import MIN_POSITIVE_VAL_SMALL
+from core.models import ID
 
 from .choices import LinkedAccountChoices, PersonChoices
 
@@ -31,7 +32,7 @@ class Product(ID):
         unique_together = ("name", "category")
 
     def __str__(self) -> str:
-        return self.name
+        return f"{self.name} - {self.branch.name}"
 
 
 class Area(BranchAwareModel):
