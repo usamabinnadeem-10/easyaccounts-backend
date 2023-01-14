@@ -56,7 +56,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         for d in t_detail:
             curr = inventory[str(d["product"].id)]
             rate = curr["value"] / curr["purchases"] if curr["purchases"] else inf
-            if d["rate"] <= rate:
+            if d["rate"] < rate:
                 raise ValidationError(f"Rate too low for {d['product']}", 400)
 
     @classmethod
