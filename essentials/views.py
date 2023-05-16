@@ -1,9 +1,18 @@
 from collections import defaultdict
 from itertools import chain
 
+from django.db.models import F, Q, Sum
+from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import status
+from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminPermissionMixin,
 )
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
@@ -15,22 +24,14 @@ from cheques.serializers import (
 )
 from core.pagination import PaginationHandlerMixin, StandardPagination
 from core.utils import convert_date_to_datetime, get_cheque_account
-from django.db.models import F, Q, Sum
-from django.shortcuts import get_object_or_404
-from django_filters.rest_framework import DjangoFilterBackend
+from essentials.choices import PersonChoices
 from expenses.models import ExpenseDetail
 from expenses.serializers import ExpenseDetailSerializer
 from ledgers.models import Ledger, LedgerAndDetail
 from payments.models import Payment
 from payments.serializers import PaymentAndImageListSerializer
-from rest_framework import status
-from rest_framework.generics import CreateAPIView, ListAPIView
-from rest_framework.response import Response
-from rest_framework.views import APIView
 from transactions.models import Transaction
 from transactions.serializers import TransactionSerializer
-
-from essentials.choices import PersonChoices
 
 from .models import *
 from .queries import (
@@ -59,7 +60,9 @@ class CreatePerson(PersonQuery, IsAdminPermissionMixin, CreateAPIView):
     serializer_class = PersonSerializer
 
 
-class ListPerson(PersonQuery, IsAdminOrReadAdminOrAccountantMixin, ListAPIView):
+class ListPerson(
+    PersonQuery, IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ListAPIView
+):
     """
     list persons with the option of filtering by person_type
     """
@@ -149,7 +152,7 @@ class ListProductCategory(ProductCategoryQuery, ListAPIView):
     serializer_class = ProductCategorySerializer
 
 
-class DayBook(IsAdminOrReadAdminOrAccountantMixin, APIView):
+class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
     """
     get daybook for today or with a specific date
     """
@@ -164,7 +167,11 @@ class DayBook(IsAdminOrReadAdminOrAccountantMixin, APIView):
             "date__lte": today_end,
         }
         person_filter = {}
-        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+        if request.role not in [
+            RoleChoices.ADMIN,
+            RoleChoices.ADMIN_VIEWER,
+            RoleChoices.HEAD_ACCOUNTANT,
+        ]:
             person_filter = {"person__person_type": PersonChoices.CUSTOMER}
 
         cheque_account = get_cheque_account(request.branch).account
@@ -321,7 +328,6 @@ class DayBook(IsAdminOrReadAdminOrAccountantMixin, APIView):
 
 
 class GetStockQuantity(StockQuery, ListAPIView):
-
     serializer_class = StockSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -464,5 +470,4 @@ class GetAccountHistory(
 
 
 class CreateOpeningStock(StockQuery, IsAdminPermissionMixin, CreateAPIView):
-
     serializer_class = StockSerializer

@@ -1,12 +1,4 @@
-from authentication.mixins import (
-    IsAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantMixin,
-    IsAdminPermissionMixin,
-)
-from core.pagination import StandardPagination
 from django_filters.rest_framework import DjangoFilterBackend
-from logs.choices import ActivityCategory, ActivityTypes
-from logs.models import Log
 from rest_framework import status
 from rest_framework.generics import (
     CreateAPIView,
@@ -16,6 +8,16 @@ from rest_framework.generics import (
 )
 from rest_framework.response import Response
 
+from authentication.mixins import (
+    IsAdminOrAccountantMixin,
+    IsAdminOrAccountantOrHeadAccountantMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
+    IsAdminPermissionMixin,
+)
+from core.pagination import StandardPagination
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
+
 from .queries import PaymentImageQuery, PaymentQuery
 from .serializers import (
     PaymentAndImageListSerializer,
@@ -24,7 +26,9 @@ from .serializers import (
 )
 
 
-class ListPaymentView(PaymentQuery, IsAdminOrReadAdminOrAccountantMixin, ListAPIView):
+class ListPaymentView(
+    PaymentQuery, IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ListAPIView
+):
     """
     list and filter payments
     """
@@ -43,7 +47,7 @@ class ListPaymentView(PaymentQuery, IsAdminOrReadAdminOrAccountantMixin, ListAPI
 
 
 class CreatePaymentView(
-    PaymentQuery, IsAdminOrAccountantMixin, CreateAPIView, UpdateAPIView
+    PaymentQuery, IsAdminOrAccountantOrHeadAccountantMixin, CreateAPIView, UpdateAPIView
 ):
     """create payments"""
 

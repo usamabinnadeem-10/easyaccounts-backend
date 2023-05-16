@@ -16,7 +16,11 @@ class PaymentImageQuery:
 class PaymentQuery:
     def get_queryset(self):
         filter = {}
-        if self.request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+        if self.request.role not in [
+            RoleChoices.ADMIN,
+            RoleChoices.ADMIN_VIEWER,
+            RoleChoices.HEAD_ACCOUNTANT,
+        ]:
             filter.update({"person__person_type": "C"})
         return Payment.objects.filter(
             person__branch=self.request.branch, **filter
