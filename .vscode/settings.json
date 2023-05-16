@@ -14,7 +14,7 @@
   "python.linting.enabled": true,
   "python.linting.lintOnSave": true,
   "[python]": {
-    "editor.defaultFormatter": null,
+    "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "editor.formatOnSave": true,
@@ -23,7 +23,7 @@
     }
   },
   "python.sortImports.args": ["--profile", "black"],
-  "python.formatting.provider": "black",
+  "python.formatting.provider": "none",
   "editor.formatOnSave": true,
   "python.formatting.blackArgs": ["--line-length=90"]
 }

@@ -5,6 +5,7 @@ from .permissions import (
     IsAdmin,
     IsAdminReadOnly,
     IsBranchMember,
+    IsHeadAccountant,
     IsLoggedIn,
     IsPurchaser,
     IsSaleman,
@@ -60,6 +61,16 @@ class IsAdminOrAccountantMixin:
     permission_classes = [IsAuthenticated, IsLoggedIn, IsAdmin | IsAccountant]
 
 
+class IsAdminOrAccountantOrHeadAccountantMixin:
+    """To check if user is admin or accountant"""
+
+    permission_classes = [
+        IsAuthenticated,
+        IsLoggedIn,
+        IsAdmin | IsAccountant | IsHeadAccountant,
+    ]
+
+
 class IsAdminOrReadAdminOrAccountantMixin:
     """To check if user is admin or read admin or accountant"""
 
@@ -67,6 +78,16 @@ class IsAdminOrReadAdminOrAccountantMixin:
         IsAuthenticated,
         IsLoggedIn,
         IsAdmin | IsAdminReadOnly | IsAccountant,
+    ]
+
+
+class IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin:
+    """To check if user is admin or read admin or accountant"""
+
+    permission_classes = [
+        IsAuthenticated,
+        IsLoggedIn,
+        IsAdmin | IsAdminReadOnly | IsAccountant | IsHeadAccountant,
     ]
 
 

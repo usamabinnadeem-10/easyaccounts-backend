@@ -11,9 +11,10 @@ from rest_framework.views import APIView
 
 from authentication.choices import RoleChoices
 from authentication.mixins import (
-    IsAdminOrAccountantMixin,
+    IsAdminOrAccountantOrHeadAccountantMixin,
     IsAdminOrAccountantOrStockistMixin,
     IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin,
     IsAdminOrStockistMixin,
     IsAdminPermissionMixin,
@@ -42,9 +43,9 @@ from .serializers import (  # CancelledInvoiceSerializer,; CancelStockTransferSe
 )
 
 
-class CreateTransaction(IsAdminOrAccountantMixin, generics.CreateAPIView):
+class CreateTransaction(IsAdminOrAccountantOrHeadAccountantMixin, generics.CreateAPIView):
     """
-    get transactions with a time frame (optional), requires person to be passed
+    create a new transaction
     """
 
     serializer_class = TransactionSerializer
@@ -54,7 +55,9 @@ class CreateTransaction(IsAdminOrAccountantMixin, generics.CreateAPIView):
         return Transaction.objects.filter(branch=self.request.branch)
 
 
-class GetTransaction(IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView):
+class GetTransaction(
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, generics.ListAPIView
+):
     """
     get transactions with a time frame (optional), requires person to be passed
     """
@@ -64,7 +67,11 @@ class GetTransaction(IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView):
 
     def get_queryset(self):
         person_filter = {}
-        if self.request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+        if self.request.role not in [
+            RoleChoices.ADMIN,
+            RoleChoices.ADMIN_VIEWER,
+            RoleChoices.HEAD_ACCOUNTANT,
+        ]:
             person_filter = {"person__person_type": "C"}
         transactions = (
             Transaction.objects.select_related("person", "account_type")
@@ -116,7 +123,6 @@ class EditUpdateDeleteTransaction(
 
 
 class FilterTransactions(TransactionQuery, generics.ListAPIView):
-
     serializer_class = TransactionSerializer
     pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]
@@ -456,7 +462,6 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
 
 
 class ViewAllStock(TransactionQuery, generics.ListAPIView):
-
     serializer_class = GetAllStockSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
