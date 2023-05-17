@@ -13,6 +13,7 @@ from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrAccountantOrHeadAccountantMixin,
     IsAdminOrAccountantOrStockistMixin,
+    IsAdminOrHeadAccountantPermissionMixin,
     IsAdminOrReadAdminOrAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin,
@@ -101,7 +102,9 @@ class GetTransaction(
 
 
 class EditUpdateDeleteTransaction(
-    TransactionQuery, IsAdminPermissionMixin, generics.RetrieveUpdateDestroyAPIView
+    TransactionQuery,
+    IsAdminOrHeadAccountantPermissionMixin,
+    generics.RetrieveUpdateDestroyAPIView,
 ):
     """
     Edit / Update / Delete a transaction

@@ -37,6 +37,12 @@ class IsAdminPermissionMixin:
     ]
 
 
+class IsAdminOrHeadAccountantPermissionMixin:
+    """To check if the user is authenticated and is an admin"""
+
+    permission_classes = [IsAuthenticated, IsLoggedIn, IsAdmin, IsHeadAccountant]
+
+
 class IsPurchaserPermissionMixin:
     """To check if the user is authenticated and a purchaser"""
 
