@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from django.db.models import Sum
+
 from dying.models import DyingIssueDetail
 
 from .models import RawDebitLotDetail, RawLotDetail
@@ -38,7 +39,7 @@ def get_all_raw_stock(branch):
                 "expected_gazaana",
                 "lot_number__raw_product",
                 "warehouse",
-                "formula",
+                # "formula",
             )
             .filter(lot_number__raw_transaction__branch=branch, lot_number__issued=False)
             .annotate(quantity=Sum("quantity"))
@@ -62,7 +63,7 @@ def get_all_raw_stock(branch):
                 "expected_gazaana",
                 "return_lot__lot_number__raw_product",
                 "warehouse",
-                "formula",
+                # "formula",
                 "nature",
             )
             .filter(

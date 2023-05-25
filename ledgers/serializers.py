@@ -8,7 +8,6 @@ from .models import Ledger, LedgerAndDetail
 
 
 class LedgerSerializer(serializers.ModelSerializer):
-
     detail = serializers.SerializerMethodField(read_only=True)
     serial = serializers.SerializerMethodField(read_only=True)
     ledger_detail_id = serializers.SerializerMethodField(read_only=True)
@@ -65,6 +64,8 @@ class LedgerSerializer(serializers.ModelSerializer):
             return obj.ledger_payment.first().payment.get_ledger_string()
         elif obj.ledger_detail.exists():
             return obj.ledger_detail.first().detail
+        elif obj.ledger_raw_transaction.exists():
+            return obj.ledger_raw_transaction.first().get_raw_transaction_string()
 
     def get_serial(self, obj):
         """serial number"""
@@ -100,7 +101,6 @@ class LedgerSerializerForCreation(serializers.ModelSerializer):
 
 
 class LedgerAndDetailSerializer(serializers.ModelSerializer):
-
     ledger_entry = LedgerSerializerForCreation()
 
     class Meta:
