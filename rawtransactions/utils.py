@@ -55,6 +55,7 @@ def get_all_raw_stock(branch):
             balance_lots,
         )
     )
+
     balance_returns = list(
         (
             RawDebitLotDetail.objects.values(
@@ -83,6 +84,7 @@ def get_all_raw_stock(branch):
             balance_returns,
         )
     )
+
     balance_dyings = list(
         (
             DyingIssueDetail.objects.values(

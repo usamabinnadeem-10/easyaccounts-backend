@@ -355,7 +355,7 @@ class ViewAllStockSerializer(serializers.Serializer):
     expected_gazaana = serializers.FloatField()
     raw_product = serializers.UUIDField()
     warehouse = serializers.UUIDField()
-    formula = serializers.UUIDField()
+    # formula = serializers.UUIDField()
     # nature = serializers.CharField()
 
 

@@ -1,11 +1,13 @@
 from collections import defaultdict
 from operator import itemgetter
 
-from core.pagination import StandardPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
+
+from core.pagination import StandardPagination
 from transactions.choices import TransactionChoices
 
+from .filters import RawTransactionsFilter
 from .queries import (
     FormulaQuery,
     RawDebitQuery,
@@ -27,12 +29,10 @@ from .utils import get_all_raw_stock
 
 
 class CreateRawProduct(RawProductQuery, generics.CreateAPIView):
-
     serializer_class = RawProductSerializer
 
 
 class ListRawProducts(RawProductQuery, generics.ListAPIView):
-
     serializer_class = RawProductSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -43,27 +43,33 @@ class ListRawProducts(RawProductQuery, generics.ListAPIView):
 
 
 class CreateRawTransaction(RawTransactionQuery, generics.CreateAPIView):
-
     serializer_class = CreateRawTransactionSerializer
 
 
-class ListFormula(FormulaQuery, generics.ListAPIView):
+class FilterRawTransactions(RawTransactionQuery, generics.ListAPIView):
+    serializer_class = ListRawTransactionSerializer
+    pagination_class = StandardPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = RawTransactionsFilter
 
+    # def get_queryset(self):
+    #     queryset = super().get_queryset()
+    #     return queryset.order_by("serial_type", "serial", "-date")
+
+
+class ListFormula(FormulaQuery, generics.ListAPIView):
     serializer_class = FormulaSerializer
 
 
 class CreateFormula(FormulaQuery, generics.CreateAPIView):
-
     serializer_class = FormulaSerializer
 
 
 class RawDebitView(generics.CreateAPIView):
-
     serializer_class = RawDebitSerializer
 
 
 class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
-
     serializer_class = RawLotNumberAndIdSerializer
     filter_backends = [DjangoFilterBackend]
     pagination_class = StandardPagination
@@ -81,7 +87,6 @@ class ListLotNumberAndIdView(RawTransactionLotQuery, generics.ListAPIView):
 
 
 class ListRawTransactions(RawTransactionQuery, generics.ListAPIView):
-
     serializer_class = ListRawTransactionSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -102,7 +107,6 @@ class ListRawTransactions(RawTransactionQuery, generics.ListAPIView):
 
 
 class ViewAllStock(generics.ListAPIView):
-
     serializer_class = ViewAllStockSerializer
 
     def get_queryset(self):
@@ -114,7 +118,6 @@ class ViewAllStock(generics.ListAPIView):
             "expected_gazaana",
             "raw_product",
             "warehouse",
-            "formula",
         ]
         sum_keys = ["quantity"]
 
@@ -130,5 +133,4 @@ class ViewAllStock(generics.ListAPIView):
 
 
 class TransferRawStockView(RawDebitQuery, generics.CreateAPIView):
-
     serializer_class = RawStockTransferSerializer

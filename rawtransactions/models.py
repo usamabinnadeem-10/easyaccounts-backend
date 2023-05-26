@@ -3,7 +3,7 @@ from functools import reduce
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from authentication.models import BranchAwareModel, UserAwareModel
+from authentication.models import Branch, BranchAwareModel, UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
 from essentials.models import Person, Warehouse
@@ -54,6 +54,7 @@ class RawProduct(ID):
 class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw transaction"""
 
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, null=True)
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     # manual_invoice_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
@@ -84,6 +85,7 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
             **transaction_data,
             serial=RawTransaction.get_next_serial("serial", person__branch=branch),
             user=user,
+            branch=branch,
         )
 
         lots_objs = []
@@ -175,6 +177,7 @@ class RawLotDetail(AbstractRawLotDetail):
 class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw return or sale"""
 
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, null=True)
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     # manual_invoice_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
