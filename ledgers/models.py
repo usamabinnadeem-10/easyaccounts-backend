@@ -1,16 +1,17 @@
 from datetime import date
 from functools import reduce
 
+from django.core.validators import MinValueValidator
+from django.db import models
+from django.db.models import Sum
+from django.utils.translation import gettext_lazy as _
+
 from authentication.models import UserAwareModel
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.models import ExternalChequeHistory, PersonalCheque
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel
 from core.utils import get_cheque_account
-from django.core.validators import MinValueValidator
-from django.db import models
-from django.db.models import Sum
-from django.utils.translation import gettext_lazy as _
 from essentials.choices import PersonChoices
 from essentials.models import AccountType, Person
 from expenses.models import ExpenseDetail
@@ -297,12 +298,13 @@ class LedgerAndRawTransaction(ID):
     )
 
     @classmethod
-    def create_ledger_entry(cls, raw_transaction, amount):
+    def create_ledger_entry(cls, raw_transaction, amount, user):
         ledger_instance = Ledger.objects.create(
             nature="C",
             person=raw_transaction.person,
             date=raw_transaction.date,
             amount=amount,
+            user=user,
         )
         LedgerAndRawTransaction.objects.create(
             ledger_entry=ledger_instance, raw_transaction=raw_transaction
@@ -315,6 +317,14 @@ class LedgerAndRawDebit(ID):
         Ledger, on_delete=models.CASCADE, related_name="ledger_raw_debit"
     )
     raw_debit = models.ForeignKey("rawtransactions.RawDebit", on_delete=models.CASCADE)
+
+    @classmethod
+    def create_ledger_entry(cls, raw_debit_instance, **kwargs):
+        ledger_instance = Ledger.objects.create(**kwargs)
+        LedgerAndRawDebit.objects.create(
+            ledger_entry=ledger_instance, raw_debit=raw_debit_instance
+        )
+        pass
 
 
 class LedgerAndPayment(ID):

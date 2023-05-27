@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from dying.models import DyingIssue
 from essentials.choices import PersonChoices
 from essentials.models import Warehouse
-from ledgers.models import Ledger, LedgerAndRawTransaction
+from ledgers.models import LedgerAndRawDebit, LedgerAndRawTransaction
 from transactions.choices import TransactionChoices
 
 from .choices import RawDebitTypes
@@ -22,7 +22,7 @@ from .models import (
     RawTransaction,
     RawTransactionLot,
 )
-from .utils import calculate_amount, get_all_raw_stock, is_array_unique
+from .utils import get_all_raw_stock, is_array_unique
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -167,6 +167,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
         LedgerAndRawTransaction.create_ledger_entry(
             raw_transaction,
             RawTransaction.get_raw_transaction_total(validated_data),
+            user,
         )
 
         return raw_transaction
@@ -235,14 +236,13 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
             model = RawDebitLot
             fields = ["lot_number", "detail"]
 
-    data = Serializer(many=True)
+    data = Serializer(many=True, write_only=True)
 
     class Meta:
         model = RawDebit
         fields = [
             "id",
             "person",
-            # "manual_invoice_serial",
             "bill_number",
             "date",
             "data",
@@ -252,67 +252,44 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
 
     def validate(self, data):
         super().validate(data)
-        # if not RawDebit.is_serial_unique(
-        #     manual_invoice_serial=data["manual_invoice_serial"],
-        #     debit_type=data["debit_type"],
-        #     branch=self.context["request"].branch,
-        # ):
-        #     raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
         if not data["person"]:
             raise ValidationError("Please choose a person", status.HTTP_400_BAD_REQUEST)
-
         return data
 
     def create(self, validated_data):
-        data = validated_data.pop("data")
+        branch = self.context["request"].branch
         user = self.context["request"].user
         check_person = (
             True if validated_data["debit_type"] == RawDebitTypes.RETURN else False
         )
         person = validated_data["person"] if check_person else None
-        self.check_stock(data, check_person, person)
-        debit_instance = RawDebit.objects.create(
-            **validated_data,
-            user=user,
-            bill_number=RawDebit.get_next_serial(
-                "serial",
-                debit_type=validated_data["debit_type"],
-                person__branch=self.branch,
-            ),
+        self.check_stock(validated_data["data"], check_person, person)
+
+        debit_instance = RawDebit.make_raw_debit_transaction(
+            copy.deepcopy(validated_data), branch, user
         )
 
-        ledger_amount = 0
-        for lot in data:
-            ledger_amount += calculate_amount(lot["detail"])
-            raw_debit_lot_instance = RawDebitLot.objects.create(
-                lot_number=lot["lot_number"],
-                bill_number=debit_instance,
-            )
-            current_return_details = []
-            for detail in lot["detail"]:
-                current_return_details.append(
-                    RawDebitLotDetail(
-                        return_lot=raw_debit_lot_instance,
-                        branch=self.branch,
-                        **detail,
-                    )
-                )
+        ledger_amount = reduce(
+            lambda prev, curr: prev
+            + reduce(
+                lambda prev2, curr2: prev2
+                + curr2["quantity"] * curr2["rate"] * curr2["rate_gazaana"],
+                curr["detail"],
+                0,
+            ),
+            validated_data["data"],
+            0,
+        )
 
-            RawDebitLotDetail.objects.bulk_create(current_return_details)
-
-        Ledger.objects.create(
-            # raw_debit=debit_instance,
+        LedgerAndRawDebit.create_ledger_entry(
+            debit_instance,
             nature="D",
-            # detail="Kora maal wapsi"
-            # if debit_instance.debit_type == RawDebitTypes.RETURN
-            # else "Kora sale",
             person=debit_instance.person,
             amount=ledger_amount,
             branch=self.branch,
         )
 
-        validated_data["data"] = data
-        return validated_data
+        return debit_instance
 
 
 class RawLotNumberAndIdSerializer(serializers.ModelSerializer):

@@ -129,29 +129,6 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         lot_details_objs = RawLotDetail.objects.bulk_create(lot_details_objs)
 
         return transaction
-        # return {
-        #     "data": {
-        #         **(transaction.__dict__),
-        #         "lots": list(
-        #             map(
-        #                 lambda lot: {
-        #                     **(lot.__dict__),
-        #                     "lot_detail": list(
-        #                         map(
-        #                             lambda x: {**x.__dict__},
-        #                             filter(
-        #                                 lambda detail: detail.lot_number.id == lot.id,
-        #                                 lot_details_objs,
-        #                             ),
-        #                         )
-        #                     ),
-        #                 },
-        #                 lots_objs,
-        #             )
-        #         ),
-        #     },
-        #     "transaction": transaction,
-        # }
 
 
 class RawTransactionLot(ID, NextSerial):
@@ -186,6 +163,40 @@ class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     @classmethod
     def is_serial_unique(cls, **kwargs):
         return not RawDebit.objects.filter(**kwargs).exists()
+
+    @classmethod
+    def make_raw_debit_transaction(cls, transaction_data, branch, user):
+        data = transaction_data.pop("data")
+        debit_instance = RawDebit.objects.create(
+            **transaction_data,
+            user=user,
+            serial=RawDebit.get_next_serial(
+                "serial",
+                debit_type=transaction_data["debit_type"],
+                branch=branch,
+            ),
+        )
+        debit_lots = []
+        debit_lot_details = []
+        for lot in data:
+            raw_debit_lot_instance = RawDebitLot(
+                lot_number=lot["lot_number"],
+                bill_number=debit_instance,
+            )
+            debit_lots.append(raw_debit_lot_instance)
+
+            for detail in lot["detail"]:
+                debit_lot_details.append(
+                    RawDebitLotDetail(
+                        return_lot=raw_debit_lot_instance,
+                        **detail,
+                    )
+                )
+
+        RawDebitLot.objects.bulk_create(debit_lots)
+        RawDebitLotDetail.objects.bulk_create(debit_lot_details)
+
+        return debit_instance
 
 
 class RawDebitLot(ID):
