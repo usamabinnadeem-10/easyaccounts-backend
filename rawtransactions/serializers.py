@@ -243,12 +243,11 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
         fields = [
             "id",
             "person",
-            "bill_number",
             "date",
             "data",
             "debit_type",
         ]
-        read_only_fields = ["id", "bill_number"]
+        read_only_fields = ["id"]
 
     def validate(self, data):
         super().validate(data)
@@ -286,7 +285,6 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
             nature="D",
             person=debit_instance.person,
             amount=ledger_amount,
-            branch=self.branch,
         )
 
         return debit_instance

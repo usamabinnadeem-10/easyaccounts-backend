@@ -170,6 +170,7 @@ class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         debit_instance = RawDebit.objects.create(
             **transaction_data,
             user=user,
+            branch=branch,
             serial=RawDebit.get_next_serial(
                 "serial",
                 debit_type=transaction_data["debit_type"],
