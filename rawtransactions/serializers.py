@@ -311,16 +311,17 @@ class ListRawTransactionSerializer(serializers.ModelSerializer):
                 "raw_lot_detail",
             ]
 
-    transaction_lot = LotSerializer(many=True)
+    rawtransactionlot_set = LotSerializer(many=True)
 
     class Meta:
         model = RawTransaction
-        fields = fields = [
+        fields = [
             "id",
             "person",
-            # "manual_invoice_serial",
             "date",
-            "transaction_lot",
+            "serial",
+            "date",
+            "rawtransactionlot_set",
         ]
 
 
