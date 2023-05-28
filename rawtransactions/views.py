@@ -10,6 +10,7 @@ from transactions.choices import TransactionChoices
 from .filters import RawDebitTransactionsFilter, RawTransactionsFilter
 from .queries import (
     FormulaQuery,
+    RawDebitListQuery,
     RawDebitQuery,
     RawProductQuery,
     RawTransactionLotQuery,
@@ -54,7 +55,7 @@ class FilterRawTransactions(RawTransactionQuery, generics.ListAPIView):
     filterset_class = RawTransactionsFilter
 
 
-class FilterRawDebitTransactions(RawDebitQuery, generics.ListAPIView):
+class FilterRawDebitTransactions(RawDebitListQuery, generics.ListAPIView):
     serializer_class = ListRawDebitTransactionSerializer
     pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]

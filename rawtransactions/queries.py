@@ -1,3 +1,4 @@
+from .choices import RawDebitTypes
 from .models import Formula, RawDebit, RawProduct, RawTransaction, RawTransactionLot
 
 
@@ -26,3 +27,10 @@ class RawTransactionLotQuery:
 class RawDebitQuery:
     def get_queryset(self):
         return RawDebit.objects.filter(branch=self.request.branch)
+
+
+class RawDebitListQuery:
+    def get_queryset(self):
+        return RawDebit.objects.exclude(debit_type=RawDebitTypes.TRANSFER).filter(
+            branch=self.request.branch
+        )
