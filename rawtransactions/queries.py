@@ -25,4 +25,4 @@ class RawTransactionLotQuery:
 
 class RawDebitQuery:
     def get_queryset(self):
-        return RawDebit.objects.filter(person__branch=self.request.branch)
+        return RawDebit.objects.filter(branch=self.request.branch)

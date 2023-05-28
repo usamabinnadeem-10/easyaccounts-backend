@@ -7,7 +7,7 @@ from rest_framework import generics
 from core.pagination import StandardPagination
 from transactions.choices import TransactionChoices
 
-from .filters import RawTransactionsFilter
+from .filters import RawDebitTransactionsFilter, RawTransactionsFilter
 from .queries import (
     FormulaQuery,
     RawDebitQuery,
@@ -18,6 +18,7 @@ from .queries import (
 from .serializers import (
     CreateRawTransactionSerializer,
     FormulaSerializer,
+    ListRawDebitTransactionSerializer,
     ListRawTransactionSerializer,
     RawDebitSerializer,
     RawLotNumberAndIdSerializer,
@@ -52,9 +53,12 @@ class FilterRawTransactions(RawTransactionQuery, generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class = RawTransactionsFilter
 
-    # def get_queryset(self):
-    #     queryset = super().get_queryset()
-    #     return queryset.order_by("serial_type", "serial", "-date")
+
+class FilterRawDebitTransactions(RawDebitQuery, generics.ListAPIView):
+    serializer_class = ListRawDebitTransactionSerializer
+    pagination_class = StandardPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = RawDebitTransactionsFilter
 
 
 class ListFormula(FormulaQuery, generics.ListAPIView):

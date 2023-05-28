@@ -448,3 +448,26 @@ class RawStockTransferSerializer(
             RawDebitLotDetail.objects.bulk_create(current_return_details)
         validated_data["data"] = data
         return validated_data
+
+
+class ListRawDebitTransactionSerializer(serializers.ModelSerializer):
+    class DebitLotSerializer(serializers.ModelSerializer):
+        rawdebitlotdetail_set = RawLotDetailsSerializer(many=True)
+
+        class Meta:
+            model = RawDebitLot
+            fields = ["id", "bill_number", "lot_number", "rawdebitlotdetail_set"]
+
+    rawdebitlot_set = DebitLotSerializer(many=True)
+
+    class Meta:
+        model = RawDebit
+        fields = [
+            "id",
+            "person",
+            "date",
+            "serial",
+            "date",
+            "debit_type",
+            "rawdebitlot_set",
+        ]
