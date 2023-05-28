@@ -171,7 +171,6 @@ class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
             RoleChoices.ADMIN,
             RoleChoices.ADMIN_VIEWER,
             RoleChoices.HEAD_ACCOUNTANT,
-            RoleChoices.ACCOUNTANT,
         ]:
             person_filter = {"person__person_type": PersonChoices.CUSTOMER}
 
@@ -197,7 +196,6 @@ class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
             RoleChoices.ADMIN,
             RoleChoices.ADMIN_VIEWER,
             RoleChoices.HEAD_ACCOUNTANT,
-            RoleChoices.ACCOUNTANT,
         ]:
             person_filter_2 = {
                 "ledger_entry__person__person_type": PersonChoices.CUSTOMER
