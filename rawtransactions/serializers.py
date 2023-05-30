@@ -1,11 +1,9 @@
 import copy
 from functools import reduce
 
-from django.forms.models import model_to_dict
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 
-from dying.models import DyingIssue
 from essentials.choices import PersonChoices
 from essentials.models import Warehouse
 from ledgers.models import LedgerAndRawDebit, LedgerAndRawTransaction
@@ -16,13 +14,15 @@ from .models import (
     Formula,
     RawDebit,
     RawDebitLot,
-    RawDebitLotDetail,
     RawLotDetail,
     RawProduct,
     RawTransaction,
     RawTransactionLot,
+    RawTransfer,
+    RawTransferLot,
+    RawTransferLotDetail,
 )
-from .utils import get_all_raw_stock, is_array_unique
+from .utils import get_all_raw_stock, get_current_stock_position, is_array_unique
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -118,7 +118,7 @@ class CreateRawTransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RawTransaction
-        fields = ["id", "person", "date", "lots"]
+        fields = ["id", "person", "date", "manual_serial", "lots"]
         read_only_fields = [
             "id",
         ]
@@ -227,6 +227,14 @@ class StockCheck:
                         status.HTTP_400_BAD_REQUEST,
                     )
 
+    def validate_inventory(self, branch):
+        stock = get_current_stock_position(branch)
+        for s in stock:
+            if s["quantity"] < 0:
+                return False
+
+        return True
+
 
 class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
     class Serializer(serializers.ModelSerializer):
@@ -240,13 +248,7 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
 
     class Meta:
         model = RawDebit
-        fields = [
-            "id",
-            "person",
-            "date",
-            "data",
-            "debit_type",
-        ]
+        fields = ["id", "person", "date", "data", "debit_type", "manual_serial"]
         read_only_fields = ["id"]
 
     def validate(self, data):
@@ -335,47 +337,45 @@ class ViewAllStockSerializer(serializers.Serializer):
     # nature = serializers.CharField()
 
 
-class RawLotDetailWithTransferWarehouse(serializers.ModelSerializer):
-    to_warehouse = serializers.UUIDField(required=True)
-
-    class Meta:
-        model = RawLotDetail
-        fields = [
-            "id",
-            "lot_number",
-            "quantity",
-            "actual_gazaana",
-            "expected_gazaana",
-            "formula",
-            "warehouse",
-            "to_warehouse",
-        ]
-        read_only_fields = ["id", "lot_number"]
-
-
 class RawStockTransferSerializer(
     UniqueLotNumbers, StockCheck, serializers.ModelSerializer
 ):
-    class Serializer(serializers.ModelSerializer):
+    class TransferLotSerializer(serializers.ModelSerializer):
+        class RawLotDetailWithTransferWarehouse(serializers.ModelSerializer):
+            transferring_warehouse = serializers.UUIDField()
+
+            class Meta:
+                model = RawTransferLotDetail
+                fields = [
+                    "id",
+                    "quantity",
+                    "actual_gazaana",
+                    "expected_gazaana",
+                    "warehouse",
+                    "transferring_warehouse",
+                    "raw_transfer_lot",
+                ]
+                read_only_fields = ["id", "lot_number", "raw_transfer_lot"]
+
         detail = RawLotDetailWithTransferWarehouse(many=True, required=True)
 
         class Meta:
-            model = RawDebitLot
-            fields = ["lot_number", "detail"]
+            model = RawTransferLot
+            fields = ["raw_transfer", "lot_number", "detail"]
+            read_only_fields = ["id", "raw_transfer"]
 
-    data = Serializer(many=True, required=True)
+    data = TransferLotSerializer(many=True, required=True)
 
     class Meta:
-        model = RawDebit
+        model = RawTransfer
         fields = [
             "id",
-            # "manual_invoice_serial",
-            "bill_number",
+            "serial",
             "date",
             "data",
-            "debit_type",
+            "manual_serial",
         ]
-        read_only_fields = ["id", "bill_number"]
+        read_only_fields = ["id", "serial"]
 
     def validate(self, data):
         super().validate(data)
@@ -386,67 +386,16 @@ class RawStockTransferSerializer(
         # ):
         #     raise ValidationError(f"Serial # {data['manual_invoice_serial']} exists")
 
-        if data["debit_type"] != RawDebitTypes.TRANSFER:
-            raise ValidationError(
-                "Please choose transfer type", status.HTTP_400_BAD_REQUEST
-            )
-
         return data
 
     def create(self, validated_data):
-        data = validated_data.pop("data")
-        self.check_stock(data)
-        debit_instance = RawDebit.objects.create(
-            **validated_data,
-            branch=self.branch,
-            bill_number=RawDebit.get_next_serial(
-                "serial",
-                debit_type=validated_data["debit_type"],
-                person__branch=self.branch,
-            ),
+        branch = self.context["request"].branch
+        user = self.context["request"].user
+        RawTransfer.make_raw_transfer_transaction(
+            copy.deepcopy(validated_data), branch, user
         )
-
-        for lot in data:
-            raw_debit_lot_instance = RawDebitLot.objects.create(
-                lot_number=lot["lot_number"],
-                bill_number=debit_instance,
-            )
-            current_return_details = []
-            for detail in lot["detail"]:
-                try:
-                    to_warehouse = Warehouse.objects.get(
-                        id=detail["to_warehouse"], branch=self.branch
-                    )
-                except:
-                    raise ValidationError(
-                        "This warehouse does not exist", status.HTTP_400_BAD_REQUEST
-                    )
-
-                if to_warehouse.id == detail["warehouse"].id:
-                    raise ValidationError(
-                        f"Both warehouse are same in lot# {lot['lot_number'].lot_number}",
-                        status.HTTP_400_BAD_REQUEST,
-                    )
-
-                obj = {**detail, "nature": TransactionChoices.DEBIT, "rate": 1.0}
-                del obj["to_warehouse"]
-                current_return_details.append(
-                    RawDebitLotDetail(
-                        return_lot=raw_debit_lot_instance,
-                        **obj,
-                    )
-                )
-                obj["nature"] = TransactionChoices.CREDIT
-                obj["warehouse"] = to_warehouse
-                current_return_details.append(
-                    RawDebitLotDetail(
-                        return_lot=raw_debit_lot_instance,
-                        **obj,
-                    )
-                )
-
-            RawDebitLotDetail.objects.bulk_create(current_return_details)
-        validated_data["data"] = data
+        if not self.validate_inventory(branch):
+            raise ValidationError("Low stock")
         return validated_data
 
 

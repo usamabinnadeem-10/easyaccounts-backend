@@ -1,4 +1,5 @@
 from functools import reduce
+from uuid import uuid4
 
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -7,7 +8,6 @@ from authentication.models import Branch, BranchAwareModel, UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
 from essentials.models import Person, Warehouse
-from transactions.choices import TransactionChoices
 
 from .choices import RawDebitTypes, RawProductTypes
 
@@ -232,7 +232,6 @@ class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw return or sale"""
 
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, null=True)
-    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     serial = models.PositiveBigIntegerField()
     manual_serial = models.PositiveBigIntegerField()
 
@@ -241,39 +240,38 @@ class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         return not RawDebit.objects.filter(**kwargs).exists()
 
     @classmethod
-    def make_raw_transfer_transaction(cls, transaction_data, branch, user):
-        data = transaction_data.pop("data")
-        debit_instance = RawDebit.objects.create(
-            **transaction_data,
+    def make_raw_transfer_transaction(cls, transfer_data, branch, user):
+        lots = transfer_data.pop("data")
+        transfer_instance = RawTransfer.objects.create(
+            **transfer_data,
             user=user,
             branch=branch,
-            serial=RawDebit.get_next_serial(
+            serial=RawTransfer.get_next_serial(
                 "serial",
-                debit_type=transaction_data["debit_type"],
                 branch=branch,
             ),
         )
-        debit_lots = []
-        debit_lot_details = []
-        for lot in data:
-            raw_debit_lot_instance = RawDebitLot(
+
+        transfer_lots = []
+        transfer_lot_details = []
+        for lot in lots:
+            raw_transfer_lot_obj = RawTransferLot(
                 lot_number=lot["lot_number"],
-                bill_number=debit_instance,
+                raw_transfer=transfer_instance,
             )
-            debit_lots.append(raw_debit_lot_instance)
-
+            transfer_lots.append(raw_transfer_lot_obj)
             for detail in lot["detail"]:
-                debit_lot_details.append(
-                    RawDebitLotDetail(
-                        return_lot=raw_debit_lot_instance,
-                        **detail,
-                    )
-                )
+                obj = {
+                    **detail,
+                    "raw_transfer_lot": raw_transfer_lot_obj,
+                    "transferring_warehouse": Warehouse(detail["transferring_warehouse"]),
+                }
+                transfer_lot_details.append(RawTransferLotDetail(**obj))
 
-        RawDebitLot.objects.bulk_create(debit_lots)
-        RawDebitLotDetail.objects.bulk_create(debit_lot_details)
+        RawTransferLot.objects.bulk_create(transfer_lots)
+        RawTransferLotDetail.objects.bulk_create(transfer_lot_details)
 
-        return debit_instance
+        return transfer_instance
 
 
 class RawTransferLot(ID):
@@ -283,7 +281,17 @@ class RawTransferLot(ID):
     lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
 
 
-class RawTransferLotDetail(AbstractRawLotDetail):
+class RawTransferLotDetail(models.Model):
     """Raw transfer detail for each lot"""
 
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    transferring_warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.PROTECT, related_name="transferring_warehouse"
+    )
+    quantity = models.PositiveIntegerField(
+        validators=[MinValueValidator(MIN_POSITIVE_VAL_SMALL)]
+    )
+    actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
+    expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)
     raw_transfer_lot = models.ForeignKey(RawTransferLot, on_delete=models.CASCADE)

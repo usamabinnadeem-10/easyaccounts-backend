@@ -15,6 +15,7 @@ from .queries import (
     RawProductQuery,
     RawTransactionLotQuery,
     RawTransactionQuery,
+    RawTransferQuery,
 )
 from .serializers import (
     CreateRawTransactionSerializer,
@@ -27,7 +28,7 @@ from .serializers import (
     RawStockTransferSerializer,
     ViewAllStockSerializer,
 )
-from .utils import get_all_raw_stock
+from .utils import get_all_raw_stock, get_current_stock_position
 
 
 class CreateRawProduct(RawProductQuery, generics.CreateAPIView):
@@ -115,27 +116,9 @@ class ViewAllStock(generics.ListAPIView):
     serializer_class = ViewAllStockSerializer
 
     def get_queryset(self):
-        stock_array = get_all_raw_stock(self.request.branch)
-        d = defaultdict(lambda: defaultdict(int))
-
-        group_keys = [
-            "actual_gazaana",
-            "expected_gazaana",
-            "raw_product",
-            "warehouse",
-        ]
-        sum_keys = ["quantity"]
-
-        for item in stock_array:
-            for key in sum_keys:
-                if item["nature"] == TransactionChoices.CREDIT:
-                    d[itemgetter(*group_keys)(item)][key] += item[key]
-                else:
-                    d[itemgetter(*group_keys)(item)][key] -= item[key]
-
-        stock = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
+        stock = get_current_stock_position(self.request.branch)
         return stock
 
 
-class TransferRawStockView(RawDebitQuery, generics.CreateAPIView):
+class TransferRawStockView(RawTransferQuery, generics.CreateAPIView):
     serializer_class = RawStockTransferSerializer
