@@ -12,10 +12,12 @@ from rest_framework.views import APIView
 from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrAccountantOrHeadAccountantMixin,
+    IsAdminOrAccountantOrHeadAccountantStockistMixin,
     IsAdminOrAccountantOrStockistMixin,
     IsAdminOrHeadAccountantPermissionMixin,
     IsAdminOrReadAdminOrAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantOrStockistPermissionMixin,
     IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin,
     IsAdminOrStockistMixin,
     IsAdminPermissionMixin,
@@ -252,7 +254,9 @@ class BusinessPerformanceHistory(APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class TransferStock(IsAdminOrAccountantOrStockistMixin, generics.CreateAPIView):
+class TransferStock(
+    IsAdminOrAccountantOrHeadAccountantStockistMixin, generics.CreateAPIView
+):
     """Transfer stock from one warehouse to another"""
 
     serializer_class = TransferStockSerializer
@@ -272,7 +276,11 @@ class DeleteTransferStock(TransferQuery, IsAdminPermissionMixin, generics.Destro
         )
 
 
-class EditTransferStock(TransferQuery, IsAdminOrStockistMixin, generics.UpdateAPIView):
+class EditTransferStock(
+    TransferQuery,
+    IsAdminOrAccountantOrHeadAccountantStockistMixin,
+    generics.UpdateAPIView,
+):
     """Edit stock transfer"""
 
     serializer_class = UpdateTransferStockSerializer
@@ -280,7 +288,7 @@ class EditTransferStock(TransferQuery, IsAdminOrStockistMixin, generics.UpdateAP
 
 class ViewTransfers(
     TransferQuery,
-    IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantOrStockistPermissionMixin,
     generics.ListAPIView,
 ):
     """View for listing transfers"""
