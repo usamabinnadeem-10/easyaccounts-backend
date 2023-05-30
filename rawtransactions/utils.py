@@ -53,7 +53,7 @@ def get_all_raw_stock(branch):
                 "return_lot__lot_number__raw_product",
                 "warehouse",
                 # "formula",
-                "nature",
+                # "nature",
             )
             .filter(
                 return_lot__bill_number__branch=branch,
@@ -66,6 +66,7 @@ def get_all_raw_stock(branch):
         map(
             lambda obj: {
                 **obj,
+                "nature": "D",
                 "lot_number": obj["return_lot__lot_number"],
                 "raw_product": obj["return_lot__lot_number__raw_product"],
             },

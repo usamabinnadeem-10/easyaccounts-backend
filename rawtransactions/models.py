@@ -11,6 +11,8 @@ from transactions.choices import TransactionChoices
 
 from .choices import RawDebitTypes, RawProductTypes
 
+"""Helper Classes"""
+
 
 class Formula(BranchAwareModel):
     """Raw product formulas"""
@@ -51,12 +53,15 @@ class RawProduct(ID):
         return f"{self.name} - {self.person} - {self.type}"
 
 
+"""Raw Transaction Classes"""
+
+
 class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw transaction"""
 
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, null=True)
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
-    # manual_invoice_serial = models.PositiveBigIntegerField()
+    manual_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
 
     def __str__(self):
@@ -138,6 +143,9 @@ class RawTransactionLot(ID, NextSerial):
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT)
     lot_number = models.PositiveBigIntegerField()
     issued = models.BooleanField(default=False)
+    detail = models.CharField(max_length=256, null=True, blank=True)
+    warehouse_number = models.PositiveBigIntegerField(null=True)
+    dying_number = models.PositiveBigIntegerField(null=True)
 
     def __str__(self):
         return f"{self.raw_transaction} - {self.lot_number}"
@@ -151,12 +159,15 @@ class RawLotDetail(AbstractRawLotDetail):
     )
 
 
+"""Raw Debit Classes"""
+
+
 class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     """Raw return or sale"""
 
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, null=True)
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
-    # manual_invoice_serial = models.PositiveBigIntegerField()
+    manual_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
     debit_type = models.CharField(max_length=10, choices=RawDebitTypes.choices)
 
@@ -205,12 +216,74 @@ class RawDebitLot(ID):
 
     bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)
     lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+    detail = models.CharField(max_length=256, null=True, blank=True)
 
 
 class RawDebitLotDetail(AbstractRawLotDetail):
     """Raw debit detail for each lot"""
 
     return_lot = models.ForeignKey(RawDebitLot, on_delete=models.CASCADE)
-    nature = models.CharField(
-        max_length=1, choices=TransactionChoices.choices, default=TransactionChoices.DEBIT
-    )
+
+
+"""Raw Transfer Classes"""
+
+
+class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
+    """Raw return or sale"""
+
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, null=True)
+    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
+    serial = models.PositiveBigIntegerField()
+    manual_serial = models.PositiveBigIntegerField()
+
+    @classmethod
+    def is_serial_unique(cls, **kwargs):
+        return not RawDebit.objects.filter(**kwargs).exists()
+
+    @classmethod
+    def make_raw_transfer_transaction(cls, transaction_data, branch, user):
+        data = transaction_data.pop("data")
+        debit_instance = RawDebit.objects.create(
+            **transaction_data,
+            user=user,
+            branch=branch,
+            serial=RawDebit.get_next_serial(
+                "serial",
+                debit_type=transaction_data["debit_type"],
+                branch=branch,
+            ),
+        )
+        debit_lots = []
+        debit_lot_details = []
+        for lot in data:
+            raw_debit_lot_instance = RawDebitLot(
+                lot_number=lot["lot_number"],
+                bill_number=debit_instance,
+            )
+            debit_lots.append(raw_debit_lot_instance)
+
+            for detail in lot["detail"]:
+                debit_lot_details.append(
+                    RawDebitLotDetail(
+                        return_lot=raw_debit_lot_instance,
+                        **detail,
+                    )
+                )
+
+        RawDebitLot.objects.bulk_create(debit_lots)
+        RawDebitLotDetail.objects.bulk_create(debit_lot_details)
+
+        return debit_instance
+
+
+class RawTransferLot(ID):
+    """Raw transfer and lot relation"""
+
+    raw_transfer = models.ForeignKey(RawTransfer, on_delete=models.CASCADE)
+    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+
+
+class RawTransferLotDetail(AbstractRawLotDetail):
+    """Raw transfer detail for each lot"""
+
+    raw_transfer_lot = models.ForeignKey(RawTransferLot, on_delete=models.CASCADE)
