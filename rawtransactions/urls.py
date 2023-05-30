@@ -6,10 +6,10 @@ from .views import (
     CreateRawTransaction,
     FilterRawDebitTransactions,
     FilterRawTransactions,
+    FilterRawTransferTransactions,
     ListFormula,
     ListLotNumberAndIdView,
     ListRawProducts,
-    ListRawTransactions,
     RawDebitView,
     TransferRawStockView,
     ViewAllStock,
@@ -18,10 +18,14 @@ from .views import (
 urlpatterns = [
     # -----------------Raw Transaction--------------------- #
     path("transaction/create/", CreateRawTransaction.as_view()),
-    path("transaction/debit/", RawDebitView.as_view()),
-    path("transaction/transfer/", TransferRawStockView.as_view()),
     path("transaction/list/", FilterRawTransactions.as_view()),
+    # -----------------Raw Debit--------------------------- #
+    path("transaction/debit/", RawDebitView.as_view()),
     path("transaction/debit/list/", FilterRawDebitTransactions.as_view()),
+    # -----------------Raw Transfer------------------------ #
+    path("transaction/transfer/", TransferRawStockView.as_view()),
+    path("transaction/transfer/list/", FilterRawTransferTransactions.as_view()),
+    # -----------------Raw------------------------
     path("lot-numbers/list/", ListLotNumberAndIdView.as_view()),
     # -----------------Formula--------------------- #
     path("formula/list/", ListFormula.as_view()),

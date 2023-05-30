@@ -237,7 +237,7 @@ class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
 
     @classmethod
     def is_serial_unique(cls, **kwargs):
-        return not RawDebit.objects.filter(**kwargs).exists()
+        return not RawTransfer.objects.filter(**kwargs).exists()
 
     @classmethod
     def make_raw_transfer_transaction(cls, transfer_data, branch, user):
@@ -264,7 +264,6 @@ class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                 obj = {
                     **detail,
                     "raw_transfer_lot": raw_transfer_lot_obj,
-                    "transferring_warehouse": Warehouse(detail["transferring_warehouse"]),
                 }
                 transfer_lot_details.append(RawTransferLotDetail(**obj))
 

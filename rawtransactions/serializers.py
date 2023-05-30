@@ -1,11 +1,11 @@
 import copy
 from functools import reduce
 
+from django.forms import model_to_dict
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 
 from essentials.choices import PersonChoices
-from essentials.models import Warehouse
 from ledgers.models import LedgerAndRawDebit, LedgerAndRawTransaction
 from transactions.choices import TransactionChoices
 
@@ -337,27 +337,26 @@ class ViewAllStockSerializer(serializers.Serializer):
     # nature = serializers.CharField()
 
 
+class RawTransferDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RawTransferLotDetail
+        fields = [
+            "id",
+            "quantity",
+            "actual_gazaana",
+            "expected_gazaana",
+            "warehouse",
+            "transferring_warehouse",
+            "raw_transfer_lot",
+        ]
+        read_only_fields = ["id", "lot_number", "raw_transfer_lot"]
+
+
 class RawStockTransferSerializer(
     UniqueLotNumbers, StockCheck, serializers.ModelSerializer
 ):
     class TransferLotSerializer(serializers.ModelSerializer):
-        class RawLotDetailWithTransferWarehouse(serializers.ModelSerializer):
-            transferring_warehouse = serializers.UUIDField()
-
-            class Meta:
-                model = RawTransferLotDetail
-                fields = [
-                    "id",
-                    "quantity",
-                    "actual_gazaana",
-                    "expected_gazaana",
-                    "warehouse",
-                    "transferring_warehouse",
-                    "raw_transfer_lot",
-                ]
-                read_only_fields = ["id", "lot_number", "raw_transfer_lot"]
-
-        detail = RawLotDetailWithTransferWarehouse(many=True, required=True)
+        detail = RawTransferDetailSerializer(many=True, required=True)
 
         class Meta:
             model = RawTransferLot
@@ -402,10 +401,14 @@ class RawStockTransferSerializer(
 class ListRawDebitTransactionSerializer(serializers.ModelSerializer):
     class DebitLotSerializer(serializers.ModelSerializer):
         rawdebitlotdetail_set = RawLotDetailsSerializer(many=True)
+        raw_product = serializers.SerializerMethodField()
 
         class Meta:
             model = RawDebitLot
-            fields = ["id", "bill_number", "lot_number", "rawdebitlotdetail_set"]
+            fields = ["id", "lot_number", "rawdebitlotdetail_set", "raw_product"]
+
+        def get_raw_product(self, obj):
+            return model_to_dict(obj.lot_number.raw_product)
 
     rawdebitlot_set = DebitLotSerializer(many=True)
 
@@ -416,7 +419,37 @@ class ListRawDebitTransactionSerializer(serializers.ModelSerializer):
             "person",
             "date",
             "serial",
-            "date",
+            "manual_serial",
             "debit_type",
             "rawdebitlot_set",
+        ]
+
+
+class ListRawTransferTransactionSerializer(serializers.ModelSerializer):
+    class TransferLotSerializer(serializers.ModelSerializer):
+        rawtransferlotdetail_set = RawTransferDetailSerializer(many=True)
+        raw_product = serializers.SerializerMethodField()
+
+        class Meta:
+            model = RawTransferLot
+            fields = [
+                "id",
+                "lot_number",
+                "rawtransferlotdetail_set",
+                "raw_product",
+            ]
+
+        def get_raw_product(self, obj):
+            return model_to_dict(obj.lot_number.raw_product)
+
+    rawtransferlot_set = TransferLotSerializer(many=True)
+
+    class Meta:
+        model = RawTransfer
+        fields = [
+            "id",
+            "date",
+            "serial",
+            "manual_serial",
+            "rawtransferlot_set",
         ]

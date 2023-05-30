@@ -38,11 +38,14 @@ class RawDebitQuery:
 
 class RawDebitListQuery:
     def get_queryset(self):
-        return RawDebit.objects.exclude(debit_type=RawDebitTypes.TRANSFER).filter(
-            branch=self.request.branch
-        )
+        return RawDebit.objects.filter(branch=self.request.branch).order_by("date")
 
 
 class RawTransferQuery:
     def get_queryset(self):
         return RawTransfer.objects.filter(branch=self.request.branch)
+
+
+class RawTransferListQuery:
+    def get_queryset(self):
+        return RawTransfer.objects.filter(branch=self.request.branch).order_by("date")
