@@ -20,4 +20,6 @@ class TransactionQuery:
 
 class TransferQuery:
     def get_queryset(self):
-        return StockTransfer.objects.filter(from_warehouse__branch=self.request.branch)
+        return StockTransfer.objects.filter(
+            from_warehouse__branch=self.request.branch
+        ).order_by("date")
