@@ -192,7 +192,11 @@ class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
         payments_serialized = PaymentAndImageListSerializer(payments, many=True).data
 
         person_filter_2 = {}
-        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+        if request.role not in [
+            RoleChoices.ADMIN,
+            RoleChoices.ADMIN_VIEWER,
+            RoleChoices.HEAD_ACCOUNTANT,
+        ]:
             person_filter_2 = {
                 "ledger_entry__person__person_type": PersonChoices.CUSTOMER
             }

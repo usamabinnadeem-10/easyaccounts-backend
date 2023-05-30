@@ -113,6 +113,16 @@ class IsAdminOrAccountantOrStockistMixin:
     ]
 
 
+class IsAdminOrAccountantOrHeadAccountantStockistMixin:
+    """To check if user is admin or accountant or stockist"""
+
+    permission_classes = [
+        IsAuthenticated,
+        IsLoggedIn,
+        IsAdmin | IsAccountant | IsStockist | IsHeadAccountant,
+    ]
+
+
 class IsAdminOrStockistMixin:
     """To check if user is admin or stockist"""
 
@@ -126,4 +136,14 @@ class IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin:
         IsAuthenticated,
         IsLoggedIn,
         IsAdmin | IsAdminReadOnly | IsStockist | IsAccountant,
+    ]
+
+
+class IsAdminOrReadAdminOrAccountantOrHeadAccountantOrStockistPermissionMixin:
+    """To check if user is admin or read admin or stockist"""
+
+    permission_classes = [
+        IsAuthenticated,
+        IsLoggedIn,
+        IsAdmin | IsAdminReadOnly | IsStockist | IsAccountant | IsHeadAccountant,
     ]
