@@ -453,3 +453,102 @@ class ListRawTransferTransactionSerializer(serializers.ModelSerializer):
             "manual_serial",
             "rawtransferlot_set",
         ]
+
+
+class UpdateRawTransactionSerializer(serializers.ModelSerializer):
+    class UpdateRawTransactionLotSerializer(serializers.ModelSerializer):
+        class UpdateRawLotDetailsSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = RawLotDetail
+                fields = [
+                    "id",
+                    "lot_number",
+                    "quantity",
+                    "actual_gazaana",
+                    "expected_gazaana",
+                    "rate_gazaana",
+                    "formula",
+                    "warehouse",
+                    "rate",
+                ]
+                # read_only_fields = ["id", "lot_number"]
+
+        lot_detail = UpdateRawLotDetailsSerializer(many=True)
+        dying_unit = serializers.UUIDField(required=False, allow_null=True)
+
+        class Meta:
+            model = RawTransactionLot
+            fields = [
+                "id",
+                "raw_transaction",
+                "lot_number",
+                "issued",
+                "lot_detail",
+                "dying_unit",
+                "raw_product",
+            ]
+            # read_only_fields = [
+            #     "id",
+            # ]
+
+    lots = UpdateRawTransactionLotSerializer(many=True, required=True)
+
+    class Meta:
+        model = RawTransaction
+        fields = ["id", "person", "date", "manual_serial", "lots"]
+        # read_only_fields = [
+        #     "id",
+        # ]
+
+    def validate_warehouse_and_lot_issued(self, transaction_data):
+        """validates if warehouses are added if lot is not issued for raw transaction"""
+        lots = transaction_data["lots"]
+        for index, lot in enumerate(lots):
+            issued = lot["issued"]
+            for lot_detail in lot["lot_detail"]:
+                has_warehouse = lot_detail.get("warehouse", None)
+                if has_warehouse and issued:
+                    raise serializers.ValidationError(
+                        f"Warehouse can not be added for issued lot # {index + 1}",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+                if not issued and not has_warehouse:
+                    raise serializers.ValidationError(
+                        f"Add warehouse for non-issued lot # {index + 1}",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+
+    def validate_person_and_raw_product(self, transaction_data):
+        """validates if raw product belongs to person for raw transaction"""
+        person = transaction_data["person"]
+        lots = transaction_data["lots"]
+        for index, lot in enumerate(lots):
+            raw_product = lot["raw_product"]
+            if raw_product.person.id != person.id:
+                raise serializers.ValidationError(
+                    f"This product does not belong to supplier lot # {index + 1}",
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+    def validate(self, data):
+        self.validate_warehouse_and_lot_issued(data)
+        self.validate_person_and_raw_product(data)
+        return data
+
+    def update(self, instance, validated_data):
+        branch = self.context["request"].branch
+        user = self.context["request"].user
+        old_lots = RawTransactionLot.objects.filter(raw_transaction=instance)
+        new_lots = validated_data["lots"]
+        validated_data_copy = copy.deepcopy(validated_data)
+
+        # raw_transaction = RawTransaction.make_raw_transaction(
+        #     copy.deepcopy(validated_data), branch, user
+        # )
+        # LedgerAndRawTransaction.create_ledger_entry(
+        #     raw_transaction,
+        #     RawTransaction.get_raw_transaction_total(validated_data),
+        #     user,
+        # )
+
+        return validated_data

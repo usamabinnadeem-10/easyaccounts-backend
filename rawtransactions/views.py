@@ -26,6 +26,7 @@ from .serializers import (
     RawDebitSerializer,
     RawLotNumberAndIdSerializer,
     RawProductSerializer,
+    UpdateRawTransactionSerializer,
     ViewAllStockSerializer,
 )
 from .utils import get_current_stock_position
@@ -109,3 +110,9 @@ class ViewAllStock(generics.ListAPIView):
 
 class TransferRawStockView(RawTransferQuery, generics.CreateAPIView):
     serializer_class = ListRawTransferTransactionSerializer
+
+
+class EditUpdateDeleteRawTransactionView(
+    RawTransactionQuery, generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = UpdateRawTransactionSerializer

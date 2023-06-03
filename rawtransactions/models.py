@@ -215,7 +215,7 @@ class RawDebitLot(ID):
     """Raw debit and lot relation"""
 
     bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.PROTECT)
     detail = models.CharField(max_length=256, null=True, blank=True)
 
 
@@ -277,7 +277,7 @@ class RawTransferLot(ID):
     """Raw transfer and lot relation"""
 
     raw_transfer = models.ForeignKey(RawTransfer, on_delete=models.CASCADE)
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.CASCADE)
+    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.PROTECT)
 
 
 class RawTransferLotDetail(models.Model):

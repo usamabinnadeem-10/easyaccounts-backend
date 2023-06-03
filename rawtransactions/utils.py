@@ -46,7 +46,7 @@ def get_all_raw_stock(branch):
         )
     )
 
-    balance_returns = list(
+    balance_debits = list(
         (
             RawDebitLotDetail.objects.values(
                 "return_lot__lot_number",
@@ -64,7 +64,7 @@ def get_all_raw_stock(branch):
             .annotate(quantity=Sum("quantity"))
         )
     )
-    balance_returns = list(
+    balance_debits = list(
         map(
             lambda obj: {
                 **obj,
@@ -72,7 +72,7 @@ def get_all_raw_stock(branch):
                 "lot_number": obj["return_lot__lot_number"],
                 "raw_product": obj["return_lot__lot_number__raw_product"],
             },
-            balance_returns,
+            balance_debits,
         )
     )
 
@@ -148,7 +148,7 @@ def get_all_raw_stock(branch):
             balance_dyings,
         )
     )
-    return [*balance_lots, *balance_returns, *balance_dyings, *balance_transfers]
+    return [*balance_lots, *balance_debits, *balance_dyings, *balance_transfers]
 
 
 def get_current_stock_position(branch):
