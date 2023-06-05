@@ -105,6 +105,9 @@ class RawTransactionLotSerializer(serializers.ModelSerializer):
             "lot_detail",
             "dying_unit",
             "raw_product",
+            "detail",
+            "dying_number",
+            "warehouse_number",
         ]
         read_only_fields = [
             "id",
@@ -486,10 +489,14 @@ class UpdateRawTransactionSerializer(serializers.ModelSerializer):
                 "lot_detail",
                 "dying_unit",
                 "raw_product",
+                "detail",
+                "dying_number",
+                "warehouse_number",
             ]
             # read_only_fields = [
             #     "id",
             # ]
+            extra_kwargs = {"id": {"required": False, "allow_null": True}}
 
     lots = UpdateRawTransactionLotSerializer(many=True, required=True)
 
@@ -538,7 +545,26 @@ class UpdateRawTransactionSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         branch = self.context["request"].branch
         user = self.context["request"].user
+
+        lot_ids_to_create = list(
+            filter(lambda lot: not lot["id"], validated_data["lots"])
+        )
+        new_lots_ids = list(map(lambda lot: lot["id"] or "", validated_data["lots"]))
         old_lots = RawTransactionLot.objects.filter(raw_transaction=instance)
+
+        # delete lots which are not present in new data
+        for lot in old_lots:
+            if lot.id not in new_lots_ids:
+                try:
+                    lot.delete()
+                except Exception as e:
+                    print(e)
+
+        bulk_create_new_lots = []
+        # create new lots
+        for new_lot in lot_ids_to_create:
+            bulk_create_new_lots.append(RawTransactionLot())
+
         new_lots = validated_data["lots"]
         validated_data_copy = copy.deepcopy(validated_data)
 
