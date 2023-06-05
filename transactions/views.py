@@ -105,7 +105,7 @@ class GetTransaction(
 
 class EditUpdateDeleteTransaction(
     TransactionQuery,
-    IsAdminOrHeadAccountantPermissionMixin,
+    IsAdminOrAccountantOrHeadAccountantMixin,
     generics.RetrieveUpdateDestroyAPIView,
 ):
     """
