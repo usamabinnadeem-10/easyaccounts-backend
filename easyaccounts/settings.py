@@ -13,15 +13,15 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = os.getenv(
+SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY", "um-9b&_d$u+sep-j_r5cw1eg)8l1c+$4%pehhiqvxqlzds1l1b"
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 
 CORS_ALLOWED_ORIGINS = [
@@ -94,10 +94,13 @@ WSGI_APPLICATION = "easyaccounts.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "easy_db",
-        "USER": "easyaccounts",
-        "PASSWORD": "Pakistan6564!",
-        "HOST": "localhost",
+        # "NAME": "easy_db",
+        # "USER": "easyaccounts",
+        # "PASSWORD": "Pakistan6564!",
+        "NAME": os.environ.get("POSTGRES_NAME"),
+        "USER": os.environ.get("POSTGRES_USER"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "HOST": "database",
         "PORT": "",
         "ATOMIC_REQUESTS": True,
     }
@@ -180,17 +183,17 @@ SIMPLE_JWT = {
 
 """S3 settings"""
 
-S3_ENABLED = os.getenv("S3_ENABLED", "True") == "True"
+S3_ENABLED = os.environ.get("S3_ENABLED", "True") == "True"
 
 if S3_ENABLED:
     # aws settings
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME")
     AWS_S3_ENDPOINT_URL = f"https://{AWS_S3_REGION_NAME}.digitaloceanspaces.com"
 
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 
     AWS_DEFAULT_ACL = None
     AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
