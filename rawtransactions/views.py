@@ -119,8 +119,6 @@ class ViewAllStock(generics.ListAPIView):
         qpDict = dict(request.GET.lists())
         qps = convert_qp_dict_to_qp(qpDict)
 
-        print(stock)
-
         lot_number = qps.pop("lot_number", None)
         raw_product = qps.pop("raw_product", None)
         warehouse = qps.pop("warehouse", None)
