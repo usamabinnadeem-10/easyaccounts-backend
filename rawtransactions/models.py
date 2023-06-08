@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.shortcuts import get_object_or_404
 
 from authentication.models import Branch, BranchAwareModel, UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
@@ -84,11 +85,20 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         return amount
 
     @classmethod
-    def make_raw_transaction(cls, transaction_data, branch, user):
+    def make_raw_transaction(cls, transaction_data, branch, user, **kwargs):
+        old_instance = kwargs.get("old_instance")
+        old_serial = old_instance.serial if old_instance else None
+
+        # delete old instance in the beginning
+        if old_instance:
+            old_instance.delete()
+
         lots = transaction_data.pop("lots")
         transaction = RawTransaction.objects.create(
             **transaction_data,
-            serial=RawTransaction.get_next_serial("serial", person__branch=branch),
+            serial=old_serial
+            if old_serial
+            else RawTransaction.get_next_serial("serial", person__branch=branch),
             user=user,
             branch=branch,
         )
@@ -96,11 +106,13 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         lots_objs = []
         lot_details_objs = []
         for lot in lots:
+            old_lot_number = lot.get("lot_number") if old_instance else None
             current_lot = RawTransactionLot(
                 raw_transaction=transaction,
                 issued=lot["issued"],
                 raw_product=lot["raw_product"],
-                lot_number=RawTransactionLot.get_next_serial(
+                lot_number=old_lot_number
+                or RawTransactionLot.get_next_serial(
                     "lot_number", raw_transaction__person__branch=branch
                 ),
             )
@@ -191,9 +203,13 @@ class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         debit_lots = []
         debit_lot_details = []
         for lot in data:
+            raw_transaction_lot = get_object_or_404(
+                RawTransactionLot, lot_number=lot["lot_number"]
+            )
             raw_debit_lot_instance = RawDebitLot(
                 lot_number=lot["lot_number"],
                 bill_number=debit_instance,
+                raw_product=raw_transaction_lot.raw_product,
             )
             debit_lots.append(raw_debit_lot_instance)
 
@@ -215,7 +231,8 @@ class RawDebitLot(ID):
     """Raw debit and lot relation"""
 
     bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.PROTECT)
+    lot_number = models.PositiveBigIntegerField(default=1)
+    raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT, null=True)
     detail = models.CharField(max_length=256, null=True, blank=True)
 
 
@@ -255,9 +272,13 @@ class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         transfer_lots = []
         transfer_lot_details = []
         for lot in lots:
+            raw_transaction_lot = get_object_or_404(
+                RawTransactionLot, lot_number=lot["lot_number"]
+            )
             raw_transfer_lot_obj = RawTransferLot(
                 lot_number=lot["lot_number"],
                 raw_transfer=transfer_instance,
+                raw_product=raw_transaction_lot.raw_product,
             )
             transfer_lots.append(raw_transfer_lot_obj)
             for detail in lot["detail"]:
@@ -277,7 +298,8 @@ class RawTransferLot(ID):
     """Raw transfer and lot relation"""
 
     raw_transfer = models.ForeignKey(RawTransfer, on_delete=models.CASCADE)
-    lot_number = models.ForeignKey(RawTransactionLot, on_delete=models.PROTECT)
+    lot_number = models.PositiveBigIntegerField(default=1)
+    raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT, null=True)
 
 
 class RawTransferLotDetail(models.Model):

@@ -7,6 +7,7 @@ class RawTransactionsFilter(filters.FilterSet):
     class Meta:
         model = RawTransaction
         fields = {
+            "id": ["exact"],
             "date": ["gte", "lte"],
             "person": ["exact"],
             "serial": ["exact", "gte", "lte"],

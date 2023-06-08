@@ -24,7 +24,7 @@ def get_all_raw_stock(branch):
     balance_lots = list(
         (
             RawLotDetail.objects.values(
-                "lot_number",
+                "lot_number__lot_number",
                 "actual_gazaana",
                 "expected_gazaana",
                 "lot_number__raw_product",
@@ -39,6 +39,7 @@ def get_all_raw_stock(branch):
         map(
             lambda obj: {
                 **obj,
+                "lot_number": obj["lot_number__lot_number"],
                 "nature": "C",
                 "raw_product": obj["lot_number__raw_product"],
             },
@@ -52,14 +53,13 @@ def get_all_raw_stock(branch):
                 "return_lot__lot_number",
                 "actual_gazaana",
                 "expected_gazaana",
-                "return_lot__lot_number__raw_product",
+                "return_lot__raw_product",
                 "warehouse",
                 # "formula",
                 # "nature",
             )
             .filter(
                 return_lot__bill_number__branch=branch,
-                return_lot__lot_number__issued=False,
             )
             .annotate(quantity=Sum("quantity"))
         )
@@ -70,7 +70,7 @@ def get_all_raw_stock(branch):
                 **obj,
                 "nature": "D",
                 "lot_number": obj["return_lot__lot_number"],
-                "raw_product": obj["return_lot__lot_number__raw_product"],
+                "raw_product": obj["return_lot__raw_product"],
             },
             balance_debits,
         )
@@ -82,15 +82,12 @@ def get_all_raw_stock(branch):
                 "raw_transfer_lot__lot_number",
                 "actual_gazaana",
                 "expected_gazaana",
-                "raw_transfer_lot__lot_number__raw_product",
+                "raw_transfer_lot__raw_product",
                 "warehouse",
-                "transferring_warehouse"
-                # "formula",
-                # "nature",
+                "transferring_warehouse",
             )
             .filter(
                 raw_transfer_lot__raw_transfer__branch=branch,
-                raw_transfer_lot__lot_number__issued=False,
             )
             .annotate(quantity=Sum("quantity"))
         )
@@ -102,7 +99,7 @@ def get_all_raw_stock(branch):
                 "warehouse": obj["transferring_warehouse"],
                 "nature": "D",
                 "lot_number": obj["raw_transfer_lot__lot_number"],
-                "raw_product": obj["raw_transfer_lot__lot_number__raw_product"],
+                "raw_product": obj["raw_transfer_lot__raw_product"],
             },
             balance_transfers,
         )
@@ -113,7 +110,7 @@ def get_all_raw_stock(branch):
                 **obj,
                 "nature": "C",
                 "lot_number": obj["raw_transfer_lot__lot_number"],
-                "raw_product": obj["raw_transfer_lot__lot_number__raw_product"],
+                "raw_product": obj["raw_transfer_lot__raw_product"],
             },
             balance_transfers,
         )

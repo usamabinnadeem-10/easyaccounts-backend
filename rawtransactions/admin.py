@@ -9,6 +9,9 @@ from .models import (
     RawProduct,
     RawTransaction,
     RawTransactionLot,
+    RawTransfer,
+    RawTransferLot,
+    RawTransferLotDetail,
 )
 
 
@@ -29,3 +32,6 @@ admin.site.register(RawLotDetail, RawLotDetailAdmin)
 admin.site.register(RawDebit)
 admin.site.register(RawDebitLot)
 admin.site.register(RawDebitLotDetail)
+admin.site.register(RawTransfer)
+admin.site.register(RawTransferLot)
+admin.site.register(RawTransferLotDetail)

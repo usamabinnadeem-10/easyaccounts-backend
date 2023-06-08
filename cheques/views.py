@@ -455,7 +455,6 @@ class DeleteExternalChequeHistoryView(
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        print(instance)
         if instance.return_cheque:
             return Response(
                 {"error": "Please delete the cheque itself"},
