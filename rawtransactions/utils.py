@@ -170,3 +170,11 @@ def get_current_stock_position(branch):
 
     stock = [{**dict(zip(group_keys, k)), **v} for k, v in d.items()]
     return stock
+
+
+def validate_inventory(branch):
+    stock = get_current_stock_position(branch)
+    for s in stock:
+        if s["quantity"] < 0:
+            return False, f"Low stock for lot # {s['lot_number']}"
+    return True, ""

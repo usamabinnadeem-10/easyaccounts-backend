@@ -1,5 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.serializers import ValidationError
 
 from core.pagination import StandardPagination
 
@@ -29,7 +31,7 @@ from .serializers import (
     UpdateRawTransactionSerializer,
     ViewAllStockSerializer,
 )
-from .utils import get_current_stock_position
+from .utils import get_current_stock_position, validate_inventory
 
 
 class CreateRawProduct(RawProductQuery, generics.CreateAPIView):
@@ -116,3 +118,10 @@ class EditUpdateDeleteRawTransactionView(
     RawTransactionQuery, generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = UpdateRawTransactionSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        super().destroy(request, *args, **kwargs)
+        validated, error = validate_inventory(request.branch)
+        if not validated:
+            raise ValidationError(error)
+        return Response(status=status.HTTP_204_NO_CONTENT)

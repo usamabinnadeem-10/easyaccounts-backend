@@ -22,7 +22,12 @@ from .models import (
     RawTransferLot,
     RawTransferLotDetail,
 )
-from .utils import get_all_raw_stock, get_current_stock_position, is_array_unique
+from .utils import (
+    get_all_raw_stock,
+    get_current_stock_position,
+    is_array_unique,
+    validate_inventory,
+)
 
 
 class FormulaSerializer(serializers.ModelSerializer):
@@ -234,14 +239,6 @@ class StockCheck:
                         status.HTTP_400_BAD_REQUEST,
                     )
 
-    def validate_inventory(self, branch):
-        stock = get_current_stock_position(branch)
-        for s in stock:
-            if s["quantity"] < 0:
-                return False
-
-        return True
-
 
 class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
     class Serializer(serializers.ModelSerializer):
@@ -401,22 +398,19 @@ class RawStockTransferSerializer(
         RawTransfer.make_raw_transfer_transaction(
             copy.deepcopy(validated_data), branch, user
         )
-        if not self.validate_inventory(branch):
-            raise ValidationError("Low stock")
+        validated, error = validate_inventory(branch)
+        if not validated:
+            raise ValidationError(error)
         return validated_data
 
 
 class ListRawDebitTransactionSerializer(serializers.ModelSerializer):
     class DebitLotSerializer(serializers.ModelSerializer):
         rawdebitlotdetail_set = RawLotDetailsSerializer(many=True)
-        raw_product = serializers.SerializerMethodField()
 
         class Meta:
             model = RawDebitLot
             fields = ["id", "lot_number", "rawdebitlotdetail_set", "raw_product"]
-
-        def get_raw_product(self, obj):
-            return model_to_dict(obj.lot_number.raw_product)
 
     rawdebitlot_set = DebitLotSerializer(many=True)
 
@@ -509,8 +503,9 @@ class UpdateRawTransactionSerializer(
         raw_transaction = RawTransaction.make_raw_transaction(
             copy.deepcopy(validated_data), branch, user, old_instance=instance
         )
-        if not self.validate_inventory(branch):
-            raise ValidationError("Low Stock")
+        validated, error = validate_inventory(branch)
+        if not validated:
+            raise ValidationError(error)
         LedgerAndRawTransaction.create_ledger_entry(
             raw_transaction,
             RawTransaction.get_raw_transaction_total(validated_data),
