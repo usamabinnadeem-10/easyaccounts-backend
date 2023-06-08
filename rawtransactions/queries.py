@@ -16,8 +16,7 @@ class RawProductQuery:
 
 class RawTransactionQuery:
     def get_queryset(self):
-        # return RawTransaction.objects.filter(branch=self.request.branch)
-        return RawTransaction.objects.filter()
+        return RawTransaction.objects.filter(branch=self.request.branch)
 
 
 class FormulaQuery:

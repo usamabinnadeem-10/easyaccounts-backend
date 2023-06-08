@@ -22,6 +22,7 @@ class RawDebitTransactionsFilter(filters.FilterSet):
     class Meta:
         model = RawDebit
         fields = {
+            "id": ["exact"],
             "date": ["gte", "lte"],
             "person": ["exact"],
             "debit_type": ["exact"],

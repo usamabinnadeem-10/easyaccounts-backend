@@ -261,19 +261,7 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
             raise ValidationError("Please choose a person", status.HTTP_400_BAD_REQUEST)
         return data
 
-    def create(self, validated_data):
-        branch = self.context["request"].branch
-        user = self.context["request"].user
-        check_person = (
-            True if validated_data["debit_type"] == RawDebitTypes.RETURN else False
-        )
-        person = validated_data["person"] if check_person else None
-        self.check_stock(validated_data["data"], check_person, person)
-
-        debit_instance = RawDebit.make_raw_debit_transaction(
-            copy.deepcopy(validated_data), branch, user
-        )
-
+    def create_ledger_entry(self, validated_data, debit_instance):
         ledger_amount = reduce(
             lambda prev, curr: prev
             + reduce(
@@ -293,6 +281,30 @@ class RawDebitSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializ
             amount=ledger_amount,
         )
 
+    def create_debit_entry(self, validated_data):
+        branch = self.context["request"].branch
+        user = self.context["request"].user
+        check_person = (
+            True if validated_data["debit_type"] == RawDebitTypes.RETURN else False
+        )
+        person = validated_data["person"] if check_person else None
+        self.check_stock(validated_data["data"], check_person, person)
+
+        debit_instance = RawDebit.make_raw_debit_transaction(
+            copy.deepcopy(validated_data), branch, user
+        )
+        return debit_instance
+
+    def create(self, validated_data):
+        debit_instance = self.create_debit_entry(copy.deepcopy(validated_data))
+        self.create_ledger_entry(copy.deepcopy(validated_data), debit_instance)
+        return debit_instance
+
+    def update(self, instance, validated_data):
+        # delete old instance first
+        instance.delete()
+        debit_instance = self.create_debit_entry(copy.deepcopy(validated_data))
+        self.create_ledger_entry(copy.deepcopy(validated_data), debit_instance)
         return debit_instance
 
 

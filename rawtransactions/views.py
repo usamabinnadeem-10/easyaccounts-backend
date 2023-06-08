@@ -13,6 +13,7 @@ from .filters import (
 from .queries import (
     FormulaQuery,
     RawDebitListQuery,
+    RawDebitQuery,
     RawProductQuery,
     RawTransactionLotQuery,
     RawTransactionQuery,
@@ -118,6 +119,19 @@ class EditUpdateDeleteRawTransactionView(
     RawTransactionQuery, generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = UpdateRawTransactionSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        super().destroy(request, *args, **kwargs)
+        validated, error = validate_inventory(request.branch)
+        if not validated:
+            raise ValidationError(error)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class EditUpdateDeleteRawDebitTransactionView(
+    RawDebitQuery, generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = RawDebitSerializer
 
     def destroy(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)

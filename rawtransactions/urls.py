@@ -4,6 +4,7 @@ from .views import (
     CreateFormula,
     CreateRawProduct,
     CreateRawTransaction,
+    EditUpdateDeleteRawDebitTransactionView,
     EditUpdateDeleteRawTransactionView,
     FilterRawDebitTransactions,
     FilterRawTransactions,
@@ -24,6 +25,9 @@ urlpatterns = [
     # -----------------Raw Debit--------------------------- #
     path("transaction/debit/", RawDebitView.as_view()),
     path("transaction/debit/list/", FilterRawDebitTransactions.as_view()),
+    path(
+        "transaction/debit/<uuid:pk>/", EditUpdateDeleteRawDebitTransactionView.as_view()
+    ),
     # -----------------Raw Transfer------------------------ #
     path("transaction/transfer/", TransferRawStockView.as_view()),
     path("transaction/transfer/list/", FilterRawTransferTransactions.as_view()),
