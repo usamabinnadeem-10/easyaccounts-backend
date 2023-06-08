@@ -105,9 +105,10 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
 
         lots_objs = []
         lot_details_objs = []
+
         for lot in lots:
             old_lot_number = lot.get("lot_number") if old_instance else None
-            current_lot = RawTransactionLot(
+            current_lot = RawTransactionLot.objects.create(
                 raw_transaction=transaction,
                 issued=lot["issued"],
                 raw_product=lot["raw_product"],
@@ -116,7 +117,6 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                     "lot_number", raw_transaction__person__branch=branch
                 ),
             )
-            lots_objs.append(current_lot)
             # if current lot is issued to dying then create dying issue
             # if current_lot.issued:
             #     try:
@@ -142,7 +142,6 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                 current_detail = RawLotDetail(**detail, lot_number=current_lot)
                 lot_details_objs.append(current_detail)
 
-        lots_objs = RawTransactionLot.objects.bulk_create(lots_objs)
         lot_details_objs = RawLotDetail.objects.bulk_create(lot_details_objs)
 
         return transaction

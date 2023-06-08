@@ -336,6 +336,7 @@ class ViewAllStockSerializer(serializers.Serializer):
     quantity = serializers.FloatField()
     actual_gazaana = serializers.FloatField()
     expected_gazaana = serializers.FloatField()
+    lot_number = serializers.FloatField()
     raw_product = serializers.UUIDField()
     warehouse = serializers.UUIDField()
     # formula = serializers.UUIDField()
@@ -478,9 +479,7 @@ class UpdateRawTransactionSerializer(
                 "dying_number",
                 "warehouse_number",
             ]
-            read_only_fields = [
-                "id",
-            ]
+            read_only_fields = ["id", "raw_transaction"]
             extra_kwargs = {"lot_number": {"required": False, "allow_null": True}}
 
     lots = UpdateRawTransactionLotSerializer(many=True, required=True)
