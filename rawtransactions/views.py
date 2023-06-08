@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from core.pagination import StandardPagination
+from core.utils import convert_qp_dict_to_qp
 
 from .filters import (
     RawDebitTransactionsFilter,
@@ -112,6 +113,49 @@ class ViewAllStock(generics.ListAPIView):
     def get_queryset(self):
         stock = get_current_stock_position(self.request.branch)
         return stock
+
+    def list(self, request, *args, **kwargs):
+        stock = self.get_queryset()
+        qpDict = dict(request.GET.lists())
+        qps = convert_qp_dict_to_qp(qpDict)
+
+        print(stock)
+
+        lot_number = qps.pop("lot_number", None)
+        raw_product = qps.pop("raw_product", None)
+        warehouse = qps.pop("warehouse", None)
+        actual_gazaana__gte = qps.pop("actual_gazaana__gte", None)
+        actual_gazaana__lte = qps.pop("actual_gazaana__lte", None)
+        quantity__gte = qps.pop("quantity__gte", None)
+        quantity__lte = qps.pop("quantity__lte", None)
+        expected_gazaana__gte = qps.pop("expected_gazaana__gte", None)
+        expected_gazaana__lte = qps.pop("expected_gazaana__lte", None)
+        if lot_number:
+            stock = filter(lambda s: s["lot_number"] == lot_number, stock)
+        if raw_product:
+            stock = filter(lambda s: str(s["raw_product"]) == raw_product, stock)
+        if warehouse:
+            stock = filter(lambda s: s["warehouse"] == warehouse, stock)
+        if quantity__gte:
+            stock = filter(lambda s: s["quantity"] >= quantity__gte, stock)
+        if quantity__lte:
+            stock = filter(lambda s: s["quantity"] <= quantity__lte, stock)
+        if actual_gazaana__gte:
+            stock = filter(lambda s: s["actual_gazaana"] >= actual_gazaana__gte, stock)
+        if actual_gazaana__lte:
+            stock = filter(lambda s: s["actual_gazaana"] <= actual_gazaana__lte, stock)
+        if expected_gazaana__gte:
+            stock = filter(
+                lambda s: s["expected_gazaana"] <= expected_gazaana__gte, stock
+            )
+        if expected_gazaana__lte:
+            stock = filter(
+                lambda s: s["expected_gazaana"] <= expected_gazaana__lte, stock
+            )
+
+        stock = list(filter(lambda s: s["quantity"] > 0, stock))
+
+        return Response(stock, status=status.HTTP_200_OK)
 
 
 class TransferRawStockView(RawTransferQuery, generics.CreateAPIView):
