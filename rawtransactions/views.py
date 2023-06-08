@@ -29,6 +29,7 @@ from .serializers import (
     RawDebitSerializer,
     RawLotNumberAndIdSerializer,
     RawProductSerializer,
+    RawStockTransferSerializer,
     UpdateRawTransactionSerializer,
     ViewAllStockSerializer,
 )
@@ -112,7 +113,7 @@ class ViewAllStock(generics.ListAPIView):
 
 
 class TransferRawStockView(RawTransferQuery, generics.CreateAPIView):
-    serializer_class = ListRawTransferTransactionSerializer
+    serializer_class = RawStockTransferSerializer
 
 
 class EditUpdateDeleteRawTransactionView(
@@ -132,6 +133,19 @@ class EditUpdateDeleteRawDebitTransactionView(
     RawDebitQuery, generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = RawDebitSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        super().destroy(request, *args, **kwargs)
+        validated, error = validate_inventory(request.branch)
+        if not validated:
+            raise ValidationError(error)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class EditUpdateDeleteRawDebitTransactionView(
+    RawTransferQuery, generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = RawStockTransferSerializer
 
     def destroy(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)

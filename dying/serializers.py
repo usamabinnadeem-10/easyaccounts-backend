@@ -1,6 +1,7 @@
-from rawtransactions.models import RawLotDetail
-from rawtransactions.serializers import StockCheck, UniqueLotNumbers
 from rest_framework import serializers
+
+from rawtransactions.models import RawLotDetail
+from rawtransactions.serializers import UniqueLotNumbers
 
 from .models import DyingIssue, DyingIssueDetail, DyingIssueLot, DyingUnit
 
@@ -37,7 +38,6 @@ class DyingIssueDetailSerializer(serializers.ModelSerializer):
 
 
 class DyingIssueLotSerializer(serializers.ModelSerializer):
-
     auto_issued_detail = serializers.SerializerMethodField(allow_null=True)
     dying_issue_lot_number = DyingIssueDetailSerializer(many=True)
 
@@ -59,7 +59,6 @@ class DyingIssueLotSerializer(serializers.ModelSerializer):
 
 
 class DyingIssueSerializer(serializers.ModelSerializer):
-
     dying_issue_lot = DyingIssueLotSerializer(many=True)
 
     class Meta:
@@ -94,8 +93,7 @@ class LotNumberAndDetail(serializers.ModelSerializer):
         read_only_fields = ["id", "dying_lot"]
 
 
-class IssueForDyingSerializer(UniqueLotNumbers, StockCheck, serializers.ModelSerializer):
-
+class IssueForDyingSerializer(UniqueLotNumbers, serializers.ModelSerializer):
     data = LotNumberAndDetail(many=True, required=True)
 
     class Meta:

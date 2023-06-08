@@ -31,6 +31,10 @@ urlpatterns = [
     # -----------------Raw Transfer------------------------ #
     path("transaction/transfer/", TransferRawStockView.as_view()),
     path("transaction/transfer/list/", FilterRawTransferTransactions.as_view()),
+    path(
+        "transaction/transfer/<uuid:pk>/",
+        EditUpdateDeleteRawDebitTransactionView.as_view(),
+    ),
     # -----------------Raw------------------------
     path("lot-numbers/list/", ListLotNumberAndIdView.as_view()),
     # -----------------Formula--------------------- #
