@@ -15,6 +15,7 @@ from .queries import (
     RawDebitListQuery,
     RawDebitQuery,
     RawProductQuery,
+    RawTransactionLotDetailQueryWithId,
     RawTransactionLotQuery,
     RawTransactionQuery,
     RawTransferListQuery,
@@ -30,6 +31,7 @@ from .serializers import (
     RawLotNumberAndIdSerializer,
     RawProductSerializer,
     RawStockTransferSerializer,
+    RawTransactionLotAutofillSerializer,
     UpdateRawTransactionSerializer,
     ViewAllStockSerializer,
 )
@@ -153,3 +155,9 @@ class EditUpdateDeleteRawDebitTransactionView(
         if not validated:
             raise ValidationError(error)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RawTransactionLotDetail(
+    RawTransactionLotDetailQueryWithId, generics.RetrieveAPIView
+):
+    serializer_class = RawTransactionLotAutofillSerializer

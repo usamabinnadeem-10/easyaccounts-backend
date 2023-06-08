@@ -2,6 +2,7 @@ from .choices import RawDebitTypes
 from .models import (
     Formula,
     RawDebit,
+    RawLotDetail,
     RawProduct,
     RawTransaction,
     RawTransactionLot,
@@ -49,3 +50,10 @@ class RawTransferQuery:
 class RawTransferListQuery:
     def get_queryset(self):
         return RawTransfer.objects.filter(branch=self.request.branch).order_by("date")
+
+
+class RawTransactionLotDetailQueryWithId:
+    def get_queryset(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lot_id = self.kwargs[lookup_url_kwarg]
+        return RawTransactionLot.objects.filter(id=lot_id)

@@ -57,8 +57,9 @@ class RawTransactionValidationHelper:
 
 class RawLotNumberAndIdSerializer(serializers.ModelSerializer):
     class Meta:
+        depth = 1
         model = RawTransactionLot
-        fields = ["id", "lot_number"]
+        fields = ["id", "lot_number", "raw_product"]
 
 
 class UniqueLotNumbers:
@@ -529,5 +530,10 @@ class ViewAllStockSerializer(serializers.Serializer):
     lot_number = serializers.FloatField()
     raw_product = serializers.UUIDField()
     warehouse = serializers.UUIDField()
-    # formula = serializers.UUIDField()
-    # nature = serializers.CharField()
+
+
+class RawTransactionLotAutofillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RawTransactionLot
+        depth = 1
+        fields = ["detail", "dying_number", "warehouse_number", "raw_lot_detail"]

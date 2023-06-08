@@ -13,6 +13,7 @@ from .views import (
     ListLotNumberAndIdView,
     ListRawProducts,
     RawDebitView,
+    RawTransactionLotDetail,
     TransferRawStockView,
     ViewAllStock,
 )
@@ -35,8 +36,9 @@ urlpatterns = [
         "transaction/transfer/<uuid:pk>/",
         EditUpdateDeleteRawDebitTransactionView.as_view(),
     ),
-    # -----------------Raw------------------------
+    # -----------------Lot number and lot stock------------------------
     path("lot-numbers/list/", ListLotNumberAndIdView.as_view()),
+    path("lot/detail/<uuid:pk>/", RawTransactionLotDetail.as_view()),
     # -----------------Formula--------------------- #
     path("formula/list/", ListFormula.as_view()),
     path("formula/create/", CreateFormula.as_view()),
