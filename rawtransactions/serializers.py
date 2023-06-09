@@ -255,7 +255,7 @@ class UpdateRawTransactionSerializer(
             RawTransaction.get_raw_transaction_total(validated_data),
             user,
         )
-
+        validated_data["id"] = raw_transaction.id
         return validated_data
 
 
