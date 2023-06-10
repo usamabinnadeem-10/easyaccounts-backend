@@ -449,7 +449,7 @@ class RawStockTransferSerializer(UniqueLotNumbers, serializers.ModelSerializer):
             fields = ["raw_transfer", "lot_number", "detail"]
             read_only_fields = ["id", "raw_transfer"]
 
-    data = TransferLotSerializer(many=True, required=True)
+    data = TransferLotSerializer(many=True, required=True, write_only=True)
 
     class Meta:
         model = RawTransfer
@@ -536,4 +536,4 @@ class RawTransactionLotAutofillSerializer(serializers.ModelSerializer):
     class Meta:
         model = RawTransactionLot
         depth = 1
-        fields = ["detail", "dying_number", "warehouse_number", "raw_lot_detail"]
+        fields = ["detail", "dying_number", "warehouse_number", "lot_detail"]
