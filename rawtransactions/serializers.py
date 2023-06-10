@@ -164,11 +164,11 @@ class RawTransactionLotSerializer(serializers.ModelSerializer):
             "dying_number",
             "warehouse_number",
         ]
-        read_only_fields = [
-            "id",
-            "lot_number",
-            "raw_transaction",
-        ]
+        read_only_fields = ["id", "lot_number", "raw_transaction"]
+        extra_kwargs = {
+            "dying_number": {"allow_null": True, "required": False},
+            "warehouse_number": {"allow_null": True, "required": False},
+        }
 
 
 class CreateRawTransactionSerializer(
@@ -189,6 +189,7 @@ class CreateRawTransactionSerializer(
         return data
 
     def create(self, validated_data):
+        print(validated_data)
         branch = self.context["request"].branch
         user = self.context["request"].user
         raw_transaction = RawTransaction.make_raw_transaction(
@@ -271,6 +272,9 @@ class ListRawTransactionSerializer(serializers.ModelSerializer):
                 "issued",
                 "raw_product",
                 "lot_detail",
+                "detail",
+                "warehouse_number",
+                "dying_number",
             ]
 
     lots = LotSerializer(many=True)

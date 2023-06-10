@@ -7,6 +7,6 @@ class RawProductTypes(models.TextChoices):
 
 
 class RawDebitTypes(models.TextChoices):
-    SALE = "Sale", "Sale"
-    RETURN = "Return", "Return"
-    TRANSFER = "Transfer", "Transfer"
+    SALE = "sale", "Sale"
+    PURCHASE_RETURN = "purchase_return", "Purchase Return"
+    SALE_RETURN = "sale_return", "Sale Return"

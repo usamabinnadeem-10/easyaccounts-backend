@@ -103,9 +103,7 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
             branch=branch,
         )
 
-        lots_objs = []
         lot_details_objs = []
-
         for lot in lots:
             old_lot_number = lot.get("lot_number") if old_instance else None
             current_lot = RawTransactionLot.objects.create(
@@ -116,6 +114,9 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                 or RawTransactionLot.get_next_serial(
                     "lot_number", raw_transaction__person__branch=branch
                 ),
+                warehouse_number=lot["warehouse_number"],
+                dying_number=lot["dying_number"],
+                detail=lot["detail"],
             )
             # if current lot is issued to dying then create dying issue
             # if current_lot.issued:
@@ -182,7 +183,7 @@ class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
     person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
     manual_serial = models.PositiveBigIntegerField()
     serial = models.PositiveBigIntegerField()
-    debit_type = models.CharField(max_length=10, choices=RawDebitTypes.choices)
+    debit_type = models.CharField(max_length=15, choices=RawDebitTypes.choices)
 
     @classmethod
     def is_serial_unique(cls, **kwargs):

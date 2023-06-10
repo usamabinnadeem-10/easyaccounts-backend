@@ -1,8 +1,6 @@
-from .choices import RawDebitTypes
 from .models import (
     Formula,
     RawDebit,
-    RawLotDetail,
     RawProduct,
     RawTransaction,
     RawTransactionLot,

@@ -55,7 +55,7 @@ def get_all_raw_stock(branch):
                 "expected_gazaana",
                 "return_lot__raw_product",
                 "warehouse",
-                # "formula",
+                "return_lot__bill_number__debit_type",
                 # "nature",
             )
             .filter(
@@ -68,7 +68,9 @@ def get_all_raw_stock(branch):
         map(
             lambda obj: {
                 **obj,
-                "nature": "D",
+                "nature": "C"
+                if obj["return_lot__bill_number__debit_type"] == "sale_return"
+                else "D",
                 "lot_number": obj["return_lot__lot_number"],
                 "raw_product": obj["return_lot__raw_product"],
             },
