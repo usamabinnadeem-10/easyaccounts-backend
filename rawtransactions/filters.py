@@ -12,9 +12,9 @@ class RawTransactionsFilter(filters.FilterSet):
             "person": ["exact"],
             "serial": ["exact", "gte", "lte"],
             "manual_serial": ["exact", "gte", "lte"],
-            "rawtransactionlot__raw_product": ["exact"],
-            "rawtransactionlot__lot_number": ["exact", "gte", "lte"],
-            "rawtransactionlot__issued": ["exact"],
+            "lots__raw_product": ["exact"],
+            "lots__lot_number": ["exact", "gte", "lte"],
+            "lots__issued": ["exact"],
         }
 
 
@@ -28,7 +28,7 @@ class RawDebitTransactionsFilter(filters.FilterSet):
             "debit_type": ["exact"],
             "serial": ["exact", "gte", "lte"],
             "manual_serial": ["exact", "gte", "lte"],
-            "rawdebitlot__lot_number__lot_number": ["exact", "gte", "lte"],
+            "lots__lot_number": ["exact", "gte", "lte"],
         }
 
 
@@ -39,5 +39,5 @@ class RawTransferTransactionsFilter(filters.FilterSet):
             "date": ["gte", "lte"],
             "serial": ["exact", "gte", "lte"],
             "manual_serial": ["exact", "gte", "lte"],
-            "rawtransferlot__lot_number__lot_number": ["exact", "gte", "lte"],
+            "lots__lot_number": ["exact", "gte", "lte"],
         }

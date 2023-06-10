@@ -6,6 +6,7 @@ from .views import (
     CreateRawTransaction,
     EditUpdateDeleteRawDebitTransactionView,
     EditUpdateDeleteRawTransactionView,
+    EditUpdateDeleteRawTransferTransactionView,
     FilterRawDebitTransactions,
     FilterRawTransactions,
     FilterRawTransferTransactions,
@@ -34,7 +35,7 @@ urlpatterns = [
     path("transaction/transfer/list/", FilterRawTransferTransactions.as_view()),
     path(
         "transaction/transfer/<uuid:pk>/",
-        EditUpdateDeleteRawDebitTransactionView.as_view(),
+        EditUpdateDeleteRawTransferTransactionView.as_view(),
     ),
     # -----------------Lot number and lot stock------------------------
     path("lot-numbers/list/", ListLotNumberAndIdView.as_view()),

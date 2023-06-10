@@ -255,13 +255,12 @@ class UpdateRawTransactionSerializer(
             RawTransaction.get_raw_transaction_total(validated_data),
             user,
         )
-        validated_data["id"] = raw_transaction.id
-        return validated_data
+        return raw_transaction
 
 
 class ListRawTransactionSerializer(serializers.ModelSerializer):
     class LotSerializer(serializers.ModelSerializer):
-        raw_lot_detail = RawLotDetailsSerializer(many=True)
+        lot_detail = RawLotDetailsSerializer(many=True)
 
         class Meta:
             model = RawTransactionLot
@@ -271,10 +270,10 @@ class ListRawTransactionSerializer(serializers.ModelSerializer):
                 "lot_number",
                 "issued",
                 "raw_product",
-                "raw_lot_detail",
+                "lot_detail",
             ]
 
-    rawtransactionlot_set = LotSerializer(many=True)
+    lots = LotSerializer(many=True)
 
     class Meta:
         model = RawTransaction
@@ -284,7 +283,7 @@ class ListRawTransactionSerializer(serializers.ModelSerializer):
             "date",
             "serial",
             "date",
-            "rawtransactionlot_set",
+            "lots",
             "manual_serial",
         ]
 
@@ -402,13 +401,13 @@ class RawDebitSerializer(UniqueLotNumbers, serializers.ModelSerializer):
 
 class ListRawDebitTransactionSerializer(serializers.ModelSerializer):
     class DebitLotSerializer(serializers.ModelSerializer):
-        rawdebitlotdetail_set = RawLotDetailsSerializer(many=True)
+        lot_detail = RawLotDetailsSerializer(many=True)
 
         class Meta:
             model = RawDebitLot
-            fields = ["id", "lot_number", "rawdebitlotdetail_set", "raw_product"]
+            fields = ["id", "lot_number", "lot_detail", "raw_product"]
 
-    rawdebitlot_set = DebitLotSerializer(many=True)
+    lots = DebitLotSerializer(many=True)
 
     class Meta:
         model = RawDebit
@@ -419,7 +418,7 @@ class ListRawDebitTransactionSerializer(serializers.ModelSerializer):
             "serial",
             "manual_serial",
             "debit_type",
-            "rawdebitlot_set",
+            "lots",
         ]
 
 
@@ -476,38 +475,39 @@ class RawStockTransferSerializer(UniqueLotNumbers, serializers.ModelSerializer):
     def create_transfer_entry(self, validated_data):
         branch = self.context["request"].branch
         user = self.context["request"].user
-        RawTransfer.make_raw_transfer_transaction(
+        transfer = RawTransfer.make_raw_transfer_transaction(
             copy.deepcopy(validated_data), branch, user
         )
         validated, error = validate_inventory(branch)
         if not validated:
             raise ValidationError(error)
+        return transfer
 
     def create(self, validated_data):
-        self.create_transfer_entry(copy.deepcopy(validated_data))
-        return validated_data
+        transfer = self.create_transfer_entry(copy.deepcopy(validated_data))
+        return transfer
 
     def update(self, instance, validated_data):
         # delete previous
         instance.delete()
-        self.create_transfer_entry(copy.deepcopy(validated_data))
-        return validated_data
+        transfer = self.create_transfer_entry(copy.deepcopy(validated_data))
+        return transfer
 
 
 class ListRawTransferTransactionSerializer(serializers.ModelSerializer):
     class TransferLotSerializer(serializers.ModelSerializer):
-        rawtransferlotdetail_set = RawTransferDetailSerializer(many=True)
+        lot_detail = RawTransferDetailSerializer(many=True)
 
         class Meta:
             model = RawTransferLot
             fields = [
                 "id",
                 "lot_number",
-                "rawtransferlotdetail_set",
+                "lot_detail",
                 "raw_product",
             ]
 
-    rawtransferlot_set = TransferLotSerializer(many=True)
+    lots = TransferLotSerializer(many=True)
 
     class Meta:
         model = RawTransfer
@@ -516,7 +516,7 @@ class ListRawTransferTransactionSerializer(serializers.ModelSerializer):
             "date",
             "serial",
             "manual_serial",
-            "rawtransferlot_set",
+            "lots",
         ]
 
 

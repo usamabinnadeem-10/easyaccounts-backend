@@ -186,7 +186,7 @@ class EditUpdateDeleteRawDebitTransactionView(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class EditUpdateDeleteRawDebitTransactionView(
+class EditUpdateDeleteRawTransferTransactionView(
     RawTransferQuery, generics.RetrieveUpdateDestroyAPIView
 ):
     serializer_class = RawStockTransferSerializer

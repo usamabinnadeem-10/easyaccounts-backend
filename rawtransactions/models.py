@@ -150,7 +150,9 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
 class RawTransactionLot(ID, NextSerial):
     """Lot for raw transaction"""
 
-    raw_transaction = models.ForeignKey(RawTransaction, on_delete=models.CASCADE)
+    raw_transaction = models.ForeignKey(
+        RawTransaction, on_delete=models.CASCADE, related_name="lots"
+    )
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT)
     lot_number = models.PositiveBigIntegerField()
     issued = models.BooleanField(default=False)
@@ -166,7 +168,7 @@ class RawLotDetail(AbstractRawLotDetail):
     """Detail for raw transaction lot"""
 
     lot_number = models.ForeignKey(
-        RawTransactionLot, on_delete=models.CASCADE, related_name="raw_lot_detail"
+        RawTransactionLot, on_delete=models.CASCADE, related_name="lot_detail"
     )
 
 
@@ -229,7 +231,9 @@ class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
 class RawDebitLot(ID):
     """Raw debit and lot relation"""
 
-    bill_number = models.ForeignKey(RawDebit, on_delete=models.CASCADE)
+    bill_number = models.ForeignKey(
+        RawDebit, on_delete=models.CASCADE, related_name="lots"
+    )
     lot_number = models.PositiveBigIntegerField(default=1)
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT, null=True)
     detail = models.CharField(max_length=256, null=True, blank=True)
@@ -238,7 +242,9 @@ class RawDebitLot(ID):
 class RawDebitLotDetail(AbstractRawLotDetail):
     """Raw debit detail for each lot"""
 
-    return_lot = models.ForeignKey(RawDebitLot, on_delete=models.CASCADE)
+    return_lot = models.ForeignKey(
+        RawDebitLot, on_delete=models.CASCADE, related_name="lot_detail"
+    )
 
 
 """Raw Transfer Classes"""
@@ -296,7 +302,9 @@ class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
 class RawTransferLot(ID):
     """Raw transfer and lot relation"""
 
-    raw_transfer = models.ForeignKey(RawTransfer, on_delete=models.CASCADE)
+    raw_transfer = models.ForeignKey(
+        RawTransfer, on_delete=models.CASCADE, related_name="lots"
+    )
     lot_number = models.PositiveBigIntegerField(default=1)
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT, null=True)
 
@@ -314,4 +322,6 @@ class RawTransferLotDetail(models.Model):
     actual_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
     expected_gazaana = models.FloatField(validators=[MinValueValidator(1.0)])
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, null=True)
-    raw_transfer_lot = models.ForeignKey(RawTransferLot, on_delete=models.CASCADE)
+    raw_transfer_lot = models.ForeignKey(
+        RawTransferLot, on_delete=models.CASCADE, related_name="lot_detail"
+    )
