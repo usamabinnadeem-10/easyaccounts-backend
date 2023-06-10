@@ -36,6 +36,7 @@ class RawTransferTransactionsFilter(filters.FilterSet):
     class Meta:
         model = RawTransfer
         fields = {
+            "id": ["exact"],
             "date": ["gte", "lte"],
             "serial": ["exact", "gte", "lte"],
             "manual_serial": ["exact", "gte", "lte"],
