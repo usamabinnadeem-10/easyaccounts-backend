@@ -309,7 +309,7 @@ class ViewTransfers(
     }
 
 
-class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
+class DetailedStockView(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
     def get(self, request):
         qp = request.query_params
 
