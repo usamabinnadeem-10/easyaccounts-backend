@@ -28,11 +28,6 @@ class ValidateSerial:
                     "This serial already exists", status.HTTP_400_BAD_REQUEST
                 )
         if data["wasooli_number"]:
-            if data["serial_type"] != TransactionSerialTypes.SUP:
-                raise serializers.ValidationError(
-                    "Wasooli number can not be added with this transaction type",
-                    status.HTTP_400_BAD_REQUEST,
-                )
             if Transaction.objects.filter(
                 wasooli_number=data["wasooli_number"],
                 person__branch=self.context["request"].branch,
@@ -292,7 +287,6 @@ class TransferStockDetail(serializers.ModelSerializer):
 
 
 class TransferStockSerializer(serializers.ModelSerializer):
-
     request = None
     type = ActivityTypes.CREATED
     category = ActivityCategory.STOCK_TRANSFER
@@ -379,7 +373,6 @@ class UpdateTransferStockSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
-
         if instance.manual_serial != validated_data["manual_serial"]:
             if StockTransfer.objects.filter(
                 from_warehouse__branch=self.request.branch,
@@ -431,7 +424,6 @@ class ViewTransfersSerializer(serializers.ModelSerializer):
 
 
 class GetAllStockSerializer(serializers.Serializer):
-
     product = serializers.UUIDField(read_only=True)
     warehouse = serializers.UUIDField(read_only=True)
     yards_per_piece = serializers.FloatField(read_only=True)
