@@ -39,3 +39,5 @@ class BankChoices(models.TextChoices):
     UBL = "ubl", "UBL"
     UBANK = "ubank", "U Microfinance Bank"
     SONERI = "soneri", "Soneri Bank Limited"
+    SUMMIT = "summit", "Summit Bank"
+    CARD = "card", "Card"
