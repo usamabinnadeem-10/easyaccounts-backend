@@ -105,7 +105,7 @@ class GetTransaction(
 
 class EditUpdateDeleteTransaction(
     TransactionQuery,
-    IsAdminOrHeadAccountantPermissionMixin,
+    IsAdminOrAccountantOrHeadAccountantMixin,
     generics.RetrieveUpdateDestroyAPIView,
 ):
     """
@@ -309,7 +309,7 @@ class ViewTransfers(
     }
 
 
-class DetailedStockView(IsAdminOrReadAdminOrAccountantMixin, APIView):
+class DetailedStockView(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
     def get(self, request):
         qp = request.query_params
 

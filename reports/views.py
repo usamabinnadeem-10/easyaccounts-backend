@@ -9,6 +9,7 @@ from assets.models import Asset
 from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminOrReadAdminPermissionMixin,
 )
 from core.utils import convert_date_to_datetime
@@ -341,7 +342,7 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
         )
 
 
-class RevenueByPeriod(IsAdminOrReadAdminPermissionMixin, APIView):
+class RevenueByPeriod(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
     def get(self, request):
         period = request.query_params.get("period") or "day"
         data = TransactionDetail.calculate_revenue_of_period(

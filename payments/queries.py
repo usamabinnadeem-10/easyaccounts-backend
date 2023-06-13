@@ -20,6 +20,7 @@ class PaymentQuery:
             RoleChoices.ADMIN,
             RoleChoices.ADMIN_VIEWER,
             RoleChoices.HEAD_ACCOUNTANT,
+            RoleChoices.ACCOUNTANT,
         ]:
             filter.update({"person__person_type": "C"})
         return Payment.objects.filter(
