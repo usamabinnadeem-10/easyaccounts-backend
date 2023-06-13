@@ -54,7 +54,9 @@ class CreatePaymentView(
     serializer_class = PaymentSerializer
 
 
-class UpdatePaymentView(PaymentQuery, IsAdminPermissionMixin, UpdateAPIView):
+class UpdatePaymentView(
+    PaymentQuery, IsAdminOrAccountantOrHeadAccountantMixin, UpdateAPIView
+):
     """update payments"""
 
     serializer_class = PaymentSerializer
