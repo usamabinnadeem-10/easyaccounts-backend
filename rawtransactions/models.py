@@ -10,7 +10,7 @@ from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
 from essentials.models import Person, Warehouse
 
-from .choices import RawDebitTypes, RawProductTypes
+from .choices import RawDebitTypes, RawProductGlueTypes, RawProductTypes
 
 """Helper Classes"""
 
@@ -40,18 +40,13 @@ class AbstractRawLotDetail(ID):
         abstract = True
 
 
-class RawProduct(ID):
+class RawProduct(BranchAwareModel):
     """Raw product"""
 
     name = models.CharField(max_length=100)
-    person = models.ForeignKey(Person, on_delete=models.CASCADE)
-    type = models.CharField(max_length=10, choices=RawProductTypes.choices)
-
-    class Meta:
-        unique_together = ("person", "name", "type")
 
     def __str__(self):
-        return f"{self.name} - {self.person} - {self.type}"
+        return f"{self.name}"
 
 
 """Raw Transaction Classes"""
@@ -155,6 +150,8 @@ class RawTransactionLot(ID, NextSerial):
         RawTransaction, on_delete=models.CASCADE, related_name="lots"
     )
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT)
+    product_glue = models.CharField(max_length=15, choices=RawProductGlueTypes.choices)
+    product_type = models.CharField(max_length=15, choices=RawProductTypes.choices)
     lot_number = models.PositiveBigIntegerField()
     issued = models.BooleanField(default=False)
     detail = models.CharField(max_length=256, null=True, blank=True)
@@ -237,6 +234,8 @@ class RawDebitLot(ID):
     )
     lot_number = models.PositiveBigIntegerField(default=1)
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT, null=True)
+    product_glue = models.CharField(max_length=15, choices=RawProductGlueTypes.choices)
+    product_type = models.CharField(max_length=15, choices=RawProductTypes.choices)
     detail = models.CharField(max_length=256, null=True, blank=True)
 
 
@@ -308,6 +307,8 @@ class RawTransferLot(ID):
     )
     lot_number = models.PositiveBigIntegerField(default=1)
     raw_product = models.ForeignKey(RawProduct, on_delete=models.PROTECT, null=True)
+    product_glue = models.CharField(max_length=15, choices=RawProductGlueTypes.choices)
+    product_type = models.CharField(max_length=15, choices=RawProductTypes.choices)
 
 
 class RawTransferLotDetail(models.Model):
