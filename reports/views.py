@@ -10,6 +10,7 @@ from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrReadAdminOrAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
+    IsAdminOrReadAdminOrHeadAccountantPermissionMixin,
     IsAdminOrReadAdminPermissionMixin,
 )
 from core.utils import convert_date_to_datetime
@@ -99,7 +100,7 @@ class IncomeStatement(IsAdminOrReadAdminPermissionMixin, APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class GetAllBalances(IsAdminOrReadAdminOrAccountantMixin, APIView):
+class GetAllBalances(IsAdminOrReadAdminOrHeadAccountantPermissionMixin, APIView):
     """
     Get balances with filters
     """
