@@ -114,7 +114,8 @@ class GetAllBalances(IsAdminOrReadAdminOrHeadAccountantPermissionMixin, APIView)
             )
         if request.query_params.get("person_id"):
             filters.update({"person": request.query_params.get("person_id")})
-
+        if request.query_params.get("date__lte"):
+            filters.update({"date__lte": request.query_params.get("date__lte")})
         if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
             filters.update({"person__person_type": "C"})
 
