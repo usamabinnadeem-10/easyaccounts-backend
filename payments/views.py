@@ -62,7 +62,9 @@ class UpdatePaymentView(
     serializer_class = PaymentSerializer
 
 
-class DeletePaymentView(PaymentQuery, IsAdminPermissionMixin, DestroyAPIView):
+class DeletePaymentView(
+    PaymentQuery, IsAdminOrAccountantOrHeadAccountantMixin, DestroyAPIView
+):
     """delete payments"""
 
     def destroy(self, request, *args, **kwargs):
