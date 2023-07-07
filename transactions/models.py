@@ -229,6 +229,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             )
 
             if transaction.is_cancelled:
+                Transaction.check_stock(branch)
                 return {"transaction": transaction, "detail": []}
 
             details = []
@@ -441,7 +442,6 @@ class TransactionDetail(ID):
 
         # if an end date is provided then assume that there is no purchase/sale
         if end_date:
-
             inventory = (
                 TransactionDetail.objects.values(
                     "product", serial_type=F("transaction__serial_type")
@@ -533,7 +533,6 @@ class TransactionDetail(ID):
 
     @classmethod
     def calculate_cogs(cls, branch, start_date=None, end_date=None):
-
         beginning_inventory = TransactionDetail.calculate_previous_inventory(
             branch,
             start_date,
