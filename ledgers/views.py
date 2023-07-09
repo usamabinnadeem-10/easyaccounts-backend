@@ -1,31 +1,34 @@
 from datetime import datetime, timedelta
 from functools import reduce
 
+from django.db.models import F, Max, Min, Sum
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrAccountantMixin,
     IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminPermissionMixin,
 )
 from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
 from core.pagination import LargePagination
 from core.utils import convert_date_to_datetime
-from django.db.models import F, Max, Min, Sum
-from django_filters.rest_framework import DjangoFilterBackend
-from logs.choices import ActivityCategory, ActivityTypes
-from logs.models import Log
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from ledgers.models import Ledger, LedgerAndExternalCheque
 from ledgers.serializers import LedgerAndDetailSerializer, LedgerSerializer
+from logs.choices import ActivityCategory, ActivityTypes
+from logs.models import Log
 
 from .queries import LedgerAndDetailQuery, LedgerQuery
 
 
-class ListLedger(LedgerQuery, IsAdminOrReadAdminOrAccountantMixin, generics.ListAPIView):
+class ListLedger(
+    LedgerQuery, IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, generics.ListAPIView
+):
     """
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance
@@ -46,7 +49,10 @@ class ListLedger(LedgerQuery, IsAdminOrReadAdminOrAccountantMixin, generics.List
         filter = {}
         if self.request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
             filter.update({"person__person_type": "C"})
-        return Ledger.objects.select_related("person", "account_type",).filter(
+        return Ledger.objects.select_related(
+            "person",
+            "account_type",
+        ).filter(
             person__branch=self.request.branch,
             person=person,
             date__lte=endDate,
@@ -240,7 +246,6 @@ class LedgerAndDetailEntry(
     IsAdminOrAccountantMixin,
     generics.CreateAPIView,
 ):
-
     serializer_class = LedgerAndDetailSerializer
 
 
@@ -249,5 +254,4 @@ class UpdateLedgerAndDetailEntry(
     IsAdminPermissionMixin,
     generics.UpdateAPIView,
 ):
-
     serializer_class = LedgerAndDetailSerializer

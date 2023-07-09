@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from django.shortcuts import get_object_or_404
+from rest_framework import serializers
+
 from essentials.models import Person
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
-from rest_framework import serializers
 
 from .choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from .models import (
@@ -30,7 +31,6 @@ CHEQUE_ACCOUNT = "cheque_account"
 
 
 class ExternalChequeSerializer(serializers.ModelSerializer):
-
     transferred_to = serializers.SerializerMethodField()
 
     class Meta:
@@ -58,7 +58,6 @@ class ExternalChequeSerializer(serializers.ModelSerializer):
 
 
 class ShortExternalChequeHistorySerializer(serializers.ModelSerializer):
-
     serial = serializers.IntegerField(source="parent_cheque.serial")
     cheque_number = serializers.CharField(source="parent_cheque.cheque_number")
     person = serializers.UUIDField(source="parent_cheque.person.id")
@@ -217,6 +216,7 @@ class ExternalChequeHistoryWithChequeSerializer(serializers.ModelSerializer):
         cheque_account = get_cheque_account(branch)
         data_for_cheque_history = {
             **validated_data,
+            "date": validated_data.get("date", None) or cheque_obj.date,
             "user": user,
             "amount": cheque_obj.amount,
             "account_type": cheque_account.account,
@@ -263,7 +263,6 @@ class ListExternalChequeHistorySerializer(serializers.ModelSerializer):
 
 
 class TransferExternalChequeSerializer(serializers.ModelSerializer):
-
     date = serializers.DateTimeField(default=datetime.now, write_only=True)
 
     class Meta:

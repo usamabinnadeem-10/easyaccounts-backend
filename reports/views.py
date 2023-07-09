@@ -10,6 +10,7 @@ from authentication.choices import RoleChoices
 from authentication.mixins import (
     IsAdminOrReadAdminOrAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
+    IsAdminOrReadAdminOrHeadAccountantPermissionMixin,
     IsAdminOrReadAdminPermissionMixin,
 )
 from core.utils import convert_date_to_datetime
@@ -99,7 +100,7 @@ class IncomeStatement(IsAdminOrReadAdminPermissionMixin, APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class GetAllBalances(IsAdminOrReadAdminOrAccountantMixin, APIView):
+class GetAllBalances(IsAdminOrReadAdminOrHeadAccountantPermissionMixin, APIView):
     """
     Get balances with filters
     """
@@ -113,7 +114,8 @@ class GetAllBalances(IsAdminOrReadAdminOrAccountantMixin, APIView):
             )
         if request.query_params.get("person_id"):
             filters.update({"person": request.query_params.get("person_id")})
-
+        if request.query_params.get("date__lte"):
+            filters.update({"date__lte": request.query_params.get("date__lte")})
         if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
             filters.update({"person__person_type": "C"})
 
