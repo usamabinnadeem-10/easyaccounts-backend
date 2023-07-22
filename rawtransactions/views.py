@@ -46,11 +46,6 @@ class CreateRawProduct(RawProductQuery, generics.CreateAPIView):
 class ListRawProducts(RawProductQuery, generics.ListAPIView):
     serializer_class = RawProductSerializer
     filter_backends = [DjangoFilterBackend]
-    filter_fields = {
-        "name": ["contains"],
-        "type": ["exact"],
-        "person": ["exact"],
-    }
 
 
 class CreateRawTransaction(RawTransactionQuery, generics.CreateAPIView):
@@ -128,6 +123,8 @@ class ViewAllStock(generics.ListAPIView):
         quantity__lte = qps.pop("quantity__lte", None)
         expected_gazaana__gte = qps.pop("expected_gazaana__gte", None)
         expected_gazaana__lte = qps.pop("expected_gazaana__lte", None)
+        product_glue = qps.pop("product_glue", None)
+        product_type = qps.pop("product_type", None)
         if lot_number:
             stock = filter(lambda s: s["lot_number"] == lot_number, stock)
         if raw_product:
@@ -150,6 +147,10 @@ class ViewAllStock(generics.ListAPIView):
             stock = filter(
                 lambda s: s["expected_gazaana"] <= expected_gazaana__lte, stock
             )
+        if product_glue:
+            stock = filter(lambda s: s["product_glue"] == product_glue, stock)
+        if product_type:
+            stock = filter(lambda s: s["product_type"] == product_type, stock)
 
         stock = list(filter(lambda s: s["quantity"] > 0, stock))
 

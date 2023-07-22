@@ -13,6 +13,6 @@ class RawDebitTypes(models.TextChoices):
 
 
 class RawProductGlueTypes(models.TextChoices):
-    LG = "low_glue", "Low Glue"
-    HG = "high_glue", "High Glue"
-    CNT = "centrifugal", "Centrifugal"
+    LG = "LG", "Low Glue"
+    HG = "HG", "High Glue"
+    CNT = "CFG", "Centrifugal"

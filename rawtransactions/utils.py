@@ -28,6 +28,8 @@ def get_all_raw_stock(branch):
                 "actual_gazaana",
                 "expected_gazaana",
                 "lot_number__raw_product",
+                "lot_number__product_glue",
+                "lot_number__product_type",
                 "warehouse",
                 # "formula",
             )
@@ -42,6 +44,8 @@ def get_all_raw_stock(branch):
                 "lot_number": obj["lot_number__lot_number"],
                 "nature": "C",
                 "raw_product": obj["lot_number__raw_product"],
+                "product_glue": obj["lot_number__product_glue"],
+                "product_type": obj["lot_number__product_type"],
             },
             balance_lots,
         )
@@ -54,6 +58,8 @@ def get_all_raw_stock(branch):
                 "actual_gazaana",
                 "expected_gazaana",
                 "return_lot__raw_product",
+                "return_lot__product_glue",
+                "return_lot__product_type",
                 "warehouse",
                 "return_lot__bill_number__debit_type",
                 # "nature",
@@ -73,6 +79,8 @@ def get_all_raw_stock(branch):
                 else "D",
                 "lot_number": obj["return_lot__lot_number"],
                 "raw_product": obj["return_lot__raw_product"],
+                "product_glue": obj["return_lot__product_glue"],
+                "product_type": obj["return_lot__product_type"],
             },
             balance_debits,
         )
@@ -85,6 +93,8 @@ def get_all_raw_stock(branch):
                 "actual_gazaana",
                 "expected_gazaana",
                 "raw_transfer_lot__raw_product",
+                "raw_transfer_lot__product_glue",
+                "raw_transfer_lot__product_type",
                 "warehouse",
                 "transferring_warehouse",
             )
@@ -102,6 +112,8 @@ def get_all_raw_stock(branch):
                 "nature": "D",
                 "lot_number": obj["raw_transfer_lot__lot_number"],
                 "raw_product": obj["raw_transfer_lot__raw_product"],
+                "product_glue": obj["raw_transfer_lot__product_glue"],
+                "product_type": obj["raw_transfer_lot__product_type"],
             },
             balance_transfers,
         )
@@ -113,41 +125,44 @@ def get_all_raw_stock(branch):
                 "nature": "C",
                 "lot_number": obj["raw_transfer_lot__lot_number"],
                 "raw_product": obj["raw_transfer_lot__raw_product"],
+                "product_glue": obj["raw_transfer_lot__product_glue"],
+                "product_type": obj["raw_transfer_lot__product_type"],
             },
             balance_transfers,
         )
     )
     balance_transfers = [*balance_transfers_debits, *balance_transfers_credits]
 
-    balance_dyings = list(
-        (
-            DyingIssueDetail.objects.values(
-                "dying_lot_number__lot_number__raw_product",
-                "dying_lot_number__lot_number",
-                "actual_gazaana",
-                "expected_gazaana",
-                "formula",
-                "warehouse",
-            )
-            .filter(
-                dying_lot_number__dying_lot__dying_unit__branch=branch,
-                dying_lot_number__lot_number__issued=False,
-            )
-            .annotate(quantity=Sum("quantity"))
-        )
-    )
-    balance_dyings = list(
-        map(
-            lambda obj: {
-                **obj,
-                "nature": "D",
-                "raw_product": obj["dying_lot_number__lot_number__raw_product"],
-                "lot_number": obj["dying_lot_number__lot_number"],
-            },
-            balance_dyings,
-        )
-    )
-    return [*balance_lots, *balance_debits, *balance_dyings, *balance_transfers]
+    # balance_dyings = list(
+    #     (
+    #         DyingIssueDetail.objects.values(
+    #             "dying_lot_number__lot_number__raw_product",
+    #             "dying_lot_number__lot_number",
+    #             "actual_gazaana",
+    #             "expected_gazaana",
+    #             "formula",
+    #             "warehouse",
+    #         )
+    #         .filter(
+    #             dying_lot_number__dying_lot__dying_unit__branch=branch,
+    #             dying_lot_number__lot_number__issued=False,
+    #         )
+    #         .annotate(quantity=Sum("quantity"))
+    #     )
+    # )
+    # balance_dyings = list(
+    #     map(
+    #         lambda obj: {
+    #             **obj,
+    #             "nature": "D",
+    #             "raw_product": obj["dying_lot_number__lot_number__raw_product"],
+    #             "lot_number": obj["dying_lot_number__lot_number"],
+    #         },
+    #         balance_dyings,
+    #     )
+    # )
+    return [*balance_lots, *balance_debits, *balance_transfers]
+    # return [*balance_lots, *balance_debits, *balance_dyings, *balance_transfers]
 
 
 def get_current_stock_position(branch):
@@ -160,6 +175,8 @@ def get_current_stock_position(branch):
         "raw_product",
         "warehouse",
         "lot_number",
+        "product_glue",
+        "product_type",
     ]
     sum_keys = ["quantity"]
 

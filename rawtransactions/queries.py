@@ -10,7 +10,7 @@ from .models import (
 
 class RawProductQuery:
     def get_queryset(self):
-        return RawProduct.objects.filter(person__branch=self.request.branch)
+        return RawProduct.objects.filter(branch=self.request.branch)
 
 
 class RawTransactionQuery:

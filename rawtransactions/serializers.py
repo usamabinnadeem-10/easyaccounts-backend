@@ -42,18 +42,6 @@ class RawTransactionValidationHelper:
                         status.HTTP_400_BAD_REQUEST,
                     )
 
-    def validate_person_and_raw_product(self, transaction_data):
-        """validates if raw product belongs to person for raw transaction"""
-        person = transaction_data["person"]
-        lots = transaction_data["lots"]
-        for index, lot in enumerate(lots):
-            raw_product = lot["raw_product"]
-            if raw_product.person.id != person.id:
-                raise serializers.ValidationError(
-                    f"This product does not belong to supplier lot # {index + 1}",
-                    status.HTTP_400_BAD_REQUEST,
-                )
-
 
 class RawLotNumberAndIdSerializer(serializers.ModelSerializer):
     class Meta:
@@ -95,23 +83,14 @@ class RawProductSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-            "person",
-            "type",
         ]
         read_only_fields = ["id"]
 
     def validate(self, data):
-        if data["person"].person_type == PersonChoices.CUSTOMER:
-            raise serializers.ValidationError(
-                "Customer can not have a raw product",
-                status.HTTP_400_BAD_REQUEST,
-            )
         branch = self.context["request"].branch
         if RawProduct.objects.filter(
             name=data["name"],
-            person=data["person"],
-            type=data["type"],
-            person__branch=branch,
+            branch=branch,
         ).exists():
             raise serializers.ValidationError(
                 "This product already exists",
@@ -120,7 +99,11 @@ class RawProductSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        return super().create(validated_data)
+        branch = self.context["request"].branch
+        product = RawProduct.objects.create(
+            name=validated_data.get("name"), branch=branch
+        )
+        return product
 
 
 """Lot Detail Serializer - Common"""
@@ -160,6 +143,8 @@ class RawTransactionLotSerializer(serializers.ModelSerializer):
             "lot_detail",
             "dying_unit",
             "raw_product",
+            "product_glue",
+            "product_type",
             "detail",
             "dying_number",
             "warehouse_number",
@@ -185,11 +170,9 @@ class CreateRawTransactionSerializer(
 
     def validate(self, data):
         self.validate_warehouse_and_lot_issued(data)
-        self.validate_person_and_raw_product(data)
         return data
 
     def create(self, validated_data):
-        print(validated_data)
         branch = self.context["request"].branch
         user = self.context["request"].user
         raw_transaction = RawTransaction.make_raw_transaction(
@@ -221,6 +204,8 @@ class UpdateRawTransactionSerializer(
                 "lot_detail",
                 "dying_unit",
                 "raw_product",
+                "product_glue",
+                "product_type",
                 "detail",
                 "dying_number",
                 "warehouse_number",
@@ -239,7 +224,6 @@ class UpdateRawTransactionSerializer(
 
     def validate(self, data):
         self.validate_warehouse_and_lot_issued(data)
-        self.validate_person_and_raw_product(data)
         return data
 
     def update(self, instance, validated_data):
@@ -271,6 +255,8 @@ class ListRawTransactionSerializer(serializers.ModelSerializer):
                 "lot_number",
                 "issued",
                 "raw_product",
+                "product_glue",
+                "product_type",
                 "lot_detail",
                 "detail",
                 "warehouse_number",
@@ -409,7 +395,14 @@ class ListRawDebitTransactionSerializer(serializers.ModelSerializer):
 
         class Meta:
             model = RawDebitLot
-            fields = ["id", "lot_number", "lot_detail", "raw_product"]
+            fields = [
+                "id",
+                "lot_number",
+                "lot_detail",
+                "raw_product",
+                "product_glue",
+                "product_type",
+            ]
 
     lots = DebitLotSerializer(many=True)
 

@@ -5,7 +5,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.shortcuts import get_object_or_404
 
-from authentication.models import Branch, BranchAwareModel, UserAwareModel
+from authentication.models import ID, Branch, BranchAwareModel, UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
 from essentials.models import Person, Warehouse
@@ -40,10 +40,11 @@ class AbstractRawLotDetail(ID):
         abstract = True
 
 
-class RawProduct(BranchAwareModel):
+class RawProduct(ID):
     """Raw product"""
 
     name = models.CharField(max_length=100)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, null=True, default=None)
 
     def __str__(self):
         return f"{self.name}"
@@ -105,6 +106,8 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                 raw_transaction=transaction,
                 issued=lot["issued"],
                 raw_product=lot["raw_product"],
+                product_glue=lot["product_glue"],
+                product_type=lot["product_type"],
                 lot_number=old_lot_number
                 or RawTransactionLot.get_next_serial(
                     "lot_number", raw_transaction__person__branch=branch
@@ -209,6 +212,8 @@ class RawDebit(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                 lot_number=lot["lot_number"],
                 bill_number=debit_instance,
                 raw_product=raw_transaction_lot.raw_product,
+                product_glue=raw_transaction_lot.product_glue,
+                product_type=raw_transaction_lot.product_type,
             )
             debit_lots.append(raw_debit_lot_instance)
 
@@ -284,6 +289,8 @@ class RawTransfer(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                 lot_number=lot["lot_number"],
                 raw_transfer=transfer_instance,
                 raw_product=raw_transaction_lot.raw_product,
+                product_glue=raw_transaction_lot.product_glue,
+                product_type=raw_transaction_lot.product_type,
             )
             transfer_lots.append(raw_transfer_lot_obj)
             for detail in lot["detail"]:
