@@ -9,7 +9,6 @@ from rest_framework.generics import (
 from rest_framework.response import Response
 
 from authentication.mixins import (
-    IsAdminOrAccountantMixin,
     IsAdminOrAccountantOrHeadAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminPermissionMixin,
@@ -85,7 +84,9 @@ class DeletePaymentView(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class AddImageView(PaymentImageQuery, IsAdminOrAccountantMixin, CreateAPIView):
+class AddImageView(
+    PaymentImageQuery, IsAdminOrAccountantOrHeadAccountantMixin, CreateAPIView
+):
     """add images only"""
 
     serializer_class = UploadImageSerializer
