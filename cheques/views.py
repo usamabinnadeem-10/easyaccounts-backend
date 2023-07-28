@@ -13,8 +13,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authentication.mixins import (
-    IsAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantMixin,
+    IsAdminOrAccountantOrHeadAccountantMixin,
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminPermissionMixin,
 )
 from essentials.models import AccountType
@@ -54,7 +54,7 @@ def return_error(error_msg):
 
 
 class CreateExternalChequeEntryView(
-    IsAdminOrAccountantMixin, ExternalChequeQuery, CreateAPIView
+    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, CreateAPIView
 ):
     """create external cheque"""
 
@@ -62,7 +62,7 @@ class CreateExternalChequeEntryView(
 
 
 class CreateExternalChequeHistoryView(
-    IsAdminOrAccountantMixin, ExternalChequeHistoryQuery, CreateAPIView
+    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeHistoryQuery, CreateAPIView
 ):
     """create external cheque's history (does not allow cheque account)"""
 
@@ -70,7 +70,7 @@ class CreateExternalChequeHistoryView(
 
 
 class CreateExternalChequeHistoryWithChequeView(
-    IsAdminOrAccountantMixin, ExternalChequeHistoryQuery, CreateAPIView
+    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeHistoryQuery, CreateAPIView
 ):
     """create external cheque history (only cheque account allowed)"""
 
@@ -78,7 +78,7 @@ class CreateExternalChequeHistoryWithChequeView(
 
 
 class GetExternalChequeHistory(
-    IsAdminOrReadAdminOrAccountantMixin, ExternalChequeQuery, ListAPIView
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, ListAPIView
 ):
     """get detailed history of external cheque"""
 
@@ -98,7 +98,7 @@ class GetExternalChequeHistory(
 
 
 class ListExternalCheques(
-    IsAdminOrReadAdminOrAccountantMixin, ExternalChequeQuery, ListAPIView
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, ListAPIView
 ):
     """list and filter external cheques"""
 
@@ -133,7 +133,7 @@ def check_cheque_errors(cheque):
         return return_error("Cheque not found")
 
 
-class PassExternalChequeView(IsAdminOrAccountantMixin, APIView):
+class PassExternalChequeView(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
     """pass external cheque"""
 
     def post(self, request):
@@ -218,7 +218,7 @@ class PassExternalChequeView(IsAdminOrAccountantMixin, APIView):
 
 
 class TransferExternalChequeView(
-    IsAdminOrAccountantMixin, ExternalChequeTransferQuery, CreateAPIView
+    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeTransferQuery, CreateAPIView
 ):
     """transfer external cheque of a party"""
 
@@ -226,14 +226,14 @@ class TransferExternalChequeView(
 
 
 class CompleteExternalTransferChequeView(
-    IsAdminOrAccountantMixin, ExternalChequeQuery, UpdateAPIView
+    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, UpdateAPIView
 ):
     """transfer external cheque of a party"""
 
     serializer_class = CompleteExternalTransferChequeSerializer
 
 
-class ReturnExternalTransferredCheque(IsAdminOrAccountantMixin, APIView):
+class ReturnExternalTransferredCheque(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
     """return the external transferred cheque"""
 
     def post(self, request):
@@ -278,7 +278,7 @@ class ReturnExternalTransferredCheque(IsAdminOrAccountantMixin, APIView):
         )
 
 
-class ReturnExternalCheque(IsAdminOrAccountantMixin, APIView):
+class ReturnExternalCheque(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
     """return external cheque from the person it came from"""
 
     def post(self, request):
@@ -317,7 +317,9 @@ class ReturnExternalCheque(IsAdminOrAccountantMixin, APIView):
         )
 
 
-class CompleteExternalChequeWithHistory(IsAdminOrAccountantMixin, APIView):
+class CompleteExternalChequeWithHistory(
+    IsAdminOrAccountantOrHeadAccountantMixin, APIView
+):
     """complete external cheque that has a history"""
 
     def post(self, request):
@@ -407,7 +409,7 @@ class CancelPersonalChequeView(
 
 
 class ListPersonalChequeView(
-    IsAdminOrReadAdminOrAccountantMixin, PersonalChequeQuery, ListAPIView
+    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, PersonalChequeQuery, ListAPIView
 ):
     """list and filter personal cheques"""
 
