@@ -2,7 +2,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
 
 from authentication.mixins import (
-    IsAdminOrAccountantMixin,
     IsAdminOrAccountantOrHeadAccountantMixin,
     IsAdminPermissionMixin,
 )
@@ -50,7 +49,7 @@ class ListExpenseDetail(ExpenseDetailQuery, generics.ListAPIView):
 
 
 class CreateExpenseDetail(
-    ExpenseDetailQuery, IsAdminOrAccountantMixin, generics.CreateAPIView
+    ExpenseDetailQuery, IsAdminOrAccountantOrHeadAccountantMixin, generics.CreateAPIView
 ):
     """
     get expense details with optional filters
