@@ -14,29 +14,61 @@ class ValidateSerial:
     """Validates if manual serial is unique for branch"""
 
     def validate_serial(self, data):
-        if data["manual_serial"]:
-            if Transaction.objects.filter(
-                manual_serial=data["manual_serial"],
-                person__branch=self.context["request"].branch,
-                serial_type=data["serial_type"],
-            ).exists():
-                if data["is_cancelled"]:
+        if data["serial_type"] in [
+            TransactionSerialTypes.SUP,
+            TransactionSerialTypes.MWS,
+        ]:
+            if data["manual_serial"]:
+                if Transaction.objects.filter(
+                    manual_serial=data["manual_serial"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                    person=data["person"],
+                ).exists():
+                    if data["is_cancelled"]:
+                        raise serializers.ValidationError(
+                            "This serial is already cancelled",
+                            status.HTTP_400_BAD_REQUEST,
+                        )
                     raise serializers.ValidationError(
-                        "This serial is already cancelled", status.HTTP_400_BAD_REQUEST
+                        "This serial already exists", status.HTTP_400_BAD_REQUEST
                     )
-                raise serializers.ValidationError(
-                    "This serial already exists", status.HTTP_400_BAD_REQUEST
-                )
-        if data["wasooli_number"]:
-            if Transaction.objects.filter(
-                wasooli_number=data["wasooli_number"],
-                person__branch=self.context["request"].branch,
-                serial_type=data["serial_type"],
-            ).exists():
-                raise serializers.ValidationError(
-                    "This wasooli number already exists", status.HTTP_400_BAD_REQUEST
-                )
-        return data
+            if data["wasooli_number"]:
+                if Transaction.objects.filter(
+                    wasooli_number=data["wasooli_number"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                    person=data["person"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists", status.HTTP_400_BAD_REQUEST
+                    )
+            return data
+        else:
+            if data["manual_serial"]:
+                if Transaction.objects.filter(
+                    manual_serial=data["manual_serial"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                ).exists():
+                    if data["is_cancelled"]:
+                        raise serializers.ValidationError(
+                            "This serial is already cancelled",
+                            status.HTTP_400_BAD_REQUEST,
+                        )
+                    raise serializers.ValidationError(
+                        "This serial already exists", status.HTTP_400_BAD_REQUEST
+                    )
+            if data["wasooli_number"]:
+                if Transaction.objects.filter(
+                    wasooli_number=data["wasooli_number"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists", status.HTTP_400_BAD_REQUEST
+                    )
+            return data
 
 
 class ValidateTotal:
