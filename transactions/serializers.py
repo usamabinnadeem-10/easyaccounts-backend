@@ -269,24 +269,58 @@ class UpdateTransactionSerializer(
         # transaction_detail = validated_data.pop("transaction_detail")
         # check if user changed the book number
         # if he did, then ensure it does not exist already
-        if instance.manual_serial != validated_data["manual_serial"]:
-            if Transaction.objects.filter(
-                manual_serial=validated_data["manual_serial"],
-                person__branch=request.branch,
-            ).exists():
-                raise serializers.ValidationError(
-                    "This serial already exists",
-                    status.HTTP_400_BAD_REQUEST,
-                )
-        if instance.wasooli_number != validated_data["wasooli_number"]:
-            if Transaction.objects.filter(
-                wasooli_number=validated_data["wasooli_number"],
-                person__branch=request.branch,
-            ).exists():
-                raise serializers.ValidationError(
-                    "This wasooli number already exists",
-                    status.HTTP_400_BAD_REQUEST,
-                )
+        if (
+            instance.manual_serial != validated_data["manual_serial"]
+            and validated_data["manual_serial"]
+        ):
+            if validated_data["serial_type"] in [
+                TransactionSerialTypes.SUP,
+                TransactionSerialTypes.MWS,
+            ]:
+                if Transaction.objects.filter(
+                    manual_serial=validated_data["manual_serial"],
+                    person__branch=request.branch,
+                    person=validated_data["person"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This serial already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                if Transaction.objects.filter(
+                    manual_serial=validated_data["manual_serial"],
+                    person__branch=request.branch,
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This serial already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+        if (
+            instance.wasooli_number != validated_data["wasooli_number"]
+            and validated_data["wasooli_number"]
+        ):
+            if validated_data["serial_type"] in [
+                TransactionSerialTypes.SUP,
+                TransactionSerialTypes.MWS,
+            ]:
+                if Transaction.objects.filter(
+                    wasooli_number=validated_data["wasooli_number"],
+                    person__branch=request.branch,
+                    person=validated_data["person"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                if Transaction.objects.filter(
+                    wasooli_number=validated_data["wasooli_number"],
+                    person__branch=request.branch,
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
         transaction = Transaction.make_transaction(validated_data, request, instance)
 
         Log.create_log(
