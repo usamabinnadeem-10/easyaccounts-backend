@@ -16,6 +16,42 @@ class IsLoggedIn(permissions.BasePermission):
             return False
         request.branch = user_branch.branch
         request.role = user_branch.role
+        request.permissions = user_branch.permissions
+        return True
+
+
+class ValidatePermissions(permissions.BasePermission):
+    def has_permission(self, request, view):
+        target_permissions = view.permissions if hasattr(view, "permissions") else None
+        user_permissions = request.permissions
+
+        if target_permissions:
+            if type(target_permissions) == list:
+                permitted = True
+                for permission in target_permissions:
+                    if not (permission in user_permissions):
+                        permitted = False
+                        break
+                return permitted
+
+            elif type(target_permissions) == dict:
+                or_permissions = target_permissions.get("or", [])
+                and_permissions = target_permissions.get("and", [])
+
+                or_allowed = True if len(or_permissions) == 0 else False
+                and_allowed = True
+
+                for or_perm in or_permissions:
+                    if or_perm in user_permissions:
+                        or_allowed = True
+                        break
+
+                for and_perm in and_permissions:
+                    if not (and_perm in user_permissions):
+                        and_allowed = False
+                        break
+
+                return or_allowed and and_allowed
         return True
 
 

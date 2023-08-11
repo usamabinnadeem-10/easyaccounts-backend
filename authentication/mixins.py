@@ -10,6 +10,7 @@ from .permissions import (
     IsPurchaser,
     IsSaleman,
     IsStockist,
+    ValidatePermissions,
 )
 
 
@@ -25,6 +26,10 @@ class HasBranchPermissionMixin:
     """To check if the user is authenticated and is a member of at least one branch"""
 
     permission_classes = [IsAuthenticated, IsBranchMember]
+
+
+class CheckPermissionsMixin:
+    permission_classes = [IsAuthenticated, IsLoggedIn, ValidatePermissions]
 
 
 class IsAdminPermissionMixin:

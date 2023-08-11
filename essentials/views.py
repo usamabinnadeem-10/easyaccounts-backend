@@ -9,8 +9,10 @@ from rest_framework.generics import CreateAPIView, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+import authentication.constants as PERMISSIONS
 from authentication.choices import RoleChoices
 from authentication.mixins import (
+    CheckPermissionsMixin,
     IsAdminOrReadAdminOrAccountantMixin,
     IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
     IsAdminPermissionMixin,
@@ -52,11 +54,12 @@ from .utils import (
 )
 
 
-class CreatePerson(PersonQuery, IsAdminPermissionMixin, CreateAPIView):
+class CreatePerson(PersonQuery, CheckPermissionsMixin, CreateAPIView):
     """
     create person
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_PERSON]
     serializer_class = PersonSerializer
 
 
