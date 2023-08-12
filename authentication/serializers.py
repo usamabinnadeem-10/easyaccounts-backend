@@ -1,8 +1,9 @@
 from django.contrib.auth.models import User
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 
 from .models import UserBranchRelation
+from .utils import validate_if_permissions_exist
 
 
 class UserBranchSerializer(serializers.ModelSerializer):
@@ -51,7 +52,54 @@ class LogoutSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username")
+
     class Meta:
-        model = User
-        fields = ["id", "username", "first_name", "last_name"]
-        read_only_fields = ["id", "username", "first_name", "last_name"]
+        model = UserBranchRelation
+        fields = ["id", "username", "role", "permissions", "is_active", "is_logged_in"]
+        read_only_fields = [
+            "id",
+            "username",
+            "role",
+            "permissions",
+            "is_active",
+            "is_logged_in",
+        ]
+        depth = 1
+
+
+class EditUserPermissionsForBranchSerializer(serializers.ModelSerializer):
+    new_permissions = serializers.ListField(write_only=True)
+    # new_is_active = serializers.BooleanField(write_only=True)
+
+    class Meta:
+        model = UserBranchRelation
+        fields = [
+            "id",
+            "role",
+            "permissions",
+            "new_permissions",
+            "is_active",
+            # "new_is_active",
+            "is_logged_in",
+        ]
+        read_only_fields = [
+            "id",
+            "role",
+            "permissions",
+            "is_active",
+            "is_logged_in",
+        ]
+        depth = 1
+
+    def validate(self, data):
+        if validate_if_permissions_exist(data["new_permissions"]):
+            return data
+        raise serializers.ValidationError(
+            "No such permissions exist", status.HTTP_400_BAD_REQUEST
+        )
+
+    def update(self, instance, validated_data):
+        instance.permissions = validated_data["new_permissions"]
+        instance.save()
+        return instance

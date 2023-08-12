@@ -1,8 +1,9 @@
+from rest_framework import serializers, status
+
 from cheques.utils import get_cheque_account
 from ledgers.models import LedgerAndPayment
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
-from rest_framework import serializers, status
 
 from .models import Payment, PaymentAndImage, PaymentImage
 
@@ -195,7 +196,7 @@ class PaymentSerializer(
 class PaymentAndImageListSerializer(serializers.ModelSerializer):
     """Serialize payments and attach all images of the payment"""
 
-    image_urls = serializers.SerializerMethodField()
+    # image_urls = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
@@ -207,7 +208,7 @@ class PaymentAndImageListSerializer(serializers.ModelSerializer):
             "person",
             "serial",
             "detail",
-            "image_urls",
+            # "image_urls",
             "amount",
         ]
 

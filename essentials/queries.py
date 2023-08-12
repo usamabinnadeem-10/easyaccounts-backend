@@ -12,7 +12,9 @@ from .models import (
 
 class PersonQuery:
     def get_queryset(self):
-        return Person.objects.filter(branch=self.request.branch, **filter)
+        return Person.objects.filter(
+            branch=self.request.branch,
+        )
 
 
 class WarehouseQuery:

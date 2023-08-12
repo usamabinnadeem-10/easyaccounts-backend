@@ -83,7 +83,7 @@ class DeletePaymentView(PaymentQuery, CheckPermissionsMixin, DestroyAPIView):
 class AddImageView(PaymentImageQuery, CheckPermissionsMixin, CreateAPIView):
     """add images only"""
 
-    permissions = [PERMISSIONS.CAN_CREATE_PAYMENT]
+    # permissions = [PERMISSIONS.CAN_CREATE_PAYMENT]
     serializer_class = UploadImageSerializer
 
 

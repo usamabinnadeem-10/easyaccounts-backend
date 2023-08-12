@@ -19,4 +19,6 @@ class UserQuery:
     """this query returns all the users of the branch"""
 
     def get_queryset(self):
-        return UserBranchRelation.objects.filter(branch=self.request.branch)
+        return UserBranchRelation.objects.filter(branch=self.request.branch).order_by(
+            "user"
+        )
