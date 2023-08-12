@@ -1,5 +1,4 @@
 import authentication.constants as PERMISSIONS
-from authentication.choices import RoleChoices
 from core.utils import check_permission
 from essentials.choices import PersonChoices
 

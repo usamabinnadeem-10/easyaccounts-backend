@@ -492,7 +492,7 @@ class DetailedStockView(CheckPermissionsMixin, APIView):
         )
 
 
-class ViewAllStock(TransactionQuery, generics.ListAPIView):
+class ViewAllStock(TransactionQuery, CheckPermissionsMixin, generics.ListAPIView):
     permissions = [PERMISSIONS.CAN_VIEW_STOCK]
     serializer_class = GetAllStockSerializer
     filter_backends = [DjangoFilterBackend]

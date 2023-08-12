@@ -77,7 +77,7 @@ class CreateWarehouse(WarehouseQuery, CheckPermissionsMixin, CreateAPIView):
     serializer_class = WarehouseSerializer
 
 
-class ListWarehouse(WarehouseQuery, ListAPIView):
+class ListWarehouse(WarehouseQuery, CheckPermissionsMixin, ListAPIView):
     """
     list warehouses
     """
@@ -95,7 +95,7 @@ class CreateProduct(ProductQuery, CheckPermissionsMixin, CreateAPIView):
     serializer_class = ProductSerializer
 
 
-class ListProduct(ProductQuery, ListAPIView):
+class ListProduct(ProductQuery, CheckPermissionsMixin, ListAPIView):
     """
     list products
     """
@@ -355,7 +355,7 @@ class GetStockQuantity(StockQuery, CheckPermissionsMixin, ListAPIView):
         return queryset
 
 
-class GetAccountHistory(APIView, CheckPermissionsMixin, PaginationHandlerMixin):
+class GetAccountHistory(CheckPermissionsMixin, APIView, PaginationHandlerMixin):
     """Get account history for a specific account type"""
 
     permissions = [PERMISSIONS.CAN_VIEW_ACCOUNT_HISTORY]

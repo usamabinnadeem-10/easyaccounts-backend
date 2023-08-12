@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import permissions
 
 from .choices import RoleChoices
@@ -22,7 +23,9 @@ class IsLoggedIn(permissions.BasePermission):
 
 class ValidatePermissions(permissions.BasePermission):
     def has_permission(self, request, view):
-        return True
+        if settings.CUSTOM_SETTINGS["ALLOW_ADMIN_ALL_PERMISSIONS"]:
+            return True
+
         target_permissions = view.permissions if hasattr(view, "permissions") else None
         user_permissions = request.permissions
 
