@@ -5,15 +5,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+import authentication.constants as PERMISSIONS
 from assets.models import Asset
-from authentication.choices import RoleChoices
-from authentication.mixins import (
-    IsAdminOrReadAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminOrReadAdminOrHeadAccountantPermissionMixin,
-    IsAdminOrReadAdminPermissionMixin,
-)
-from core.utils import convert_date_to_datetime
+from authentication.mixins import CheckPermissionsMixin
+from core.utils import check_permission, convert_date_to_datetime
 from essentials.models import OpeningSaleData, Product
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
@@ -21,8 +16,10 @@ from transactions.choices import TransactionSerialTypes
 from transactions.models import Transaction, TransactionDetail
 
 
-class BalanceSheet(IsAdminOrReadAdminPermissionMixin, APIView):
+class BalanceSheet(CheckPermissionsMixin, APIView):
     """Balance sheet with date"""
+
+    permissions = [PERMISSIONS.CAN_VIEW_BALANCE_SHEET]
 
     def get(self, request):
         branch = request.branch
@@ -61,8 +58,10 @@ class BalanceSheet(IsAdminOrReadAdminPermissionMixin, APIView):
         )
 
 
-class IncomeStatement(IsAdminOrReadAdminPermissionMixin, APIView):
+class IncomeStatement(CheckPermissionsMixin, APIView):
     """Income statement with start and end date"""
+
+    permissions = [PERMISSIONS.CAN_VIEW_INCOME_STATEMENT]
 
     def get(self, request):
         branch = request.branch
@@ -100,10 +99,14 @@ class IncomeStatement(IsAdminOrReadAdminPermissionMixin, APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class GetAllBalances(IsAdminOrReadAdminOrHeadAccountantPermissionMixin, APIView):
+class GetAllBalances(CheckPermissionsMixin, APIView):
     """
     Get balances with filters
     """
+
+    permissions = {
+        "or": [PERMISSIONS.CAN_VIEW_PARTIAL_BALANCES, PERMISSIONS.CAN_VIEW_FULL_BALANCES]
+    }
 
     def get(self, request):
         filters = {"person__branch": request.branch}
@@ -116,7 +119,7 @@ class GetAllBalances(IsAdminOrReadAdminOrHeadAccountantPermissionMixin, APIView)
             filters.update({"person": request.query_params.get("person_id")})
         if request.query_params.get("date__lte"):
             filters.update({"date__lte": request.query_params.get("date__lte")})
-        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+        if not check_permission(request, PERMISSIONS.CAN_VIEW_FULL_BALANCES):
             filters.update({"person__person_type": "C"})
 
         balances = (
@@ -175,8 +178,10 @@ class GetAllBalances(IsAdminOrReadAdminOrHeadAccountantPermissionMixin, APIView)
         return Response(data, status=status.HTTP_200_OK)
 
 
-class GetLowStock(APIView):
+class GetLowStock(CheckPermissionsMixin, APIView):
     """Low stock with product category and warehouse filter"""
+
+    permissions = [PERMISSIONS.CAN_VIEW_LOW_STOCK]
 
     def get(self, request, *args, **kwargs):
         branch = request.branch
@@ -264,11 +269,13 @@ class GetLowStock(APIView):
         return Response([*all_stock, *additional_stock], status=status.HTTP_200_OK)
 
 
-class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
+class ProductPerformanceHistory(CheckPermissionsMixin, APIView):
     """
     statistics for a particular product or all products
     optional customer selected for customer purchase history
     """
+
+    permissions = [PERMISSIONS.CAN_VIEW_PRODUCT_PERFORMANCE]
 
     def get(self, request):
         filters = {
@@ -344,7 +351,9 @@ class ProductPerformanceHistory(IsAdminOrReadAdminPermissionMixin, APIView):
         )
 
 
-class RevenueByPeriod(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
+class RevenueByPeriod(CheckPermissionsMixin, APIView):
+    permissions = [PERMISSIONS.CAN_VIEW_REVENUE_BY_PERIOD]
+
     def get(self, request):
         period = request.query_params.get("period") or "day"
         data = TransactionDetail.calculate_revenue_of_period(

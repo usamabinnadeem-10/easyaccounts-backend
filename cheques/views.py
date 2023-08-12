@@ -12,11 +12,8 @@ from rest_framework.generics import (
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from authentication.mixins import (
-    IsAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminPermissionMixin,
-)
+import authentication.constants as PERMISSIONS
+from authentication.mixins import CheckPermissionsMixin
 from essentials.models import AccountType
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
@@ -54,34 +51,36 @@ def return_error(error_msg):
 
 
 class CreateExternalChequeEntryView(
-    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, CreateAPIView
+    CheckPermissionsMixin, ExternalChequeQuery, CreateAPIView
 ):
     """create external cheque"""
 
+    permissions = [PERMISSIONS.CAN_CREATE_EXTERNAL_CHEQUE]
     serializer_class = CreateExternalChequeEntrySerializer
 
 
 class CreateExternalChequeHistoryView(
-    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeHistoryQuery, CreateAPIView
+    CheckPermissionsMixin, ExternalChequeHistoryQuery, CreateAPIView
 ):
     """create external cheque's history (does not allow cheque account)"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
     serializer_class = ExternalChequeHistorySerializer
 
 
 class CreateExternalChequeHistoryWithChequeView(
-    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeHistoryQuery, CreateAPIView
+    CheckPermissionsMixin, ExternalChequeHistoryQuery, CreateAPIView
 ):
     """create external cheque history (only cheque account allowed)"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
     serializer_class = ExternalChequeHistoryWithChequeSerializer
 
 
-class GetExternalChequeHistory(
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, ListAPIView
-):
+class GetExternalChequeHistory(CheckPermissionsMixin, ExternalChequeQuery, ListAPIView):
     """get detailed history of external cheque"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
     serializer_class = ListExternalChequeHistorySerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -97,11 +96,10 @@ class GetExternalChequeHistory(
     }
 
 
-class ListExternalCheques(
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, ListAPIView
-):
+class ListExternalCheques(CheckPermissionsMixin, ExternalChequeQuery, ListAPIView):
     """list and filter external cheques"""
 
+    permissions = [PERMISSIONS.CAN_VIEW_EXTERNAL_CHEQUES]
     serializer_class = ExternalChequeSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -133,8 +131,10 @@ def check_cheque_errors(cheque):
         return return_error("Cheque not found")
 
 
-class PassExternalChequeView(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
+class PassExternalChequeView(CheckPermissionsMixin, APIView):
     """pass external cheque"""
+
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
 
     def post(self, request):
         cheque = None
@@ -218,23 +218,27 @@ class PassExternalChequeView(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
 
 
 class TransferExternalChequeView(
-    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeTransferQuery, CreateAPIView
+    CheckPermissionsMixin, ExternalChequeTransferQuery, CreateAPIView
 ):
     """transfer external cheque of a party"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
     serializer_class = TransferExternalChequeSerializer
 
 
 class CompleteExternalTransferChequeView(
-    IsAdminOrAccountantOrHeadAccountantMixin, ExternalChequeQuery, UpdateAPIView
+    CheckPermissionsMixin, ExternalChequeQuery, UpdateAPIView
 ):
     """transfer external cheque of a party"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
     serializer_class = CompleteExternalTransferChequeSerializer
 
 
-class ReturnExternalTransferredCheque(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
+class ReturnExternalTransferredCheque(CheckPermissionsMixin, APIView):
     """return the external transferred cheque"""
+
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
 
     def post(self, request):
         data = request.data
@@ -278,8 +282,10 @@ class ReturnExternalTransferredCheque(IsAdminOrAccountantOrHeadAccountantMixin, 
         )
 
 
-class ReturnExternalCheque(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
+class ReturnExternalCheque(CheckPermissionsMixin, APIView):
     """return external cheque from the person it came from"""
+
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
 
     def post(self, request):
         data = request.data
@@ -317,10 +323,10 @@ class ReturnExternalCheque(IsAdminOrAccountantOrHeadAccountantMixin, APIView):
         )
 
 
-class CompleteExternalChequeWithHistory(
-    IsAdminOrAccountantOrHeadAccountantMixin, APIView
-):
+class CompleteExternalChequeWithHistory(CheckPermissionsMixin, APIView):
     """complete external cheque that has a history"""
+
+    permissions = [PERMISSIONS.CAN_MANAGE_EXTERNAL_CHEQUE]
 
     def post(self, request):
         data = request.data
@@ -366,53 +372,53 @@ class CompleteExternalChequeWithHistory(
         )
 
 
-class IssuePersonalChequeView(IsAdminPermissionMixin, PersonalChequeQuery, CreateAPIView):
+class IssuePersonalChequeView(CheckPermissionsMixin, PersonalChequeQuery, CreateAPIView):
     """Issue personal cheque view"""
 
+    permissions = [PERMISSIONS.CAN_CREATE_PERSONAL_CHEQUE]
     serializer_class = IssuePersonalChequeSerializer
 
 
-class ReturnPersonalChequeView(
-    IsAdminPermissionMixin, PersonalChequeQuery, CreateAPIView
-):
+class ReturnPersonalChequeView(CheckPermissionsMixin, PersonalChequeQuery, CreateAPIView):
     """return personal cheque from a person"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_PERSONAL_CHEQUE]
     serializer_class = ReturnPersonalChequeSerializer
 
 
 class ReIssuePersonalChequeFromReturnedView(
-    IsAdminPermissionMixin, PersonalChequeQuery, CreateAPIView
+    CheckPermissionsMixin, PersonalChequeQuery, CreateAPIView
 ):
     """issue a personal cheque which was returned by a person"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_PERSONAL_CHEQUE]
     serializer_class = ReIssuePersonalChequeFromReturnedSerializer
 
 
-class PassPersonalChequeView(IsAdminPermissionMixin, PersonalChequeQuery, UpdateAPIView):
+class PassPersonalChequeView(CheckPermissionsMixin, PersonalChequeQuery, UpdateAPIView):
     """set the status of cheque from pending to completed"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_PERSONAL_CHEQUE]
     serializer_class = PassPersonalChequeSerializer
 
     def get_queryset(self):
         return super().get_queryset().filter(status=PersonalChequeStatusChoices.PENDING)
 
 
-class CancelPersonalChequeView(
-    IsAdminPermissionMixin, PersonalChequeQuery, UpdateAPIView
-):
+class CancelPersonalChequeView(CheckPermissionsMixin, PersonalChequeQuery, UpdateAPIView):
     """set the status of cheque from returned to cancelled"""
 
+    permissions = [PERMISSIONS.CAN_MANAGE_PERSONAL_CHEQUE]
     serializer_class = CancelPersonalChequeSerializer
 
     def get_queryset(self):
         return super().get_queryset().filter(status=PersonalChequeStatusChoices.RETURNED)
 
 
-class ListPersonalChequeView(
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, PersonalChequeQuery, ListAPIView
-):
+class ListPersonalChequeView(CheckPermissionsMixin, PersonalChequeQuery, ListAPIView):
     """list and filter personal cheques"""
 
+    permissions = [PERMISSIONS.CAN_VIEW_PERSONAL_CHEQUES]
     serializer_class = IssuePersonalChequeSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -430,10 +436,11 @@ class ListPersonalChequeView(
 
 
 class DeleteExternalChequeView(
-    IsAdminPermissionMixin, ExternalChequeQuery, DestroyAPIView
+    CheckPermissionsMixin, ExternalChequeQuery, DestroyAPIView
 ):
     """delete external cheque"""
 
+    permissions = [PERMISSIONS.CAN_DELETE_EXTERNAL_CHEQUE]
     serializer_class = ExternalChequeSerializer
 
     def destroy(self, request, *args, **kwargs):
@@ -449,15 +456,15 @@ class DeleteExternalChequeView(
 
 
 class DeleteExternalChequeHistoryView(
-    IsAdminPermissionMixin, ExternalChequeHistoryQuery, DestroyAPIView
+    CheckPermissionsMixin, ExternalChequeHistoryQuery, DestroyAPIView
 ):
     """delete external cheque history"""
 
+    permissions = [PERMISSIONS.CAN_DELETE_EXTERNAL_CHEQUE_HISTORY]
     serializer_class = ExternalChequeHistorySerializer
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        print(instance)
         if instance.return_cheque:
             return Response(
                 {"error": "Please delete the cheque itself"},
@@ -468,10 +475,11 @@ class DeleteExternalChequeHistoryView(
 
 
 class DeletePersonalChequeView(
-    IsAdminPermissionMixin, PersonalChequeQuery, DestroyAPIView
+    CheckPermissionsMixin, PersonalChequeQuery, DestroyAPIView
 ):
     """delete personal cheque"""
 
+    permissions = [PERMISSIONS.CAN_DELETE_PERSONAL_CHEQUE]
     serializer_class = IssuePersonalChequeSerializer
 
     def destroy(self, request, *args, **kwargs):

@@ -10,13 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import authentication.constants as PERMISSIONS
-from authentication.choices import RoleChoices
-from authentication.mixins import (
-    CheckPermissionsMixin,
-    IsAdminOrReadAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminPermissionMixin,
-)
+from authentication.mixins import CheckPermissionsMixin
 from cheques.choices import ChequeStatusChoices, PersonalChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeHistory, PersonalCheque
 from cheques.serializers import (
@@ -63,23 +57,23 @@ class CreatePerson(PersonQuery, CheckPermissionsMixin, CreateAPIView):
     serializer_class = PersonSerializer
 
 
-class ListPerson(
-    PersonQuery, IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ListAPIView
-):
+class ListPerson(PersonQuery, CheckPermissionsMixin, ListAPIView):
     """
     list persons with the option of filtering by person_type
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_PERSONS]
     serializer_class = PersonSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["person_type"]
 
 
-class CreateWarehouse(WarehouseQuery, IsAdminPermissionMixin, CreateAPIView):
+class CreateWarehouse(WarehouseQuery, CheckPermissionsMixin, CreateAPIView):
     """
     create warehouse
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_WAREHOUSE]
     serializer_class = WarehouseSerializer
 
 
@@ -88,14 +82,16 @@ class ListWarehouse(WarehouseQuery, ListAPIView):
     list warehouses
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_WAREHOUSES]
     serializer_class = WarehouseSerializer
 
 
-class CreateProduct(ProductQuery, IsAdminPermissionMixin, CreateAPIView):
+class CreateProduct(ProductQuery, CheckPermissionsMixin, CreateAPIView):
     """
     create product
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_PRODUCT]
     serializer_class = ProductSerializer
 
 
@@ -104,61 +100,72 @@ class ListProduct(ProductQuery, ListAPIView):
     list products
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_PRODUCTS]
     serializer_class = ProductSerializer
 
 
-class CreateAccountType(AccountTypeQuery, IsAdminPermissionMixin, CreateAPIView):
+class CreateAccountType(AccountTypeQuery, CheckPermissionsMixin, CreateAPIView):
     """
     create account type
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_ACCOUNT_TYPE]
     serializer_class = AccountTypeSerializer
 
 
-class ListAccountType(AccountTypeQuery, ListAPIView):
+class ListAccountType(AccountTypeQuery, CheckPermissionsMixin, ListAPIView):
     """
     list account types
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_ACCOUNT_TYPES]
     serializer_class = AccountTypeSerializer
 
 
-class CreateArea(AreaQuery, CreateAPIView):
+class CreateArea(AreaQuery, CheckPermissionsMixin, CreateAPIView):
     """
     create area
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_AREA]
     serializer_class = AreaSerializer
 
 
-class ListArea(AreaQuery, ListAPIView):
+class ListArea(AreaQuery, CheckPermissionsMixin, ListAPIView):
     """
     list areas
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_AREAS]
     serializer_class = AreaSerializer
 
 
-class CreateProductCategory(ProductCategoryQuery, CreateAPIView):
+class CreateProductCategory(ProductCategoryQuery, CheckPermissionsMixin, CreateAPIView):
     """
     create product category
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_PRODUCT_CATEGORY]
     serializer_class = ProductCategorySerializer
 
 
-class ListProductCategory(ProductCategoryQuery, ListAPIView):
+class ListProductCategory(ProductCategoryQuery, CheckPermissionsMixin, ListAPIView):
     """
     list product categories
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_PRODUCT_CATEGORIES]
     serializer_class = ProductCategorySerializer
 
 
-class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
+class DayBook(CheckPermissionsMixin, APIView):
     """
     get daybook for today or with a specific date
     """
+
+    permissions = {
+        "or": [PERMISSIONS.CAN_VIEW_FULL_DAYBOOK, PERMISSIONS.CAN_VIEW_PARTIAL_DAYBOOK]
+    }
 
     def get(self, request):
         today = convert_date_to_datetime(self.request.query_params.get("date"))
@@ -169,12 +176,10 @@ class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
             "date__gte": today_start,
             "date__lte": today_end,
         }
+        has_full_daybook_access = PERMISSIONS.CAN_VIEW_FULL_DAYBOOK in request.permissions
         person_filter = {}
-        if request.role not in [
-            RoleChoices.ADMIN,
-            RoleChoices.ADMIN_VIEWER,
-            RoleChoices.HEAD_ACCOUNTANT,
-        ]:
+
+        if not has_full_daybook_access:
             person_filter = {"person__person_type": PersonChoices.CUSTOMER}
 
         cheque_account = get_cheque_account(request.branch).account
@@ -195,11 +200,7 @@ class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
         payments_serialized = PaymentAndImageListSerializer(payments, many=True).data
 
         person_filter_2 = {}
-        if request.role not in [
-            RoleChoices.ADMIN,
-            RoleChoices.ADMIN_VIEWER,
-            RoleChoices.HEAD_ACCOUNTANT,
-        ]:
+        if not has_full_daybook_access:
             person_filter_2 = {
                 "ledger_entry__person__person_type": PersonChoices.CUSTOMER
             }
@@ -334,7 +335,8 @@ class DayBook(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
         )
 
 
-class GetStockQuantity(StockQuery, ListAPIView):
+class GetStockQuantity(StockQuery, CheckPermissionsMixin, ListAPIView):
+    permissions = [PERMISSIONS.CAN_VIEW_STOCK]
     serializer_class = StockSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -353,11 +355,10 @@ class GetStockQuantity(StockQuery, ListAPIView):
         return queryset
 
 
-class GetAccountHistory(
-    APIView, IsAdminOrReadAdminOrAccountantMixin, PaginationHandlerMixin
-):
+class GetAccountHistory(APIView, CheckPermissionsMixin, PaginationHandlerMixin):
     """Get account history for a specific account type"""
 
+    permissions = [PERMISSIONS.CAN_VIEW_ACCOUNT_HISTORY]
     pagination_class = StandardPagination
 
     def get(self, request):
@@ -476,5 +477,6 @@ class GetAccountHistory(
             )
 
 
-class CreateOpeningStock(StockQuery, IsAdminPermissionMixin, CreateAPIView):
+class CreateOpeningStock(StockQuery, CheckPermissionsMixin, CreateAPIView):
+    permissions = [PERMISSIONS.CAN_CREATE_OPENING_STOCK]
     serializer_class = StockSerializer

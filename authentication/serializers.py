@@ -6,7 +6,6 @@ from .models import UserBranchRelation
 
 
 class UserBranchSerializer(serializers.ModelSerializer):
-
     branch_name = serializers.CharField(source="branch.name")
     branch_id = serializers.UUIDField(source="branch.id")
 
@@ -16,13 +15,12 @@ class UserBranchSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-
     branch_id = serializers.UUIDField()
     branch_name = serializers.CharField(read_only=True)
     role = serializers.CharField(read_only=True)
+    permissions = serializers.ListField(read_only=True)
 
     def create(self, validated_data):
-
         try:
             user = self.context["request"].user
             branch = validated_data["branch_id"]
@@ -36,6 +34,7 @@ class LoginSerializer(serializers.Serializer):
 
         validated_data["branch_name"] = user_branch.branch.name
         validated_data["role"] = user_branch.role
+        validated_data["permissions"] = user_branch.permissions
         return validated_data
 
 

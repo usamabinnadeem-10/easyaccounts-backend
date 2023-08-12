@@ -8,11 +8,8 @@ from rest_framework.generics import (
 )
 from rest_framework.response import Response
 
-from authentication.mixins import (
-    IsAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminPermissionMixin,
-)
+import authentication.constants as PERMISSIONS
+from authentication.mixins import CheckPermissionsMixin
 from core.pagination import StandardPagination
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
@@ -25,13 +22,12 @@ from .serializers import (
 )
 
 
-class ListPaymentView(
-    PaymentQuery, IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, ListAPIView
-):
+class ListPaymentView(PaymentQuery, CheckPermissionsMixin, ListAPIView):
     """
     list and filter payments
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_PAYMENTS]
     serializer_class = PaymentAndImageListSerializer
     pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]
@@ -46,25 +42,25 @@ class ListPaymentView(
 
 
 class CreatePaymentView(
-    PaymentQuery, IsAdminOrAccountantOrHeadAccountantMixin, CreateAPIView, UpdateAPIView
+    PaymentQuery, CheckPermissionsMixin, CreateAPIView, UpdateAPIView
 ):
     """create payments"""
 
+    permissions = [PERMISSIONS.CAN_CREATE_PAYMENT]
     serializer_class = PaymentSerializer
 
 
-class UpdatePaymentView(
-    PaymentQuery, IsAdminOrAccountantOrHeadAccountantMixin, UpdateAPIView
-):
+class UpdatePaymentView(PaymentQuery, CheckPermissionsMixin, UpdateAPIView):
     """update payments"""
 
+    permissions = [PERMISSIONS.CAN_EDIT_PAYMENT]
     serializer_class = PaymentSerializer
 
 
-class DeletePaymentView(
-    PaymentQuery, IsAdminOrAccountantOrHeadAccountantMixin, DestroyAPIView
-):
+class DeletePaymentView(PaymentQuery, CheckPermissionsMixin, DestroyAPIView):
     """delete payments"""
+
+    permissions = [PERMISSIONS.CAN_DELETE_PAYMENT]
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -84,13 +80,12 @@ class DeletePaymentView(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class AddImageView(
-    PaymentImageQuery, IsAdminOrAccountantOrHeadAccountantMixin, CreateAPIView
-):
+class AddImageView(PaymentImageQuery, CheckPermissionsMixin, CreateAPIView):
     """add images only"""
 
+    permissions = [PERMISSIONS.CAN_CREATE_PAYMENT]
     serializer_class = UploadImageSerializer
 
 
-class DeletePictureView(PaymentImageQuery, IsAdminPermissionMixin, DestroyAPIView):
-    pass
+class DeletePictureView(PaymentImageQuery, CheckPermissionsMixin, DestroyAPIView):
+    permissions = [PERMISSIONS.CAN_DELETE_PAYMENT]
