@@ -208,7 +208,7 @@ class PaymentAndImageListSerializer(serializers.ModelSerializer):
             "person",
             "serial",
             "detail",
-            # "image_urls",
+            "image_urls",
             "amount",
         ]
 
