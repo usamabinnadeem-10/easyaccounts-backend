@@ -1,11 +1,13 @@
 from datetime import date, datetime, timedelta
 from itertools import chain
 
+from django.core.exceptions import PermissionDenied
 from django.db.models import Avg, Count, F, Min, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.serializers import ValidationError
 from rest_framework.status import *
 from rest_framework.views import APIView
 
@@ -37,7 +39,12 @@ class CreateTransaction(CheckPermissionsMixin, generics.CreateAPIView):
     create a new transaction
     """
 
-    permissions = [PERMISSIONS.CAN_CREATE_TRANSACTION]
+    permissions = {
+        "or": [
+            PERMISSIONS.CAN_CREATE_CUSTOMER_TRANSACTION,
+            PERMISSIONS.CAN_CREATE_SUPPLIER_TRANSACTION,
+        ]
+    }
     serializer_class = TransactionSerializer
     pagination_class = StandardPagination
 
@@ -90,7 +97,7 @@ class GetTransaction(CheckPermissionsMixin, generics.ListAPIView):
         return queryset
 
 
-class EditUpdateDeleteTransaction(
+class EditRetrieveTransaction(
     TransactionQuery,
     CheckPermissionsMixin,
     generics.RetrieveUpdateAPIView,
@@ -101,10 +108,9 @@ class EditUpdateDeleteTransaction(
 
     permissions = {
         "or": [
-            PERMISSIONS.CAN_VIEW_PARTIAL_TRANSACTIONS,
-            PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS,
-        ],
-        "and": [PERMISSIONS.CAN_EDIT_TRANSACTION],
+            PERMISSIONS.CAN_EDIT_CUSTOMER_TRANSACTION,
+            PERMISSIONS.CAN_EDIT_SUPPLIER_TRANSACTION,
+        ]
     }
     serializer_class = UpdateTransactionSerializer
 
@@ -118,11 +124,29 @@ class DeleteTransaction(
     Delete a transaction
     """
 
-    permissions = [PERMISSIONS.CAN_DELETE_TRANSACTION]
+    permissions = {
+        "or": [
+            PERMISSIONS.CAN_DELETE_CUSTOMER_TRANSACTION,
+            PERMISSIONS.CAN_DELETE_SUPPLIER_TRANSACTION,
+        ]
+    }
     serializer_class = UpdateTransactionSerializer
 
     def delete(self, *args, **kwargs):
         instance = self.get_object()
+
+        if instance.serial_type in [
+            TransactionSerialTypes.SUP,
+            TransactionSerialTypes.MWS,
+        ]:
+            if not check_permission(
+                self.request, PERMISSIONS.CAN_DELETE_SUPPLIER_TRANSACTION
+            ):
+                raise ValidationError(
+                    "You are not allowed to delete supplier transactions",
+                    HTTP_403_FORBIDDEN,
+                )
+
         self.perform_destroy(instance)
         Transaction.check_stock(self.request.branch, None)
         Log.create_log(

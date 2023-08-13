@@ -2,7 +2,9 @@ from functools import reduce
 
 from rest_framework import serializers, status
 
+import authentication.constants as PERMISSIONS
 from cheques.utils import get_cheque_account
+from core.utils import check_permission
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 
@@ -118,10 +120,28 @@ class ValidateAccountType:
         return data
 
 
+class ValidatePermissionForCreatingTransaction:
+    """Validates permission for creating supplier and customer transaction"""
+
+    def validate_permission(self, data):
+        request = self.context["request"]
+        if data["serial_type"] in [
+            TransactionSerialTypes.SUP,
+            TransactionSerialTypes.MWS,
+        ]:
+            if not check_permission(request, PERMISSIONS.CAN_CREATE_SUPPLIER_TRANSACTION):
+                raise serializers.ValidationError(
+                    "You are not authorized to create supplier transactions",
+                    status.HTTP_403_FORBIDDEN,
+                )
+        return data
+
+
 class ValidateTransaction(
     ValidateAccountType,
     ValidateSerial,
     ValidateTotal,
+    ValidatePermissionForCreatingTransaction,
 ):
     """Validates transaction serial, account_type and total"""
 
@@ -129,7 +149,7 @@ class ValidateTransaction(
         data = self.validate_total(data)
         data = self.validate_serial(data)
         data = self.validate_account(data)
-
+        data = self.validate_permission(data)
         return data
 
 
@@ -223,8 +243,28 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["transaction"]
 
 
+class ValidatePermissionForEditingTransaction:
+    """Validates permission for creating supplier and customer transaction"""
+
+    def validate_permission(self, data):
+        request = self.context["request"]
+        if data["serial_type"] in [
+            TransactionSerialTypes.SUP,
+            TransactionSerialTypes.MWS,
+        ]:
+            if not check_permission(request, PERMISSIONS.CAN_EDIT_SUPPLIER_TRANSACTION):
+                raise serializers.ValidationError(
+                    "You are not authorized to edit supplier transactions",
+                    status.HTTP_403_FORBIDDEN,
+                )
+        return data
+
+
 class UpdateTransactionSerializer(
-    ValidateAccountType, ValidateTotal, serializers.ModelSerializer
+    ValidateAccountType,
+    ValidateTotal,
+    ValidatePermissionForEditingTransaction,
+    serializers.ModelSerializer,
 ):
     """Serializer for updating transaction"""
 
@@ -262,6 +302,7 @@ class UpdateTransactionSerializer(
     def validate(self, data):
         data = self.validate_total(data)
         data = self.validate_account(data)
+        data = self.validate_permission(data)
         return data
 
     def update(self, instance, validated_data):
