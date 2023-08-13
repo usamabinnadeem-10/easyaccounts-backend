@@ -1,4 +1,5 @@
-from authentication.choices import RoleChoices
+import authentication.constants as PERMISSIONS
+from core.utils import check_permission
 from essentials.choices import PersonChoices
 
 from .models import StockTransfer, Transaction
@@ -7,11 +8,7 @@ from .models import StockTransfer, Transaction
 class TransactionQuery:
     def get_queryset(self):
         customer_filter = {}
-        if self.request.role not in [
-            RoleChoices.ADMIN,
-            RoleChoices.ADMIN_VIEWER,
-            RoleChoices.HEAD_ACCOUNTANT,
-        ]:
+        if not check_permission(self.request, PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS):
             customer_filter["person__person_type"] = PersonChoices.CUSTOMER
         return Transaction.objects.filter(
             person__branch=self.request.branch, **customer_filter

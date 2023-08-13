@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from essentials.models import LinkedAccount
 from rest_framework import serializers
+
+from essentials.models import LinkedAccount
 
 from .constants import CHEQUE_ACCOUNT
 
@@ -39,3 +40,7 @@ def get_cheque_account(branch):
         return LinkedAccount.objects.get(name=CHEQUE_ACCOUNT, account__branch=branch)
     except:
         raise serializers.ValidationError("Please create a cheque account first", 400)
+
+
+def check_permission(request, target_permission):
+    return target_permission in request.permissions

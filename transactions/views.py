@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from itertools import chain
 
-from django.db.models import Avg, Count, F, Max, Min, Q, Sum
+from django.db.models import Avg, Count, F, Min, Q, Sum
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
@@ -9,21 +9,10 @@ from rest_framework.response import Response
 from rest_framework.status import *
 from rest_framework.views import APIView
 
-from authentication.choices import RoleChoices
-from authentication.mixins import (
-    IsAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminOrAccountantOrHeadAccountantStockistMixin,
-    IsAdminOrAccountantOrStockistMixin,
-    IsAdminOrHeadAccountantPermissionMixin,
-    IsAdminOrReadAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantOrStockistPermissionMixin,
-    IsAdminOrReadAdminOrAccountantOrStockistPermissionMixin,
-    IsAdminOrStockistMixin,
-    IsAdminPermissionMixin,
-)
+import authentication.constants as PERMISSIONS
+from authentication.mixins import CheckPermissionsMixin
 from core.pagination import StandardPagination
-from core.utils import convert_qp_dict_to_qp
+from core.utils import check_permission, convert_qp_dict_to_qp
 from essentials.models import ProductCategory, Stock
 from expenses.models import ExpenseDetail
 from ledgers.views import GetAllBalances
@@ -32,11 +21,8 @@ from logs.models import Log
 
 from .filters import TransactionsFilter
 from .models import *
-from .queries import (  # CancelledInvoiceQuery,; CancelStockTransferQuery,
-    TransactionQuery,
-    TransferQuery,
-)
-from .serializers import (  # CancelledInvoiceSerializer,; CancelStockTransferSerializer,
+from .queries import TransactionQuery, TransferQuery
+from .serializers import (
     GetAllStockSerializer,
     TransactionSerializer,
     TransferStockSerializer,
@@ -46,11 +32,12 @@ from .serializers import (  # CancelledInvoiceSerializer,; CancelStockTransferSe
 )
 
 
-class CreateTransaction(IsAdminOrAccountantOrHeadAccountantMixin, generics.CreateAPIView):
+class CreateTransaction(CheckPermissionsMixin, generics.CreateAPIView):
     """
     create a new transaction
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_TRANSACTION]
     serializer_class = TransactionSerializer
     pagination_class = StandardPagination
 
@@ -58,23 +45,23 @@ class CreateTransaction(IsAdminOrAccountantOrHeadAccountantMixin, generics.Creat
         return Transaction.objects.filter(branch=self.request.branch)
 
 
-class GetTransaction(
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, generics.ListAPIView
-):
+class GetTransaction(CheckPermissionsMixin, generics.ListAPIView):
     """
     get transactions with a time frame (optional), requires person to be passed
     """
 
+    permissions = {
+        "or": [
+            PERMISSIONS.CAN_VIEW_PARTIAL_TRANSACTIONS,
+            PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS,
+        ]
+    }
     serializer_class = TransactionSerializer
     pagination_class = StandardPagination
 
     def get_queryset(self):
         person_filter = {}
-        if self.request.role not in [
-            RoleChoices.ADMIN,
-            RoleChoices.ADMIN_VIEWER,
-            RoleChoices.HEAD_ACCOUNTANT,
-        ]:
+        if not check_permission(self.request, PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS):
             person_filter = {"person__person_type": "C"}
         transactions = (
             Transaction.objects.select_related("person", "account_type")
@@ -105,13 +92,33 @@ class GetTransaction(
 
 class EditUpdateDeleteTransaction(
     TransactionQuery,
-    IsAdminOrAccountantOrHeadAccountantMixin,
-    generics.RetrieveUpdateDestroyAPIView,
+    CheckPermissionsMixin,
+    generics.RetrieveUpdateAPIView,
 ):
     """
-    Edit / Update / Delete a transaction
+    Edit / View a transaction
     """
 
+    permissions = {
+        "or": [
+            PERMISSIONS.CAN_VIEW_PARTIAL_TRANSACTIONS,
+            PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS,
+        ],
+        "and": [PERMISSIONS.CAN_EDIT_TRANSACTION],
+    }
+    serializer_class = UpdateTransactionSerializer
+
+
+class DeleteTransaction(
+    TransactionQuery,
+    CheckPermissionsMixin,
+    generics.DestroyAPIView,
+):
+    """
+    Delete a transaction
+    """
+
+    permissions = [PERMISSIONS.CAN_DELETE_TRANSACTION]
     serializer_class = UpdateTransactionSerializer
 
     def delete(self, *args, **kwargs):
@@ -127,7 +134,13 @@ class EditUpdateDeleteTransaction(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class FilterTransactions(TransactionQuery, generics.ListAPIView):
+class FilterTransactions(TransactionQuery, CheckPermissionsMixin, generics.ListAPIView):
+    permissions = {
+        "or": [
+            PERMISSIONS.CAN_VIEW_PARTIAL_TRANSACTIONS,
+            PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS,
+        ]
+    }
     serializer_class = TransactionSerializer
     pagination_class = StandardPagination
     filter_backends = [DjangoFilterBackend]
@@ -138,10 +151,12 @@ class FilterTransactions(TransactionQuery, generics.ListAPIView):
         return queryset.order_by("serial_type", "serial", "-date")
 
 
-class BusinessPerformanceHistory(APIView):
+class BusinessPerformanceHistory(CheckPermissionsMixin, APIView):
     """
     get business' working statistics with optional date ranges
     """
+
+    permissions = [PERMISSIONS.CAN_VIEW_BUSINESS_PERFORMANCE]
 
     def get(self, request):
         qp = request.query_params
@@ -254,16 +269,17 @@ class BusinessPerformanceHistory(APIView):
         return Response(final_data, status=status.HTTP_200_OK)
 
 
-class TransferStock(
-    IsAdminOrAccountantOrHeadAccountantStockistMixin, generics.CreateAPIView
-):
+class TransferStock(CheckPermissionsMixin, generics.CreateAPIView):
     """Transfer stock from one warehouse to another"""
 
+    permissions = [PERMISSIONS.CAN_CREATE_TRANSFER_STOCK]
     serializer_class = TransferStockSerializer
 
 
-class DeleteTransferStock(TransferQuery, IsAdminPermissionMixin, generics.DestroyAPIView):
+class DeleteTransferStock(TransferQuery, CheckPermissionsMixin, generics.DestroyAPIView):
     """Delete transfer stock"""
+
+    permissions = [PERMISSIONS.CAN_DELETE_TRANSFER_STOCK]
 
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
@@ -278,21 +294,23 @@ class DeleteTransferStock(TransferQuery, IsAdminPermissionMixin, generics.Destro
 
 class EditTransferStock(
     TransferQuery,
-    IsAdminOrAccountantOrHeadAccountantStockistMixin,
+    CheckPermissionsMixin,
     generics.UpdateAPIView,
 ):
     """Edit stock transfer"""
 
+    permissions = [PERMISSIONS.CAN_EDIT_TRANSFER_STOCK]
     serializer_class = UpdateTransferStockSerializer
 
 
 class ViewTransfers(
     TransferQuery,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantOrStockistPermissionMixin,
+    CheckPermissionsMixin,
     generics.ListAPIView,
 ):
     """View for listing transfers"""
 
+    permissions = [PERMISSIONS.CAN_VIEW_TRANSFER_STOCK]
     serializer_class = ViewTransfersSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -309,7 +327,9 @@ class ViewTransfers(
     }
 
 
-class DetailedStockView(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, APIView):
+class DetailedStockView(CheckPermissionsMixin, APIView):
+    permissions = [PERMISSIONS.CAN_VIEW_DETAILED_STOCK]
+
     def get(self, request):
         qp = request.query_params
 
@@ -472,7 +492,8 @@ class DetailedStockView(IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, API
         )
 
 
-class ViewAllStock(TransactionQuery, generics.ListAPIView):
+class ViewAllStock(TransactionQuery, CheckPermissionsMixin, generics.ListAPIView):
+    permissions = [PERMISSIONS.CAN_VIEW_STOCK]
     serializer_class = GetAllStockSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {

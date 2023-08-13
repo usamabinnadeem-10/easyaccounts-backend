@@ -1,5 +1,3 @@
-from authentication.choices import RoleChoices
-
 from .models import (
     AccountType,
     Area,
@@ -14,15 +12,9 @@ from .models import (
 
 class PersonQuery:
     def get_queryset(self):
-        filter = {}
-        if self.request.role not in [
-            RoleChoices.ADMIN,
-            RoleChoices.ADMIN_VIEWER,
-            RoleChoices.HEAD_ACCOUNTANT,
-            RoleChoices.ACCOUNTANT,
-        ]:
-            filter.update({"person_type": "C"})
-        return Person.objects.filter(branch=self.request.branch, **filter)
+        return Person.objects.filter(
+            branch=self.request.branch,
+        )
 
 
 class WarehouseQuery:

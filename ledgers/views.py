@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import reduce
 
 from django.db.models import F, Max, Min, Sum
@@ -7,17 +7,12 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from authentication.choices import RoleChoices
-from authentication.mixins import (
-    IsAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantMixin,
-    IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminPermissionMixin,
-)
+import authentication.constants as PERMISSIONS
+from authentication.mixins import CheckPermissionsMixin
 from cheques.choices import ChequeStatusChoices
 from cheques.models import ExternalCheque, ExternalChequeTransfer, PersonalCheque
 from core.pagination import LargePagination
-from core.utils import convert_date_to_datetime
+from core.utils import check_permission, convert_date_to_datetime
 from ledgers.models import Ledger, LedgerAndExternalCheque
 from ledgers.serializers import LedgerAndDetailSerializer, LedgerSerializer
 from logs.choices import ActivityCategory, ActivityTypes
@@ -26,14 +21,15 @@ from logs.models import Log
 from .queries import LedgerAndDetailQuery, LedgerQuery
 
 
-class ListLedger(
-    LedgerQuery, IsAdminOrReadAdminOrAccountantOrHeadAccountantMixin, generics.ListAPIView
-):
+class ListLedger(LedgerQuery, CheckPermissionsMixin, generics.ListAPIView):
     """
     get ledger of a person by start date, end date, (when passing neither all ledger is returned)
     returns paginated response along with opening balance
     """
 
+    permissions = {
+        "or": [PERMISSIONS.CAN_VIEW_PARTIAL_LEDGERS, PERMISSIONS.CAN_VIEW_FULL_LEDGERS]
+    }
     serializer_class = LedgerSerializer
     page_size = 50
     pagination_class = LargePagination
@@ -47,7 +43,7 @@ class ListLedger(
             or datetime.now()
         )
         filter = {}
-        if self.request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+        if not check_permission(self.request, PERMISSIONS.CAN_VIEW_FULL_LEDGERS):
             filter.update({"person__person_type": "C"})
         return Ledger.objects.select_related(
             "person",
@@ -142,11 +138,12 @@ class ListLedger(
         return Response(page.data, status=status.HTTP_200_OK)
 
 
-class DeleteLedgerDetail(LedgerQuery, IsAdminPermissionMixin, generics.DestroyAPIView):
+class DeleteLedgerDetail(LedgerQuery, CheckPermissionsMixin, generics.DestroyAPIView):
     """
-    Delete a ledger record (only admin can delete)
+    Delete a ledger record
     """
 
+    permissions = [PERMISSIONS.CAN_DELETE_LEDGER_ENTRY]
     serializer_class = LedgerSerializer
 
     def perform_destroy(self, instance):
@@ -158,29 +155,22 @@ class DeleteLedgerDetail(LedgerQuery, IsAdminPermissionMixin, generics.DestroyAP
             self.request,
         )
 
-    # def perform_update(self, serializer):
-    #     instance = self.get_object()
-    #     super().perform_update(serializer)
-    #     updated = self.get_object()
-    #     Log.create_log(
-    #         ActivityTypes.EDITED,
-    #         ActivityCategory.LEDGER_ENTRY,
-    #         f"{instance.date} of type {instance.get_nature_display()} for {instance.person.name} for amount {instance.amount}/= to --> {updated.date} of type {updated.get_nature_display()} for {updated.person.name} for amount {updated.amount}",
-    #         self.request,
-    #     )
 
-
-class GetAllBalances(IsAdminOrAccountantMixin, APIView):
+class GetAllBalances(CheckPermissionsMixin, APIView):
     """
     Get all balances
     Expects a query parameter person (S or C)
     Optional qp balance for balances gte or lte
     """
 
+    permissions = {
+        "or": [PERMISSIONS.CAN_VIEW_PARTIAL_BALANCES, PERMISSIONS.CAN_VIEW_FULL_BALANCES]
+    }
+
     def get(self, request):
         filters = {"person__branch": request.branch}
 
-        if request.role not in [RoleChoices.ADMIN, RoleChoices.ADMIN_VIEWER]:
+        if not check_permission(request, PERMISSIONS.CAN_VIEW_FULL_BALANCES):
             filters.update({"person__person_type": "C"})
 
         if request.query_params.get("person"):
@@ -243,15 +233,17 @@ class FilterLedger(LedgerQuery, generics.ListAPIView):
 
 class LedgerAndDetailEntry(
     LedgerAndDetailQuery,
-    IsAdminOrAccountantMixin,
+    CheckPermissionsMixin,
     generics.CreateAPIView,
 ):
+    permissions = [PERMISSIONS.CAN_CREATE_LEDGER_ENTRY]
     serializer_class = LedgerAndDetailSerializer
 
 
 class UpdateLedgerAndDetailEntry(
     LedgerAndDetailQuery,
-    IsAdminPermissionMixin,
+    CheckPermissionsMixin,
     generics.UpdateAPIView,
 ):
+    permissions = [PERMISSIONS.CAN_EDIT_LEDGER_ENTRY]
     serializer_class = LedgerAndDetailSerializer
