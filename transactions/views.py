@@ -550,7 +550,7 @@ class ViewAllStock(TransactionQuery, CheckPermissionsMixin, generics.ListAPIView
         if qps.get("warehouse"):
             stock = filter(lambda x: x["warehouse"] == qps.get("warehouse"), stock)
 
-        # stock = filter(lambda x: x["quantity"] > 0, stock)
+        stock = filter(lambda x: x["quantity"] > 0, stock)
 
         serializer = self.get_serializer(stock, many=True)
         return Response(serializer.data)
