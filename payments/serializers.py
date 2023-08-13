@@ -196,7 +196,7 @@ class PaymentSerializer(
 class PaymentAndImageListSerializer(serializers.ModelSerializer):
     """Serialize payments and attach all images of the payment"""
 
-    # image_urls = serializers.SerializerMethodField()
+    image_urls = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
