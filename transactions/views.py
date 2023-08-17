@@ -59,17 +59,19 @@ class GetTransaction(CheckPermissionsMixin, generics.ListAPIView):
 
     permissions = {
         "or": [
-            PERMISSIONS.CAN_VIEW_PARTIAL_TRANSACTIONS,
-            PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS,
+            PERMISSIONS.CAN_VIEW_CUSTOMER_TRANSACTIONS,
+            PERMISSIONS.CAN_VIEW_SUPPLIER_TRANSACTIONS,
         ]
     }
     serializer_class = TransactionSerializer
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        person_filter = {}
-        if not check_permission(self.request, PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS):
-            person_filter = {"person__person_type": "C"}
+        person_filter = []
+        if not check_permission(self.request, PERMISSIONS.CAN_VIEW_CUSTOMER_TRANSACTIONS):
+            person_filter.append("C")
+        if not check_permission(self.request, PERMISSIONS.CAN_VIEW_SUPPLIER_TRANSACTIONS):
+            person_filter.append("S")
         transactions = (
             Transaction.objects.select_related("person", "account_type")
             .prefetch_related(
@@ -77,7 +79,8 @@ class GetTransaction(CheckPermissionsMixin, generics.ListAPIView):
                 "transaction_detail__product",
                 "transaction_detail__warehouse",
             )
-            .filter(**person_filter, branch=self.request.branch)
+            .filter(branch=self.request.branch)
+            .exclude(person__person_type__in=person_filter)
         )
         qp = self.request.query_params
         person = qp.get("person")
@@ -161,8 +164,8 @@ class DeleteTransaction(
 class FilterTransactions(TransactionQuery, CheckPermissionsMixin, generics.ListAPIView):
     permissions = {
         "or": [
-            PERMISSIONS.CAN_VIEW_PARTIAL_TRANSACTIONS,
-            PERMISSIONS.CAN_VIEW_FULL_TRANSACTIONS,
+            PERMISSIONS.CAN_VIEW_CUSTOMER_TRANSACTIONS,
+            PERMISSIONS.CAN_VIEW_SUPPLIER_TRANSACTIONS,
         ]
     }
     serializer_class = TransactionSerializer
