@@ -8,7 +8,6 @@ from django.db import models
 from django.db.models import F, Q, Sum
 from rest_framework.serializers import ValidationError
 
-from authentication.choices import RoleChoices
 from authentication.models import UserAwareModel
 from core.constants import MIN_POSITIVE_VAL_SMALL
 from core.models import ID, DateTimeAwareModel, NextSerial
@@ -201,13 +200,9 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 )
 
             # verify if the selling rates are legal
-            if (
-                data["serial_type"]
-                in [
-                    TransactionSerialTypes.INV,
-                ]
-                # and request.role != RoleChoices.ADMIN
-            ):
+            if data["serial_type"] in [
+                TransactionSerialTypes.INV,
+            ]:
                 Transaction.check_average_selling_rates(
                     data["date"], transaction_details, branch
                 )

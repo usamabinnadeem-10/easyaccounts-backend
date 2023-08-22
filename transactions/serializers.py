@@ -2,7 +2,9 @@ from functools import reduce
 
 from rest_framework import serializers, status
 
+import authentication.constants as PERMISSIONS
 from cheques.utils import get_cheque_account
+from core.utils import check_permission
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 
@@ -14,29 +16,61 @@ class ValidateSerial:
     """Validates if manual serial is unique for branch"""
 
     def validate_serial(self, data):
-        if data["manual_serial"]:
-            if Transaction.objects.filter(
-                manual_serial=data["manual_serial"],
-                person__branch=self.context["request"].branch,
-                serial_type=data["serial_type"],
-            ).exists():
-                if data["is_cancelled"]:
+        if data["serial_type"] in [
+            TransactionSerialTypes.SUP,
+            TransactionSerialTypes.MWS,
+        ]:
+            if data["manual_serial"]:
+                if Transaction.objects.filter(
+                    manual_serial=data["manual_serial"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                    person=data["person"],
+                ).exists():
+                    if data["is_cancelled"]:
+                        raise serializers.ValidationError(
+                            "This serial is already cancelled",
+                            status.HTTP_400_BAD_REQUEST,
+                        )
                     raise serializers.ValidationError(
-                        "This serial is already cancelled", status.HTTP_400_BAD_REQUEST
+                        "This serial already exists", status.HTTP_400_BAD_REQUEST
                     )
-                raise serializers.ValidationError(
-                    "This serial already exists", status.HTTP_400_BAD_REQUEST
-                )
-        if data["wasooli_number"]:
-            if Transaction.objects.filter(
-                wasooli_number=data["wasooli_number"],
-                person__branch=self.context["request"].branch,
-                serial_type=data["serial_type"],
-            ).exists():
-                raise serializers.ValidationError(
-                    "This wasooli number already exists", status.HTTP_400_BAD_REQUEST
-                )
-        return data
+            if data["wasooli_number"]:
+                if Transaction.objects.filter(
+                    wasooli_number=data["wasooli_number"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                    person=data["person"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists", status.HTTP_400_BAD_REQUEST
+                    )
+            return data
+        else:
+            if data["manual_serial"]:
+                if Transaction.objects.filter(
+                    manual_serial=data["manual_serial"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                ).exists():
+                    if data["is_cancelled"]:
+                        raise serializers.ValidationError(
+                            "This serial is already cancelled",
+                            status.HTTP_400_BAD_REQUEST,
+                        )
+                    raise serializers.ValidationError(
+                        "This serial already exists", status.HTTP_400_BAD_REQUEST
+                    )
+            if data["wasooli_number"]:
+                if Transaction.objects.filter(
+                    wasooli_number=data["wasooli_number"],
+                    person__branch=self.context["request"].branch,
+                    serial_type=data["serial_type"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists", status.HTTP_400_BAD_REQUEST
+                    )
+            return data
 
 
 class ValidateTotal:
@@ -86,10 +120,28 @@ class ValidateAccountType:
         return data
 
 
+class ValidatePermissionForCreatingTransaction:
+    """Validates permission for creating supplier and customer transaction"""
+
+    def validate_permission(self, data):
+        request = self.context["request"]
+        if data["serial_type"] in [
+            TransactionSerialTypes.SUP,
+            TransactionSerialTypes.MWS,
+        ]:
+            if not check_permission(request, PERMISSIONS.CAN_CREATE_SUPPLIER_TRANSACTION):
+                raise serializers.ValidationError(
+                    "You are not authorized to create supplier transactions",
+                    status.HTTP_403_FORBIDDEN,
+                )
+        return data
+
+
 class ValidateTransaction(
     ValidateAccountType,
     ValidateSerial,
     ValidateTotal,
+    ValidatePermissionForCreatingTransaction,
 ):
     """Validates transaction serial, account_type and total"""
 
@@ -97,7 +149,7 @@ class ValidateTransaction(
         data = self.validate_total(data)
         data = self.validate_serial(data)
         data = self.validate_account(data)
-
+        data = self.validate_permission(data)
         return data
 
 
@@ -191,8 +243,28 @@ class UpdateTransactionDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["transaction"]
 
 
+class ValidatePermissionForEditingTransaction:
+    """Validates permission for creating supplier and customer transaction"""
+
+    def validate_permission(self, data):
+        request = self.context["request"]
+        if data["serial_type"] in [
+            TransactionSerialTypes.SUP,
+            TransactionSerialTypes.MWS,
+        ]:
+            if not check_permission(request, PERMISSIONS.CAN_EDIT_SUPPLIER_TRANSACTION):
+                raise serializers.ValidationError(
+                    "You are not authorized to edit supplier transactions",
+                    status.HTTP_403_FORBIDDEN,
+                )
+        return data
+
+
 class UpdateTransactionSerializer(
-    ValidateAccountType, ValidateTotal, serializers.ModelSerializer
+    ValidateAccountType,
+    ValidateTotal,
+    ValidatePermissionForEditingTransaction,
+    serializers.ModelSerializer,
 ):
     """Serializer for updating transaction"""
 
@@ -230,6 +302,7 @@ class UpdateTransactionSerializer(
     def validate(self, data):
         data = self.validate_total(data)
         data = self.validate_account(data)
+        data = self.validate_permission(data)
         return data
 
     def update(self, instance, validated_data):
@@ -237,24 +310,58 @@ class UpdateTransactionSerializer(
         # transaction_detail = validated_data.pop("transaction_detail")
         # check if user changed the book number
         # if he did, then ensure it does not exist already
-        if instance.manual_serial != validated_data["manual_serial"]:
-            if Transaction.objects.filter(
-                manual_serial=validated_data["manual_serial"],
-                person__branch=request.branch,
-            ).exists():
-                raise serializers.ValidationError(
-                    "This serial already exists",
-                    status.HTTP_400_BAD_REQUEST,
-                )
-        if instance.wasooli_number != validated_data["wasooli_number"]:
-            if Transaction.objects.filter(
-                wasooli_number=validated_data["wasooli_number"],
-                person__branch=request.branch,
-            ).exists():
-                raise serializers.ValidationError(
-                    "This wasooli number already exists",
-                    status.HTTP_400_BAD_REQUEST,
-                )
+        if (
+            instance.manual_serial != validated_data["manual_serial"]
+            and validated_data["manual_serial"]
+        ):
+            if validated_data["serial_type"] in [
+                TransactionSerialTypes.SUP,
+                TransactionSerialTypes.MWS,
+            ]:
+                if Transaction.objects.filter(
+                    manual_serial=validated_data["manual_serial"],
+                    person__branch=request.branch,
+                    person=validated_data["person"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This serial already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                if Transaction.objects.filter(
+                    manual_serial=validated_data["manual_serial"],
+                    person__branch=request.branch,
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This serial already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+        if (
+            instance.wasooli_number != validated_data["wasooli_number"]
+            and validated_data["wasooli_number"]
+        ):
+            if validated_data["serial_type"] in [
+                TransactionSerialTypes.SUP,
+                TransactionSerialTypes.MWS,
+            ]:
+                if Transaction.objects.filter(
+                    wasooli_number=validated_data["wasooli_number"],
+                    person__branch=request.branch,
+                    person=validated_data["person"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                if Transaction.objects.filter(
+                    wasooli_number=validated_data["wasooli_number"],
+                    person__branch=request.branch,
+                ).exists():
+                    raise serializers.ValidationError(
+                        "This wasooli number already exists",
+                        status.HTTP_400_BAD_REQUEST,
+                    )
         transaction = Transaction.make_transaction(validated_data, request, instance)
 
         Log.create_log(

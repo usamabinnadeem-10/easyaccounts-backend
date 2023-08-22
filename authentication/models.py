@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from django.contrib.auth.models import User
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from .choices import RoleChoices
@@ -28,6 +29,7 @@ class UserBranchRelation(models.Model):
     )
     is_logged_in = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    permissions = ArrayField(models.CharField(max_length=100), default=list)
 
     objects = models.Manager()
     utils = UserBranchManager()

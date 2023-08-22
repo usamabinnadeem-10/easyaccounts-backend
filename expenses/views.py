@@ -1,11 +1,9 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
 
-from authentication.mixins import (
-    IsAdminOrAccountantMixin,
-    IsAdminOrAccountantOrHeadAccountantMixin,
-    IsAdminPermissionMixin,
-)
+import authentication.constants as PERMISSIONS
+from authentication.mixins import CheckPermissionsMixin
+from core.utils import check_permission
 from logs.choices import ActivityCategory, ActivityTypes
 from logs.models import Log
 
@@ -13,29 +11,34 @@ from .queries import ExpenseAccountQuery, ExpenseDetailQuery
 from .serializers import ExpenseAccountSerializer, ExpenseDetailSerializer
 
 
-class ListExpenseAccount(ExpenseAccountQuery, generics.ListAPIView):
-    """
-    create expense account or list all expense accounts
-    """
-
-    serializer_class = ExpenseAccountSerializer
-
-
-class CreateExpenseAccount(
-    ExpenseAccountQuery, IsAdminPermissionMixin, generics.CreateAPIView
+class ListExpenseAccount(
+    ExpenseAccountQuery, CheckPermissionsMixin, generics.ListAPIView
 ):
     """
     create expense account or list all expense accounts
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_EXPENSE_ACCOUNTS]
     serializer_class = ExpenseAccountSerializer
 
 
-class ListExpenseDetail(ExpenseDetailQuery, generics.ListAPIView):
+class CreateExpenseAccount(
+    ExpenseAccountQuery, CheckPermissionsMixin, generics.CreateAPIView
+):
+    """
+    create expense account or list all expense accounts
+    """
+
+    permissions = [PERMISSIONS.CAN_CREATE_EXPENSE_ACCOUNT]
+    serializer_class = ExpenseAccountSerializer
+
+
+class ListExpenseDetail(ExpenseDetailQuery, CheckPermissionsMixin, generics.ListAPIView):
     """
     get expense details with optional filters
     """
 
+    permissions = [PERMISSIONS.CAN_VIEW_EXPENSES]
     serializer_class = ExpenseDetailSerializer
     filter_backends = [DjangoFilterBackend]
     filter_fields = {
@@ -50,24 +53,49 @@ class ListExpenseDetail(ExpenseDetailQuery, generics.ListAPIView):
 
 
 class CreateExpenseDetail(
-    ExpenseDetailQuery, IsAdminOrAccountantMixin, generics.CreateAPIView
+    ExpenseDetailQuery, CheckPermissionsMixin, generics.CreateAPIView
 ):
     """
     get expense details with optional filters
     """
 
+    permissions = [PERMISSIONS.CAN_CREATE_EXPENSE]
     serializer_class = ExpenseDetailSerializer
 
 
-class EditUpdateDeleteExpenseDetail(
+class EditExpenseDetail(
     ExpenseDetailQuery,
-    IsAdminOrAccountantOrHeadAccountantMixin,
-    generics.RetrieveUpdateDestroyAPIView,
+    CheckPermissionsMixin,
+    generics.UpdateAPIView,
 ):
     """
-    Edit / Update / Delete an expense record
+    Edit an expense record
     """
 
+    permissions = [PERMISSIONS.CAN_EDIT_EXPENSE]
+    serializer_class = ExpenseDetailSerializer
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        super().perform_update(serializer)
+        Log.create_log(
+            ActivityTypes.EDITED,
+            ActivityCategory.EXPENSE,
+            f"'{instance.account_type.name}' for {instance.amount}/=",
+            self.request,
+        )
+
+
+class DeleteExpenseDetail(
+    ExpenseDetailQuery,
+    CheckPermissionsMixin,
+    generics.DestroyAPIView,
+):
+    """
+    Delete an expense record
+    """
+
+    permissions = [PERMISSIONS.CAN_DELETE_EXPENSE]
     serializer_class = ExpenseDetailSerializer
 
     def perform_destroy(self, instance):
@@ -79,12 +107,15 @@ class EditUpdateDeleteExpenseDetail(
             self.request,
         )
 
-    def perform_update(self, serializer):
-        instance = self.get_object()
-        super().perform_update(serializer)
-        Log.create_log(
-            ActivityTypes.EDITED,
-            ActivityCategory.EXPENSE,
-            f"'{instance.account_type.name}' for {instance.amount}/=",
-            self.request,
-        )
+
+class ViewSingleExpense(
+    ExpenseDetailQuery,
+    CheckPermissionsMixin,
+    generics.RetrieveAPIView,
+):
+    """
+    View an expense record
+    """
+
+    permissions = [PERMISSIONS.CAN_VIEW_EXPENSES]
+    serializer_class = ExpenseDetailSerializer
