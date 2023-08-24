@@ -36,7 +36,7 @@ from .serializers import (
     UpdateRawTransactionSerializer,
     ViewAllStockSerializer,
 )
-from .utils import get_current_stock_position, validate_inventory
+from .utils import get_current_stock_position, validate_raw_inventory
 
 
 class CreateRawProduct(RawProductQuery, generics.CreateAPIView):
@@ -168,7 +168,7 @@ class EditUpdateDeleteRawTransactionView(
 
     def destroy(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
-        validated, error = validate_inventory(request.branch)
+        validated, error = validate_raw_inventory(request.branch)
         if not validated:
             raise ValidationError(error)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -181,7 +181,7 @@ class EditUpdateDeleteRawDebitTransactionView(
 
     def destroy(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
-        validated, error = validate_inventory(request.branch)
+        validated, error = validate_raw_inventory(request.branch)
         if not validated:
             raise ValidationError(error)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -194,7 +194,7 @@ class EditUpdateDeleteRawTransferTransactionView(
 
     def destroy(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
-        validated, error = validate_inventory(request.branch)
+        validated, error = validate_raw_inventory(request.branch)
         if not validated:
             raise ValidationError(error)
         return Response(status=status.HTTP_204_NO_CONTENT)

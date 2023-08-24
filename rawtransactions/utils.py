@@ -191,7 +191,7 @@ def get_current_stock_position(branch):
     return stock
 
 
-def validate_inventory(branch):
+def validate_raw_inventory(branch):
     stock = get_current_stock_position(branch)
     for s in stock:
         if s["quantity"] < 0:

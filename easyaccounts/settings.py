@@ -180,7 +180,7 @@ SIMPLE_JWT = {
 
 """S3 settings"""
 
-S3_ENABLED = os.getenv("S3_ENABLED", "True") == "True"
+S3_ENABLED = os.getenv("S3_ENABLED", "False") == "True"
 
 if S3_ENABLED:
     # aws settings

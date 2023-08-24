@@ -8,7 +8,7 @@ class DyingUnitAdmin(admin.ModelAdmin):
 
 
 class DyingIssueAdmin(admin.ModelAdmin):
-    list_display = ["id", "dying_unit", "dying_lot_number"]
+    list_display = ["id", "dying_unit", "manual_serial"]
 
 
 admin.site.register(DyingUnit, DyingUnitAdmin)

@@ -20,7 +20,7 @@ from .models import (
     RawTransferLot,
     RawTransferLotDetail,
 )
-from .utils import is_array_unique, validate_inventory
+from .utils import is_array_unique, validate_raw_inventory
 
 
 class RawTransactionValidationHelper:
@@ -232,7 +232,7 @@ class UpdateRawTransactionSerializer(
         raw_transaction = RawTransaction.make_raw_transaction(
             copy.deepcopy(validated_data), branch, user, old_instance=instance
         )
-        validated, error = validate_inventory(branch)
+        validated, error = validate_raw_inventory(branch)
         if not validated:
             raise ValidationError(error)
         LedgerAndRawTransaction.create_ledger_entry(
@@ -371,7 +371,7 @@ class RawDebitSerializer(UniqueLotNumbers, serializers.ModelSerializer):
         debit_instance = RawDebit.make_raw_debit_transaction(
             copy.deepcopy(validated_data), branch, user
         )
-        validated, error = validate_inventory(branch)
+        validated, error = validate_raw_inventory(branch)
         if not validated:
             raise ValidationError(error)
         return debit_instance
@@ -475,7 +475,7 @@ class RawStockTransferSerializer(UniqueLotNumbers, serializers.ModelSerializer):
         transfer = RawTransfer.make_raw_transfer_transaction(
             copy.deepcopy(validated_data), branch, user
         )
-        validated, error = validate_inventory(branch)
+        validated, error = validate_raw_inventory(branch)
         if not validated:
             raise ValidationError(error)
         return transfer

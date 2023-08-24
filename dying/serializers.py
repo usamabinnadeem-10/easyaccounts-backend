@@ -1,7 +1,9 @@
 from rest_framework import serializers
+from rest_framework.validators import ValidationError
 
 from rawtransactions.models import RawLotDetail
 from rawtransactions.serializers import UniqueLotNumbers
+from rawtransactions.utils import validate_raw_inventory
 
 from .models import DyingIssue, DyingIssueDetail, DyingIssueLot, DyingUnit
 
@@ -73,7 +75,7 @@ class DyingIssueSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "dying_lot_number"]
 
 
-class LotNumberAndDetail(serializers.ModelSerializer):
+class DyingIssueLotsSerializer(serializers.ModelSerializer):
     class Serializer(serializers.ModelSerializer):
         class Meta:
             model = DyingIssueDetail
@@ -81,7 +83,6 @@ class LotNumberAndDetail(serializers.ModelSerializer):
                 "quantity",
                 "actual_gazaana",
                 "expected_gazaana",
-                "formula",
                 "warehouse",
             ]
 
@@ -89,45 +90,30 @@ class LotNumberAndDetail(serializers.ModelSerializer):
 
     class Meta:
         model = DyingIssueLot
-        fields = ["id", "lot_number", "dying_lot", "detail"]
-        read_only_fields = ["id", "dying_lot"]
+        fields = ["id", "raw_lot_number", "dying_issue"]
+        read_only_fields = ["id", "dying_issue"]
 
 
 class IssueForDyingSerializer(UniqueLotNumbers, serializers.ModelSerializer):
-    data = LotNumberAndDetail(many=True, required=True)
+    lots = DyingIssueLotsSerializer(many=True, required=True)
 
     class Meta:
         model = DyingIssue
         fields = [
             "id",
             "dying_unit",
-            "dying_lot_number",
+            "manual_serial",
             "date",
-            "data",
+            "lots",
         ]
         read_only_fields = ["id", "dying_lot_number"]
 
     def create(self, validated_data):
-        self.check_stock(validated_data["data"])
-        data = validated_data.pop("data")
-        user = self.context["request"].user
-        dying_issue_instance = DyingIssue.objects.create(
-            **validated_data,
-            user=user,
-            dying_lot_number=DyingIssue.get_next_serial(
-                "dying_lot_number", branch=self.branch
-            )
+        request = self.context["request"]
+        DyingIssue.create_dying_issue(
+            {**validated_data}, user=request.user, branch=request.branch
         )
-        for lot in data:
-            dying_issue_lot_instance = DyingIssueLot.objects.create(
-                dying_lot=dying_issue_instance,
-                lot_number=lot["lot_number"],
-            )
-            current_details = []
-            for detail in lot["detail"]:
-                current_details.append(
-                    DyingIssueDetail(dying_lot_number=dying_issue_lot_instance, **detail)
-                )
-            DyingIssueDetail.objects.bulk_create(current_details)
-        validated_data["data"] = data
+        validated, error = validate_raw_inventory(request.branch)
+        if not validated:
+            raise ValidationError(error)
         return validated_data
