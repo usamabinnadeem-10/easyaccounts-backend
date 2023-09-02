@@ -100,6 +100,7 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
         )
 
         lot_details_objs = []
+        dying_lots = []
         for lot in lots:
             old_lot_number = lot.get("lot_number") if old_instance else None
             current_lot = RawTransactionLot.objects.create(
@@ -117,18 +118,23 @@ class RawTransaction(ID, UserAwareModel, NextSerial, DateTimeAwareModel):
                 detail=lot["detail"],
             )
             # if current lot is issued to dying then create dying issue
-            # if current_lot.issued:
-            #     try:
-            #         DyingIssue.create_auto_issued_lot(
-            #             branch=branch,
-            #             dying_unit=lot["dying_unit"],
-            #             lot_number=current_lot,
-            #             date=transaction.date,
-            #         )
-            #     except:
-            #         raise serializers.ValidationError(
-            #             "Please enter dying unit for issued lot"
-            #         )
+            if current_lot.issued and not old_instance:
+                dying_lots.append(
+                    {
+                        "raw_lot_number": current_lot.lot_number,
+                    }
+                )
+                # try:
+                #     DyingIssue.create_auto_issued_lot(
+                #         branch=branch,
+                #         dying_unit=lot["dying_unit"],
+                #         lot_number=current_lot,
+                #         date=transaction.date,
+                #     )
+                # except:
+                #     raise serializers.ValidationError(
+                #         "Please enter dying unit for issued lot"
+                #     )
             current_lot_detail = map(
                 lambda l: {
                     **l,

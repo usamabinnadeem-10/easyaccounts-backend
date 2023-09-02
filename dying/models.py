@@ -48,6 +48,10 @@ class DyingIssue(UserAwareModel, DateTimeAwareModel, BranchAwareModel, NextSeria
                 )
             DyingIssueDetail.objects.bulk_create(current_details)
 
+    @classmethod
+    def create_auto_issued_lot(cls, lots):
+        pass
+
 
 class DyingIssueLot(ID, NextSerial):
     dying_issue = models.ForeignKey(DyingIssue, on_delete=models.CASCADE)

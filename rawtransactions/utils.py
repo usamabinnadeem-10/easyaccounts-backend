@@ -133,35 +133,40 @@ def get_all_raw_stock(branch):
     )
     balance_transfers = [*balance_transfers_debits, *balance_transfers_credits]
 
-    # balance_dyings = list(
-    #     (
-    #         DyingIssueDetail.objects.values(
-    #             "dying_lot_number__lot_number__raw_product",
-    #             "dying_lot_number__lot_number",
-    #             "actual_gazaana",
-    #             "expected_gazaana",
-    #             "formula",
-    #             "warehouse",
-    #         )
-    #         .filter(
-    #             dying_lot_number__dying_lot__dying_unit__branch=branch,
-    #             dying_lot_number__lot_number__issued=False,
-    #         )
-    #         .annotate(quantity=Sum("quantity"))
-    #     )
-    # )
-    # balance_dyings = list(
-    #     map(
-    #         lambda obj: {
-    #             **obj,
-    #             "nature": "D",
-    #             "raw_product": obj["dying_lot_number__lot_number__raw_product"],
-    #             "lot_number": obj["dying_lot_number__lot_number"],
-    #         },
-    #         balance_dyings,
-    #     )
-    # )
-    return [*balance_lots, *balance_debits, *balance_transfers]
+    balance_dyings = list(
+        (
+            DyingIssueDetail.objects.values(
+                "dying_issue_lot__raw_lot_number",
+                "actual_gazaana",
+                "expected_gazaana",
+                "warehouse",
+            )
+            .filter(
+                dying_issue_lot__dying_issue__branch=branch,
+            )
+            .annotate(quantity=Sum("quantity"))
+        )
+    )
+    balance_dyings = list(
+        map(
+            lambda obj: {
+                **obj,
+                "nature": "D",
+                "raw_product": next(
+                    (
+                        lot["raw_product"]
+                        for lot in balance_lots
+                        if balance_lots["lot_number"]
+                        == obj["dying_issue_lot__raw_lot_number"]
+                    ),
+                    None,
+                ),
+                "lot_number": obj["dying_issue_lot__raw_lot_number"],
+            },
+            balance_dyings,
+        )
+    )
+    return [*balance_lots, *balance_debits, *balance_transfers, *balance_dyings]
     # return [*balance_lots, *balance_debits, *balance_dyings, *balance_transfers]
 
 
