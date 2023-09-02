@@ -16,5 +16,5 @@ class StockAdmin(admin.ModelAdmin):
 # Register your models here.
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(TransactionDetail)
-admin.site.register(StockTransfer)
+admin.site.register(StockTransfer, StockAdmin)
 admin.site.register(StockTransferDetail)
