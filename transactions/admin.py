@@ -4,9 +4,13 @@ from .models import StockTransfer, StockTransferDetail, Transaction, Transaction
 
 
 class TransactionAdmin(admin.ModelAdmin):
-
     list_display = ["id", "date", "serial_type", "serial"]
     list_filter = ["person__branch__name"]
+
+
+class StockAdmin(admin.ModelAdmin):
+    list_display = ["id", "serial", "from_warehouse", "manual_serial"]
+    list_filter = ["from_warehouse__branch__name"]
 
 
 # Register your models here.
