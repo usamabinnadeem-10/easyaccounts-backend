@@ -11,6 +11,7 @@ class PersonAdmin(admin.ModelAdmin):
 
 class AccountTypeAdmin(admin.ModelAdmin):
     list_display = ["id", "name"]
+    list_filter = ["branch__name"]
 
 
 class ProductAdmin(admin.ModelAdmin):
@@ -37,6 +38,7 @@ class StockAdmin(admin.ModelAdmin):
 
 class ProductCategoryAdmin(admin.ModelAdmin):
     list_display = ["id", "name"]
+    list_filter = ["branch__name"]
 
 
 admin.site.register(AccountType, AccountTypeAdmin)
