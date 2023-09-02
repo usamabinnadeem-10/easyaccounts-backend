@@ -29,7 +29,7 @@ class UserBranchRelation(models.Model):
     )
     is_logged_in = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-    permissions = ArrayField(models.CharField(max_length=100), default=list)
+    permissions = ArrayField(models.CharField(max_length=100), default=list, blank=True)
 
     objects = models.Manager()
     utils = UserBranchManager()
