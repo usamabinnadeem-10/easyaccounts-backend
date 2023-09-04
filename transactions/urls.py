@@ -18,8 +18,8 @@ from .views import (
 urlpatterns = [
     path("create/", CreateTransaction.as_view()),
     path("list/", GetTransaction.as_view()),
-    path("<uuid:pk>/", EditRetrieveTransaction.as_view()),
     path("<uuid:pk>/", DeleteTransaction.as_view()),
+    path("<uuid:pk>/", EditRetrieveTransaction.as_view()),
     path("search/", FilterTransactions.as_view()),
     path("business-performance-history/", BusinessPerformanceHistory.as_view()),
     path("detailed-stock/", DetailedStockView.as_view()),
