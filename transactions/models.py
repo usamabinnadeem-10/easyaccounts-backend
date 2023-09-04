@@ -50,7 +50,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         """check if selling rate is more than buying"""
         date = date if date else datetime.now()
         inventory = TransactionDetail.calculate_previous_inventory(
-            branch, date, return_list=True
+            branch, date, True, return_list=True
         )
         for d in t_detail:
             curr = inventory[str(d["product"].id)]
@@ -206,6 +206,7 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
                 Transaction.check_average_selling_rates(
                     data["date"], transaction_details, branch
                 )
+
             if old:
                 old_serial = old.serial
                 old_serial_type = old.serial_type
@@ -405,9 +406,12 @@ class TransactionDetail(ID):
         date_filter = {}
         if end_date:
             date_filter.update(
-                {f"transaction__date__lt{'e' if include_ending else ''}": end_date}
+                {
+                    f"transaction__date__lt{'e' if include_ending else ''}": end_date.replace(
+                        hour=23, minute=59, second=59, microsecond=99999
+                    )
+                }
             )
-
         # dictionary that holds all the cogs
         cogs = defaultdict(lambda: {"value": 0.0, "gazaana": 0.0, "purchases": 0.0})
 
@@ -479,8 +483,14 @@ class TransactionDetail(ID):
                         cogs[str(i["product"])]["gazaana"] - gaz
                     )
                 elif i["serial_type"] == TransactionSerialTypes.MWC:
+                    cogs[str(i["product"])]["value"] = (
+                        cogs[str(i["product"])]["value"] + val
+                    )
                     cogs[str(i["product"])]["gazaana"] = (
                         cogs[str(i["product"])]["gazaana"] + gaz
+                    )
+                    cogs[str(i["product"])]["purchases"] = (
+                        cogs[str(i["product"])]["purchases"] + gaz
                     )
 
         if kwargs.get("return_list"):
