@@ -554,7 +554,7 @@ class TransactionDetail(ID):
         return (beginning_inventory + purchases_period) - ending_inventory
 
     @classmethod
-    def calculate_revenue_of_period(cls, branch, period, start_date, end_date):
+    def calculate_revenue_of_period(cls, branch, period, start_date, end_date, **kwargs):
         from django.db.models.functions import TruncDay, TruncMonth, TruncWeek
 
         def get_date_filter(key):
@@ -575,10 +575,11 @@ class TransactionDetail(ID):
             )
             return truncate_by
 
+        serial_type = kwargs.get('serial_type', TransactionSerialTypes.INV)
         revenue = (
             TransactionDetail.objects.filter(
                 transaction__person__branch=branch,
-                transaction__serial_type=TransactionSerialTypes.INV,
+                transaction__serial_type=serial_type,
                 **get_date_filter("transaction__date"),
             )
             .annotate(period=get_truncate_method("transaction__date"))

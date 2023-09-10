@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 import authentication.constants as PERMISSIONS
 from assets.models import Asset
 from authentication.mixins import CheckPermissionsMixin
-from core.utils import check_permission, convert_date_to_datetime
+from core.utils import check_permission, convert_date_to_datetime, convert_qp_dict_to_qp
 from essentials.models import OpeningSaleData, Product
 from expenses.models import ExpenseDetail
 from ledgers.models import Ledger
@@ -355,12 +355,19 @@ class RevenueByPeriod(CheckPermissionsMixin, APIView):
     permissions = [PERMISSIONS.CAN_VIEW_REVENUE_BY_PERIOD]
 
     def get(self, request):
-        period = request.query_params.get("period") or "day"
+        qpDict = dict(request.GET.lists())
+        qps = convert_qp_dict_to_qp(qpDict)
+        start = qps.pop("start", None)
+        end = qps.pop("end", None)
+        period = qps.pop("period", "day")
+        serial_type = qps.pop("serial_type", None)
+
         data = TransactionDetail.calculate_revenue_of_period(
             request.branch,
             period,
-            request.query_params.get("start"),
-            request.query_params.get("end"),
+            start,
+            end,
+            serial_type=serial_type
         )
 
         return Response(
