@@ -1,19 +1,22 @@
 import authentication.constants as PERMISSIONS
 from core.utils import check_permission
 from essentials.choices import PersonChoices
+from transactions.choices import TransactionSerialTypes
 
 from .models import StockTransfer, Transaction
 
 
 class TransactionQuery:
     def get_queryset(self):
-        person_filter = []
+        transaction_type_filter = []
         if not check_permission(self.request, PERMISSIONS.CAN_VIEW_CUSTOMER_TRANSACTIONS):
-            person_filter.append("C")
+            transaction_type_filter.append(TransactionSerialTypes.INV)
+            transaction_type_filter.append(TransactionSerialTypes.MWC)
         if not check_permission(self.request, PERMISSIONS.CAN_VIEW_SUPPLIER_TRANSACTIONS):
-            person_filter.append("S")
+            transaction_type_filter.append(TransactionSerialTypes.SUP)
+            transaction_type_filter.append(TransactionSerialTypes.MWS)
         return Transaction.objects.filter(person__branch=self.request.branch).exclude(
-            person__person_type__in=person_filter
+            serial_type__in=transaction_type_filter
         )
 
 
