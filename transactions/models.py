@@ -183,7 +183,9 @@ class Transaction(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         for s in stock:
             if s["quantity"] < 0:
                 product = Product.objects.get(id=s["product"])
-                raise ValidationError(f"{product.name} low in stock", 400)
+                raise ValidationError(
+                    f"{product.name} {s['yards_per_piece']} gaz low in stock", 400
+                )
 
     @classmethod
     def make_transaction(cls, data, request, old=None):
@@ -575,7 +577,7 @@ class TransactionDetail(ID):
             )
             return truncate_by
 
-        serial_type = kwargs.get('serial_type', TransactionSerialTypes.INV)
+        serial_type = kwargs.get("serial_type", TransactionSerialTypes.INV)
         revenue = (
             TransactionDetail.objects.filter(
                 transaction__person__branch=branch,
