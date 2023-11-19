@@ -12,7 +12,7 @@ from .views import (
 
 urlpatterns = [
     path("<uuid:pk>/", EditExpenseDetail.as_view()),
-    path("<uuid:pk>/", DeleteExpenseDetail.as_view()),
+    path("delete/<uuid:pk>/", DeleteExpenseDetail.as_view()),
     path("<uuid:pk>/", ViewSingleExpense.as_view()),
     path("account/create/", CreateExpenseAccount.as_view()),
     path("account/list/", ListExpenseAccount.as_view()),
