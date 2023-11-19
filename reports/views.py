@@ -66,7 +66,9 @@ class IncomeStatement(CheckPermissionsMixin, APIView):
     def get(self, request):
         branch = request.branch
 
-        date__gte = convert_date_to_datetime(request.query_params.get("date__gte"), True)
+        date__gte = convert_date_to_datetime(
+            request.query_params.get("date__gte"), True
+        )
         if date__gte:
             date__gte = date__gte.replace(
                 hour=00, minute=00, second=00, microsecond=000000
@@ -75,11 +77,13 @@ class IncomeStatement(CheckPermissionsMixin, APIView):
         date__lte = convert_date_to_datetime(request.query_params.get("date__lte"))
         date__lte = date__lte.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        revenue = TransactionDetail.calculate_total_revenue(branch, date__gte, date__lte)
+        revenue = TransactionDetail.calculate_total_revenue(
+            branch, date__gte, date__lte
+        )
 
         opening_sale_data = OpeningSaleData.get_opening_sales_data(branch, date__lte)
         expenses = list(
-            ExpenseDetail.calculate_total_expenses_with_category(
+            ExpenseDetail.calculate_total_expenses_with_expense_head(
                 branch, date__gte, date__lte
             )
         )
@@ -105,7 +109,10 @@ class GetAllBalances(CheckPermissionsMixin, APIView):
     """
 
     permissions = {
-        "or": [PERMISSIONS.CAN_VIEW_PARTIAL_BALANCES, PERMISSIONS.CAN_VIEW_FULL_BALANCES]
+        "or": [
+            PERMISSIONS.CAN_VIEW_PARTIAL_BALANCES,
+            PERMISSIONS.CAN_VIEW_FULL_BALANCES,
+        ]
     }
 
     def get(self, request):
@@ -203,9 +210,13 @@ class GetLowStock(CheckPermissionsMixin, APIView):
                 )
             )
 
-        filtered_all_stock = []  # only those products' stock that are in Product queryset
+        filtered_all_stock = (
+            []
+        )  # only those products' stock that are in Product queryset
         for p in products:
-            stock_prod = list(filter(lambda x: str(x["product"]) == str(p.id), all_stock))
+            stock_prod = list(
+                filter(lambda x: str(x["product"]) == str(p.id), all_stock)
+            )
             if len(stock_prod):
                 filtered_all_stock.extend(stock_prod)
 
@@ -219,7 +230,9 @@ class GetLowStock(CheckPermissionsMixin, APIView):
             combined_gazaana_stock = defaultdict(float)
             for f in filtered_all_stock:
                 key = f["product"] + "|" + f["warehouse"]
-                combined_gazaana_stock[key] = combined_gazaana_stock[key] + f["quantity"]
+                combined_gazaana_stock[key] = (
+                    combined_gazaana_stock[key] + f["quantity"]
+                )
 
             new_combined_stock = []
             for key, value in combined_gazaana_stock.items():
@@ -337,7 +350,9 @@ class ProductPerformanceHistory(CheckPermissionsMixin, APIView):
         final_stats = map(
             lambda x: {
                 **x,
-                "quantity_sold": qty_sold[f"{x['product__name']}|{x['yards_per_piece']}"],
+                "quantity_sold": qty_sold[
+                    f"{x['product__name']}|{x['yards_per_piece']}"
+                ],
                 "number_of_times_sold": num_invoices[
                     f"{x['product__name']}|{x['yards_per_piece']}"
                 ],
@@ -363,11 +378,7 @@ class RevenueByPeriod(CheckPermissionsMixin, APIView):
         serial_type = qps.pop("serial_type", None)
 
         data = TransactionDetail.calculate_revenue_of_period(
-            request.branch,
-            period,
-            start,
-            end,
-            serial_type=serial_type
+            request.branch, period, start, end, serial_type=serial_type
         )
 
         return Response(

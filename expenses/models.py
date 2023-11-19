@@ -1,7 +1,8 @@
-from authentication.models import BranchAwareModel, UserAwareModel
-from core.models import ID, DateTimeAwareModel, NextSerial
 from django.db import models
 from django.db.models import Sum
+
+from authentication.models import BranchAwareModel, UserAwareModel
+from core.models import ID, DateTimeAwareModel, NextSerial
 from essentials.models import AccountType
 
 from .choices import ExpenseTypes
@@ -42,6 +43,23 @@ class ExpenseDetail(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
         )
 
     @classmethod
+    def calculate_total_expenses_with_expense_head(
+        cls, branch, start_date=None, end_date=None
+    ):
+        """an array of expenses grouped by category for branch with date filter"""
+        date_filter = {}
+        if start_date:
+            date_filter.update({"date__gte": start_date})
+        if end_date:
+            date_filter.update({"date__lte": end_date})
+        return (
+            ExpenseDetail.objects.values("expense")
+            .filter(expense__branch=branch, **date_filter)
+            .annotate(total=Sum("amount"))
+            .order_by()
+        )
+
+    @classmethod
     def calculate_total_expenses(cls, branch, start_date=None, end_date=None):
         """total expenses for a branch with dates"""
         date_filter = {}
@@ -51,8 +69,8 @@ class ExpenseDetail(ID, UserAwareModel, DateTimeAwareModel, NextSerial):
             date_filter.update({"date__lte": end_date})
 
         return (
-            ExpenseDetail.objects.filter(expense__branch=branch, **date_filter).aggregate(
-                total=Sum("amount")
-            )["total"]
+            ExpenseDetail.objects.filter(
+                expense__branch=branch, **date_filter
+            ).aggregate(total=Sum("amount"))["total"]
             or 0
         )
